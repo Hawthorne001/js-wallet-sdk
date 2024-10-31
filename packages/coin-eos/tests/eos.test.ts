@@ -12,16 +12,53 @@ import {
     publicKeyToString,
     publicKeyToLegacyString,
     signMessage,
-    verifySignature,
+    verifySignature, signSerializedTransaction,
 } from '../src';
 import {base, signUtil} from '@okxweb3/crypto-lib';
 
 describe("eos", () => {
+    test('private key getNewAddress', async () => {
+        const privateKey = "5JUsJvGbjH1HQ9XhwPP2NuxPZrFNb95miDsfL1BjVrjJXu8qWmK"
+        let wallet = new EosWallet()
+        let expectedPublickey = "EOS6Dy7412h4XWxombV8fAqzDmE3EH9Yq2G6rP18Y7Anii2F7hhi6";
+        expect((await wallet.getNewAddress({privateKey:privateKey})).publicKey).toEqual(expectedPublickey);
+    })
+
     test('private key', async () => {
         let wallet = new EosWallet()
         let key = await wallet.getRandomPrivateKey()
         console.log(key)
     })
+
+    const ps: any[] = [];
+    ps.push("");
+    ps.push("0x");
+    ps.push("124699");
+    ps.push("1dfi付");
+    ps.push("9000 12");
+    ps.push("548yT115QRHH7Mpchg9JJ8YPX9RTKuan=548yT115QRHH7Mpchg9JJ8YPX9RTKuan ");
+    ps.push("L1vSc9DuBDeVkbiS79mJ441FNAYArL1vSc9DuBDeVkbiS79mJ441FNAYArL1vSc9DuBDeVkbiS79mJ441FNAYArL1vSc9DuBDeVkbiS79mJ441FNAYAr");
+    ps.push("L1v");
+    ps.push("0x31342f041c5b54358074b4579231c8a300be65e687dff020bc7779598b428 97a");
+    ps.push("0x31342f041c5b54358074b457。、。9231c8a300be65e687dff020bc7779598b428 97a");
+    test("edge test", async () => {
+        const wallet = new EosWallet();
+        let j = 1;
+        for (let i = 0; i < ps.length; i++) {
+            try {
+                await wallet.getNewAddress({privateKey: ps[i]});
+            } catch (e) {
+                j = j + 1
+            }
+        }
+        expect(j).toEqual(ps.length+1);
+    });
+    test("validPrivateKey", async () => {
+        const wallet = new EosWallet();
+        const privateKey = await wallet.getRandomPrivateKey();
+        const res = await wallet.validPrivateKey({privateKey:privateKey});
+        expect(res.isValid).toEqual(true);
+    });
 
     test("address", async () => {
         const privateKey = stringToPrivateKey("5KXHUFNZGMsNEFzzrCis1RJdtg5wjL941a1vAwAjmgHEektrZBj")
@@ -177,13 +214,24 @@ describe("eos", () => {
             "f16b1833c747c43682f4386fca9cbb327929334a762755ebec17f6f23c9b8a12",
             "5KXHUFNZGMsNEFzzrCis1RJdtg5wjL941a1vAwAjmgHEektrZBj",
             "0x1234")
-        console.info(sig)
-
         const pub = verifySignature(
             "f16b1833c747c43682f4386fca9cbb327929334a762755ebec17f6f23c9b8a12",
             sig,
             "0x1234")
-        console.info(pub)
         expect(pub).toStrictEqual("EOS5uHXgWKzQExL2Lhu9y8716B4dkYL4T6oUq8J9FrY6EDB79naYF")
+    });
+
+    test("signSerializedTransaction", async () => {
+        const sig = signSerializedTransaction(
+            "f16b1833c747c43682f4386fca9cbb327929334a762755ebec17f6f23c9b8a12",
+            ["5KXHUFNZGMsNEFzzrCis1RJdtg5wjL941a1vAwAjmgHEektrZBj"],
+            "0x1234");
+
+        const pub = verifySignature(
+            "f16b1833c747c43682f4386fca9cbb327929334a762755ebec17f6f23c9b8a12",
+            sig[0],
+            "0x1234")
+        console.info(pub);
+        expect(pub).toStrictEqual("EOS5uHXgWKzQExL2Lhu9y8716B4dkYL4T6oUq8J9FrY6EDB79naYF");
     });
 });

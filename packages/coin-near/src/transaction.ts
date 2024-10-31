@@ -7,6 +7,7 @@ import { Assignable, Enum } from './enums';
 import { serialize, deserialize } from 'borsh';
 import { base, signUtil, BN } from '@okxweb3/crypto-lib';
 import { base_encode } from './serialize';
+import {MessagePayload} from "./nearlib";
 
 export class FunctionCallPermission extends Assignable {
   allowance?: BN;
@@ -62,7 +63,7 @@ export function stringifyJsonOrBytes(args: any): Buffer {
  * @param stringify Convert input arguments into bytes array.
  * @param jsContract  Is contract from JS SDK, skips stringification of arguments.
  */
-export function functionCall(methodName: string, args: Uint8Array | object, gas: BN, deposit: BN, stringify = stringifyJsonOrBytes, jsContract = false): Action {
+export function functionCall(methodName: string, args: Uint8Array | object,  gas: BN = new BN(0), deposit: BN = new BN(0), stringify = stringifyJsonOrBytes, jsContract = false): Action {
   if(jsContract){
     return new Action({ functionCall: new FunctionCall({ methodName, args, gas, deposit }) });
   }
@@ -159,6 +160,15 @@ export class SignedTransaction extends Assignable {
 }
 
 export const SCHEMA = new Map<Function, any>([
+    [MessagePayload, {
+        kind: 'struct', fields: [
+            ['tag', 'u32'],
+            ['message', 'string'],
+            ['nonce', [32]],
+            ['recipient', 'string'],
+            ['callbackUrl', {kind:'option',type:'string'}]
+        ]
+    }],
   [Signature, {kind: 'struct', fields: [
       ['keyType', 'u8'],
       ['data', [64]]
@@ -254,7 +264,7 @@ async function signTransactionObject(transaction: Transaction, privateKeyHex: st
 }
 
 export async function signTransaction(transaction: Transaction, privateKeyHex: string): Promise<[Uint8Array, SignedTransaction]>;
-export async function signTransaction(receiverId: string, nonce: number, actions: Action[], blockHash: Uint8Array, privateKeyHex: string): Promise<[Uint8Array, SignedTransaction]>;
+export async function signTransaction(receiverId: string, nonce: number, actions: Action[], blockHash: Uint8Array, privateKeyHex: string,accountId: string): Promise<[Uint8Array, SignedTransaction]>;
 export async function signTransaction(...args: any[]): Promise<[Uint8Array, SignedTransaction]> {
   if (args[0].constructor === Transaction) {
     const [ transaction, privateKeyHex] = args;

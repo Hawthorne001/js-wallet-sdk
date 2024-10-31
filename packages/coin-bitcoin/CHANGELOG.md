@@ -56,3 +56,42 @@ All notable changes to this project will be documented in this file.
 ### Feature
 
 - **coin-bitcoin:** add for mpc to support brc20 psbt ([91](https://github.com/okx/js-wallet-sdk/pull/91))
+
+# [1.0.12] (2024-03-06)
+
+### Feature
+
+- **coin-bitcoin:** add default public key for signing psbt
+
+
+# [1.0.14] (2024-03-27)
+
+### Feature
+
+- **coin-bitcoin:** support bitcoin adjusted vsize,and export function calculateTxSize .
+
+# [1.0.15] (2024-03-28)
+
+### Feature
+
+- **coin-bitcoin:** support analyze PSBT hex to utxo.
+
+# [1.0.20] (2024-6-19)
+
+- **coin-bitcoin:** Fixed runes asset precision issues in mint.
+
+# [1.0.22] (2024-7-2)
+
+- **coin-bitcoin:** add runes serial mint model.add splitTools psbt
+
+# [1.0.23] (2024-07-24)
+
+### Feature
+
+- **coin-bitcoin:** Added support for Atomical half-dyed assets
+
+# [1.0.26] (2024-09-26)
+
+### Feature
+
+- **coin-bitcoin:** refund fee for brc20 inscribe

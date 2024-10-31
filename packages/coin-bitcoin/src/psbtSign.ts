@@ -108,6 +108,29 @@ export function psbtSign(psbtBase64: string, privateKey: string, network?: Netwo
     return psbt.toBase64();
 }
 
+export function psbtDecode(psbtBase64: string, network?: Network, maximumFeeRate?: number) {
+
+    try {
+        const psbt = Psbt.fromHex(psbtBase64, {
+            network,
+            maximumFeeRate: maximumFeeRate ? maximumFeeRate : defaultMaximumFeeRate
+        });
+        return psbt.txInputs ? psbt.txInputs.filter(a => !a.hash.equals(Buffer.alloc(32)))
+            .map((a => {
+                return {txId: base.toHex(base.reverseBuffer(a.hash)), vOut: a.index}
+            })) : []
+    } catch (e) {
+        const psbt = Psbt.fromBase64(psbtBase64, {
+            network,
+            maximumFeeRate: maximumFeeRate ? maximumFeeRate : defaultMaximumFeeRate
+        });
+        return psbt.txInputs ? psbt.txInputs.filter(a => !a.hash.equals(Buffer.alloc(32)))
+            .map((a => {
+                return {txId: base.toHex(base.reverseBuffer(a.hash)), vOut: a.index}
+            })) : []
+    }
+}
+
 export function signPsbtWithKeyPathAndScriptPathBatch(psbtHexs: string[], privateKey: string, network?: Network, opts?: signPsbtOptions []) {
     if (psbtHexs == undefined || psbtHexs.length == 0) {
         return [];
@@ -184,6 +207,9 @@ export function signPsbtWithKeyPathAndScriptPathImpl(psbt: Psbt, privateKey: str
         signer.psbtIndex = i;
         const input = psbt.data.inputs[i];
         if (isTaprootInput(input)) {
+            if (!input.tapInternalKey) {
+                input.tapInternalKey = toXOnly(wif2Public(privateKey, network));
+            }
             // default key path spend
             signer.needTweak = true;
             signer.publicKey = Buffer.from(taproot.taprootTweakPubkey(toXOnly(wif2Public(privateKey, network)))[0]);
@@ -255,9 +281,12 @@ export function psbtSignImpl(psbt: Psbt, privateKey: string, network?: Network) 
         Transaction.SIGHASH_ALL,
         Transaction.SIGHASH_DEFAULT
     ];
-
     for (let i = 0; i < psbt.inputCount; i++) {
         if (isTaprootInput(psbt.data.inputs[i])) {
+            const input = psbt.data.inputs[i];
+            if (!input.tapInternalKey) {
+                input.tapInternalKey = toXOnly(wif2Public(privateKey, network));
+            }
             signer.publicKey = Buffer.from(taproot.taprootTweakPubkey(toXOnly(wif2Public(privateKey, network)))[0]);
         } else {
             signer.publicKey = wif2Public(privateKey, network);
@@ -265,6 +294,7 @@ export function psbtSignImpl(psbt: Psbt, privateKey: string, network?: Network) 
         try {
             psbt.signInput(i, signer, allowedSighashTypes);
         } catch (e) {
+            // console.log(e)
         }
     }
 }

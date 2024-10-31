@@ -11,6 +11,7 @@ import {
     wif2Public
 } from "./txBuild";
 import {isP2PKH, isP2SHScript, isP2TR} from "./bitcoinjs-lib/psbt/psbtutils";
+import {countAdjustedVsize} from "./sigcost";
 
 const schnorr = signUtil.schnorr.secp256k1.schnorr
 
@@ -173,14 +174,16 @@ export class InscriptionTool {
         const txForEstimate = tx.clone();
         signTx(txForEstimate, commitTxPrevOutputList, this.network);
 
-        const fee = Math.floor(txForEstimate.virtualSize() * commitFeeRate);
+        const vsize = countAdjustedVsize(txForEstimate, commitTxPrevOutputList.map(a => a.address), network)
+        const fee = Math.floor(vsize * commitFeeRate);
         const changeAmount = totalSenderAmount - totalRevealPrevOutputValue - fee;
         if (changeAmount >= minChangeValue) {
             tx.outs[tx.outs.length - 1].value = changeAmount;
         } else {
             tx.outs = tx.outs.slice(0, tx.outs.length - 1);
             txForEstimate.outs = txForEstimate.outs.slice(0, txForEstimate.outs.length - 1);
-            const feeWithoutChange = Math.floor(txForEstimate.virtualSize() * commitFeeRate);
+            const vsizeWithoutChange = countAdjustedVsize(txForEstimate, commitTxPrevOutputList.map(a => a.address), network)
+            const feeWithoutChange = Math.floor(vsizeWithoutChange * commitFeeRate);
             if (totalSenderAmount - totalRevealPrevOutputValue - feeWithoutChange < 0) {
                 this.mustCommitTxFee = fee;
                 return true;
@@ -420,14 +423,16 @@ export function inscribeForMPCUnsigned(request: InscriptionRequest, network: bit
     const estimateTx = commitTx.clone();
     signTx(estimateTx, request.commitTxPrevOutputList, network);
 
-    const fee = Math.floor(estimateTx.virtualSize() * request.commitFeeRate);
+    const vsize = countAdjustedVsize(estimateTx, request.commitTxPrevOutputList.map(a => a.address), network)
+    const fee = Math.floor(vsize * request.commitFeeRate);
     const changeValue = totalCommitInValue - totalRevealInValue - fee;
     if (changeValue >= (request.minChangeValue || defaultMinChangeValue)) {
         commitTx.outs[commitTx.outs.length - 1].value = changeValue;
     } else {
         commitTx.outs = commitTx.outs.slice(0, commitTx.outs.length - 1);
         estimateTx.outs = estimateTx.outs.slice(0, estimateTx.outs.length - 1);
-        const feeWithoutChange = Math.floor(estimateTx.virtualSize() * request.commitFeeRate);
+        const vsizeWithoutChange = countAdjustedVsize(estimateTx, request.commitTxPrevOutputList.map(a => a.address), network)
+        const feeWithoutChange = Math.floor(vsizeWithoutChange * request.commitFeeRate);
         if (totalCommitInValue - totalRevealInValue - feeWithoutChange < 0) {
             throw new Error("insufficient balance");
         }
@@ -437,7 +442,7 @@ export function inscribeForMPCUnsigned(request: InscriptionRequest, network: bit
     const sigHashList = calculateSigHash(commitTx, request.commitTxPrevOutputList, network);
 
     // sign reveal tx
-    // TODO commitTx计算txid，在legacy地址的情况下需要签名数据
+    // TODO Signed data is required in the case of legacy addresses
     let commitTxHash = commitTx.getHash();
     if (signedCommitTxHash) {
         commitTxHash = signedCommitTxHash
@@ -483,7 +488,7 @@ export function inscribeForMPCSigned(request: InscriptionRequest, network: bitco
     const unsignedCommitTxHash = tx.getHash()
     tx.ins.forEach((input, i) => {
         const signature = base.fromHex(signatures[i]);
-        if (!input.witness) {
+        if  (!input.witness || input.witness.length == 0) {
             input.script = bitcoin.payments.p2pkh({
                 pubkey: bitcoin.payments.p2pkh({input: input.script}).pubkey,
                 signature: bitcoin.script.signature.encode(signature, bitcoin.Transaction.SIGHASH_ALL),

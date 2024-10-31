@@ -9,10 +9,57 @@ import {
     transfer,
     TrxWallet,
     validateAddress,
+    verifySignatureV2,
 } from '../src';
 import {NewAddressParams, SignTxParams, VerifyMessageParams} from "@okxweb3/coin-base";
 
 describe("address", () => {
+
+    test("validPrivateKey", async () => {
+        const wallet = new TrxWallet();
+        const privateKey = await wallet.getRandomPrivateKey();
+        const res = await wallet.validPrivateKey({privateKey: privateKey});
+        expect(res.isValid).toEqual(true);
+    });
+
+    const ps: any[] = [];
+    ps.push("");
+    ps.push("0x");
+    ps.push("124699");
+    ps.push("1dfi付");
+    ps.push("9000 12");
+    ps.push("548yT115QRHH7Mpchg9JJ8YPX9RTKuan=548yT115QRHH7Mpchg9JJ8YPX9RTKuan ");
+    ps.push("L1vSc9DuBDeVkbiS79mJ441FNAYArL1vSc9DuBDeVkbiS79mJ441FNAYArL1vSc9DuBDeVkbiS79mJ441FNAYArL1vSc9DuBDeVkbiS79mJ441FNAYAr");
+    ps.push("L1v");
+    ps.push("0x31342f041c5b54358074b4579231c8a300be65e687dff020bc7779598b428 97a");
+    ps.push("0x31342f041c5b54358074b457。、。9231c8a300be65e687dff020bc7779598b428 97a");
+    ps.push("bdd80f4421968142b3a4a6c27a1d84a3623384d085a04a895f109fd8d49cef0a\n");
+    // ps.push("0Xbdd80f4421968142b3a4a6c27a1d84a3623384d085a04a895f109fd8d49cef0a");
+    test("edge test", async () => {
+        const wallet = new TrxWallet();
+        let j = 1;
+        for (let i = 0; i < ps.length; i++) {
+            try {
+                await wallet.getNewAddress({privateKey: ps[i]});
+            } catch (e) {
+                j = j + 1
+            }
+        }
+        expect(j).toEqual(ps.length + 1);
+    });
+
+    test("getNewAddress", async () => {
+        let wallet = new TrxWallet()
+        let result = await wallet.getNewAddress({privateKey: "bdd80f4421968142b3a4a6c27a1d84a3623384d085a04a895f109fd8d49cef0a"});
+        expect(result.address).toBe("TJUYRk7odiK3fvPRCGNu4cWGg7tCGHf7Jm");
+        result = await wallet.getNewAddress({privateKey: "BDD80F4421968142B3A4A6C27A1D84A3623384D085A04A895F109FD8D49CEF0A"});
+        expect(result.address).toBe("TJUYRk7odiK3fvPRCGNu4cWGg7tCGHf7Jm");
+        result = await wallet.getNewAddress({privateKey: "0xbdd80f4421968142b3a4a6c27a1d84a3623384d085a04a895f109fd8d49cef0a"});
+        expect(result.address).toBe("TJUYRk7odiK3fvPRCGNu4cWGg7tCGHf7Jm");
+        result = await wallet.getNewAddress({privateKey: "0XBDD80F4421968142B3A4A6C27A1D84A3623384D085A04A895F109FD8D49CEF0A"});
+        expect(result.address).toBe("TJUYRk7odiK3fvPRCGNu4cWGg7tCGHf7Jm");
+    });
+
     test("getNewAddress", async () => {
         let wallet = new TrxWallet()
         let privateKey = await wallet.getRandomPrivateKey();
@@ -20,6 +67,10 @@ describe("address", () => {
             privateKey: privateKey
         };
         let address = await wallet.getNewAddress(params);
+        // let address = await wallet.getNewAddress({privateKey: "bdd80f4421968142b3a4a6c27a1d84a3623384d085a04a895f109fd8d49cef0a"});
+        // address = await wallet.getNewAddress({privateKey: ""});
+        // address = await wallet.getNewAddress({privateKey: "0x"});
+        // address = await wallet.getNewAddress({privateKey: "fix"});
         console.info("address", address)
 
 
@@ -213,5 +264,15 @@ describe("sign message", () => {
         console.info(verify)
     })
 
+    test('sign v2 message test', async () => {
+        const message = "hello world"
+        const priKey = "0000000000000000000000000000000000000000000000000000000000000001"
+        const t = signMessage("v2", message, priKey)
+        console.info(t)
+        // 0x0dc0b53d525e0103a6013061cf18e60cf158809149f2b8994a545af65a7004cb1eeaff560e801ab51b28df5d42549aa024c2aa7e9d34de1e01294b9afb5e6c7e1c
 
+        const address = verifySignatureV2(message, t);
+        console.log(address)
+        // TMVQGm1qAQYVdetCeGRRkTWYYrLXuHK2HC
+    })
 })

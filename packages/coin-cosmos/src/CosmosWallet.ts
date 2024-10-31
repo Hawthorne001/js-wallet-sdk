@@ -1,49 +1,57 @@
 import {
-  CalcTxHashParams,
-  GetDerivedPathParam,
-  NewAddressData,
-  NewAddressParams,
-  SignTxParams,
-  ValidAddressData,
-  ValidAddressParams,
-  GetAddressParams,
-  MpcRawTransactionParam,
-  MpcTransactionParam,
-  ValidSignedTransactionParams,
-  MpcMessageParam,
   BaseWallet,
   CalcTxHashError,
-  NewAddressError,
-  SignMsgError,
-  SignTxError,
+  CalcTxHashParams,
+  GetAddressParams,
+  GetDerivedPathParam,
   GetMpcRawTransactionError,
   GetMpcTransactionError,
+  jsonStringifyUniform,
+  MpcMessageParam,
+  MpcRawTransactionParam,
+  MpcTransactionParam,
+  NewAddressData,
+  NewAddressError,
+  NewAddressParams,
+  SignMsgError,
+  SignTxError,
+  SignTxParams,
+  ValidAddressData,
+  ValidAddressParams, ValidPrivateKeyData, ValidPrivateKeyParams,
   validSignedTransactionError,
-  jsonStringifyUniform
+  ValidSignedTransactionParams
 } from '@okxweb3/coin-base';
-import { base } from '@okxweb3/crypto-lib';
+import {base} from '@okxweb3/crypto-lib';
 import {
+  addressFromPublic,
   AminoConverters,
   amount2Coin,
   amount2Coins,
   amount2StdFee,
-  GammAminoConverters,
-  GammRegistry,
+  OsmosisRegistry,
+  OsmosisAminoConverters,
+  KavaRegistry,
+  KavaAminoConverters,
+  CosmWasmRegistry,
+  CosmWasmAminoConverter,
   GeneratedType,
+  getMPCSignedMessage,
+  getMPCTransaction,
   getNewAddress,
   Height,
   private2Public,
   sendIBCToken,
   sendToken,
   SignWithSignDoc,
-  signWithStdSignDoc,
-  validateAddress,
-  addressFromPublic,
-  getMPCTransaction,
-  validSignedTransaction,
-  getMPCSignedMessage,
-  signWithStdSignDocForINJ,
   SignWithSignDocForINJ,
+  SignWithSignDocForINJWithTx,
+  SignWithSignDocWithTx,
+  signWithStdSignDoc,
+  signWithStdSignDocForINJ,
+  signWithStdSignDocForINJWithTx,
+  signWithStdSignDocWithTx,
+  validateAddress,
+  validSignedTransaction,
 } from './';
 
 export interface CosmosTransferParam {
@@ -77,6 +85,8 @@ export type CosmosSignParam = {
 export interface SignMessageData {
   type: "amino" | "signDoc"
   data: string
+  prefix?: string
+  withTx?: boolean
 }
 
 export abstract class CosmosWallet extends BaseWallet {
@@ -92,9 +102,14 @@ export abstract class CosmosWallet extends BaseWallet {
   }
 
   async getNewAddress(param: NewAddressParams): Promise<any> {
+    let ok = await this.checkPrivateKey(param.privateKey)
+    if(!ok){
+      throw new Error('invalid key');
+    }
     try {
       const prefix = param.hrp || this.getPrefix()
-      const privateKey = base.fromHex(param.privateKey)
+      let priv = param.privateKey;
+      const privateKey = base.fromHex(priv.toLowerCase())
       const ethSign = this.supportEthSign()
       const publicKey = private2Public(privateKey, !ethSign)
       const address = getNewAddress(privateKey, prefix, ethSign)
@@ -106,6 +121,22 @@ export abstract class CosmosWallet extends BaseWallet {
     } catch (e) {
       return Promise.reject(NewAddressError);
     }
+  }
+  async checkPrivateKey(privateKeyHex: string) {
+    if (!base.validateHexString(privateKeyHex)) {
+      return Promise.resolve(false);
+    }
+    const privateKey = base.fromHex(privateKeyHex.toLowerCase())
+    return privateKey.length == 32
+  }
+
+  async validPrivateKey(param: ValidPrivateKeyParams): Promise<any> {
+    let isValid = await this.checkPrivateKey(param.privateKey);
+    const data: ValidPrivateKeyData = {
+      isValid: isValid,
+      privateKey: param.privateKey
+    };
+    return Promise.resolve(data);
   }
 
   async validAddress(param: ValidAddressParams): Promise<any> {
@@ -178,11 +209,34 @@ export abstract class CosmosWallet extends BaseWallet {
         privateKey = base.fromHex(param.privateKey);
       }
       const message = param.data as SignMessageData
+      if (message.withTx) {
+        return await this.signMessageWithTx(param)
+      }
       if (message.type == "amino") {
         const result = await signWithStdSignDoc(privateKey as Buffer, message.data, ethSign)
         return Promise.resolve(result);
       } else {
         const result = await SignWithSignDoc(privateKey as Buffer, message.data, ethSign)
+        return Promise.resolve(result);
+      }
+    } catch (e) {
+      return Promise.reject(SignMsgError);
+    }
+  }
+async signMessageWithTx(param: SignTxParams): Promise<any> {
+    try {
+      const ethSign = this.supportEthSign()
+      let privateKey;
+      if (param.privateKey) {
+        privateKey = base.fromHex(param.privateKey);
+      }
+      const message = param.data as SignMessageData
+      if (message.type == "amino") {
+        const prefix = message.prefix || this.getPrefix()
+        const result = await signWithStdSignDocWithTx(privateKey as Buffer, message.data, ethSign, prefix, this)
+        return Promise.resolve(result);
+      } else {
+        const result = await SignWithSignDocWithTx(privateKey as Buffer, message.data, ethSign)
         return Promise.resolve(result);
       }
     } catch (e) {
@@ -266,11 +320,17 @@ export class CommonCosmosWallet extends CosmosWallet {
   }
 
   getAminoConverters(): AminoConverters | undefined {
-    return undefined;
+    return {
+      ...OsmosisAminoConverters,
+      ...CosmWasmAminoConverter,
+    };
   }
 
   getExtraTypes(): ReadonlyArray<[string, GeneratedType]> | undefined {
-    return undefined;
+    return [
+      ...OsmosisRegistry,
+      ...CosmWasmRegistry,
+    ];
   }
 
   getSlip44CoinType(): number {
@@ -318,11 +378,11 @@ export class OsmoWallet extends CosmosWallet {
   }
 
   getAminoConverters(): AminoConverters | undefined {
-    return GammAminoConverters;
+    return OsmosisAminoConverters
   }
 
   getExtraTypes(): ReadonlyArray<[string, GeneratedType]> | undefined {
-    return GammRegistry;
+    return OsmosisRegistry
   }
 
   getSlip44CoinType(): number {
@@ -475,11 +535,11 @@ export class KavaWallet extends CosmosWallet {
   }
 
   getAminoConverters(): AminoConverters | undefined {
-    return undefined;
+    return KavaAminoConverters;
   }
 
   getExtraTypes(): ReadonlyArray<[string, GeneratedType]> | undefined {
-    return undefined;
+    return KavaRegistry;
   }
 
   getSlip44CoinType(): number {
@@ -605,11 +665,11 @@ export class SeiWallet extends CosmosWallet {
   }
 
   getAminoConverters(): AminoConverters | undefined {
-    return undefined;
+    return CosmWasmAminoConverter;
   }
 
   getExtraTypes(): ReadonlyArray<[string, GeneratedType]> | undefined {
-    return undefined;
+    return CosmWasmRegistry;
   }
 
   getSlip44CoinType(): number {
@@ -680,11 +740,34 @@ export class InjectiveWallet extends CosmosWallet {
         privateKey = base.fromHex(param.privateKey);
       }
       const message = param.data as SignMessageData
+      if (message.withTx) {
+        return await this.signMessageWithTx(param)
+      }
       if (message.type == "amino") {
         const result = await signWithStdSignDocForINJ(privateKey as Buffer, message.data, ethSign)
         return Promise.resolve(result);
       } else {
         const result = await SignWithSignDocForINJ(privateKey as Buffer, message.data, ethSign)
+        return Promise.resolve(result);
+      }
+    } catch (e) {
+      return Promise.reject(SignMsgError);
+    }
+  }
+
+  async signMessageWithTx(param: SignTxParams): Promise<any> {
+    try {
+      const ethSign = this.supportEthSign()
+      let privateKey;
+      if (param.privateKey) {
+        privateKey = base.fromHex(param.privateKey);
+      }
+      const message = param.data as SignMessageData
+      if (message.type == "amino") {
+        const result = await signWithStdSignDocForINJWithTx(privateKey as Buffer, message.data, ethSign, this)
+        return Promise.resolve(result);
+      } else {
+        const result = await SignWithSignDocForINJWithTx(privateKey as Buffer, message.data, ethSign)
         return Promise.resolve(result);
       }
     } catch (e) {
