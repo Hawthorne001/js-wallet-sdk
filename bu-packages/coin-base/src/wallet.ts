@@ -19,7 +19,7 @@ import {
     ValidSignedTransactionParams,
     VerifyMessageParams,
 } from './common';
-import {bip32, bip39, signUtil} from "@ok/crypto-lib";
+import {bip32, bip39, signUtil} from "@okxweb3/crypto-lib";
 import {base, BN} from './index';
 import {buildCommonSignMsg} from "./basic";
 

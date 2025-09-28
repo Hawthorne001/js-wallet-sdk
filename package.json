@@ -25,7 +25,8 @@
   "author": "",
   "private": true,
   "workspaces": [
-    "bu-*/crypto-lib"
+    "bu-*/crypto-lib",
+    "bu-*/coin-base"
   ],
   "license": "MIT",
   "files": [
