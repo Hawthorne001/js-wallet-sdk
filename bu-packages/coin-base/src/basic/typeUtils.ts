@@ -1,5 +1,4 @@
-import { base, BigNumber } from '@okxweb3/crypto-lib';
-
+import { BigNumber, base } from '../index';
 
 
 export function buildCommonSignMsg(publicKey:string, walletId:string) {

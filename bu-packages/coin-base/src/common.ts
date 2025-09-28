@@ -127,4 +127,19 @@ export type SignCommonMsgParams = {
   addressType?: string;
   version?: string;
   hrp?: string;
+  chainName?: string;
 };
+
+
+export function isHexStr(hexStr:string) {
+  if (hexStr.length<=1){
+    return false;
+  }
+  if (!hexStr.startsWith("0x")){
+    hexStr = '0x'+hexStr
+  }
+  if (!hexStr.match(/^0x[0-9A-Fa-f]*$/)) {
+    return false;
+  }
+  return true
+}

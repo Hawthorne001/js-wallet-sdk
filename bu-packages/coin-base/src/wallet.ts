@@ -5,7 +5,7 @@ import {
     GetAddressParams,
     GetDerivedPathParam,
     GetRawTransactionParams,
-    HardwareRawTransactionParam,
+    HardwareRawTransactionParam, isHexStr,
     MpcMessageParam,
     MpcRawTransactionParam,
     MpcTransactionParam,
@@ -19,7 +19,8 @@ import {
     ValidSignedTransactionParams,
     VerifyMessageParams,
 } from './common';
-import {base, bip32, bip39, BN, signUtil} from "@okxweb3/crypto-lib";
+import {bip32, bip39, signUtil} from "@ok/crypto-lib";
+import {base, BN} from './index';
 import {buildCommonSignMsg} from "./basic";
 
 export function secp256k1SignTest(privateKey: Buffer) {
@@ -104,6 +105,24 @@ abstract class BaseWallet {
 
     // secp256k1 curve uses the default implementation, ed25519 curve, you need to use the basic/ed25519 implementation.
     getDerivedPrivateKey(param: DerivePriKeyParams): Promise<any> {
+        return bip39.mnemonicToSeedV2(param.mnemonic)
+            .then((masterSeed: Buffer) => {
+                const childKey = bip32.fromSeedV2(masterSeed, param.hdPath);
+
+                if (childKey.privateKey) {
+                    let privateKey = base.toHex(childKey.privateKey);
+                    return Promise.resolve("0x" + privateKey);
+                } else {
+                    return Promise.reject(GenPrivateKeyError);
+                }
+            }).catch((e) => {
+                return Promise.reject(GenPrivateKeyError);
+            });
+    }
+
+    // secp256k1 curve uses the default implementation, ed25519 curve, you need to use the basic/ed25519 implementation.
+    // This is old implementation, please use getDerivedPrivateKey instead.
+    getDerivedPrivateKeyOld(param: DerivePriKeyParams): Promise<any> {
         return bip39.mnemonicToSeed(param.mnemonic)
             .then((masterSeed: Buffer) => {
                 let childKey = bip32.fromSeed(masterSeed).derivePath(param.hdPath)
@@ -162,8 +181,16 @@ abstract class BaseWallet {
                 });
                 publicKey = addr.publicKey;
             }
-            if (publicKey.startsWith("0x")) {
-                publicKey = publicKey.substring(2);
+            if(params.chainName && params.chainName == "sui"){
+                if (isHexStr(publicKey)) {
+                    if (publicKey.startsWith("0x")) {
+                        publicKey = publicKey.substring(2);
+                    }
+                }
+            } else {
+                if (publicKey.startsWith("0x")) {
+                    publicKey = publicKey.substring(2);
+                }
             }
             if (!params.message.walletId) {
                 return Promise.reject("invalid walletId");

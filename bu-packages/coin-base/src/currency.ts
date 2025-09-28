@@ -17,6 +17,7 @@ export enum Currency {
     SUI = 784,
 
     // cosmos
+    Initia = 3178,
     ATOM = 118,
     OSMO = 1000,
     EVMOS = 1001,
@@ -43,6 +44,9 @@ export enum Currency {
     TON = 607,
     NostrAssets = 1237,
     Near = 397,
+    Kaia = 8217,
+    PI = 70000074,
+    XRP = 144,
 }
 
 export enum segwitType {
@@ -86,6 +90,7 @@ export const CoinCurveMap = new Map<Currency, string>([
     [Currency.SEI, secp256k1],
     [Currency.Celestia, secp256k1],
     [Currency.DYDX, secp256k1],
+    [Currency.Kaia, secp256k1],
 
 
     // [Currency.ZKSPACE, secp256k1],
@@ -96,4 +101,5 @@ export const CoinCurveMap = new Map<Currency, string>([
     [Currency.APTOS, ed25519],
     [Currency.SUI, ed25519],
     [Currency.TON, ed25519],
+    [Currency.PI, ed25519],
 ]);
