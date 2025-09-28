@@ -1,6 +1,6 @@
 {
   "name": "@okxweb3/coin-base",
-  "version": "2.0.3",
+  "version": "2.0.3-beta.0",
   "description": "A base package for @okxweb3/coin-*",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
