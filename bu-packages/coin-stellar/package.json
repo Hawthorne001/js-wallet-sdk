@@ -48,7 +48,7 @@
   "dependencies": {
     "@babel/preset-flow": "^7.25.7",
     "@okxweb3/coin-base": "^1.1.2",
-    "@okxweb3/crypto-lib": "^1.0.10",
+    "@okxweb3/crypto-lib": "2.0.4-beta.0",
     "@stellar/js-xdr": "3.1.2",
     "base32.js": "0.1.0",
     "sha.js": "2.4.12",

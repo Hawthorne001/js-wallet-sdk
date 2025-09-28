@@ -56,7 +56,7 @@
     "@kaiachain/js-ext-core": "2.0.1",
     "@okxweb3/coin-base": "^1.1.2",
     "@okxweb3/coin-ethereum": "^1.0.12",
-    "@okxweb3/crypto-lib": "^1.0.10",
+    "@okxweb3/crypto-lib": "2.0.4-beta.0",
     "ethers": "^6.13.5",
     "ethers6": "npm:ethers@6.13.5",
     "lodash": "4.17.21",

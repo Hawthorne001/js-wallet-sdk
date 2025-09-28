@@ -45,7 +45,7 @@
   },
   "dependencies": {
     "superstruct": "1.0.4",
-    "@okxweb3/crypto-lib": "^1.0.10",
+    "@okxweb3/crypto-lib": "2.0.4-beta.0",
     "@okxweb3/coin-base": "^1.1.0"
   }
 }
