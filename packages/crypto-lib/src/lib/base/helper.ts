@@ -7,6 +7,7 @@ export function isHexString(value: string, length?: number) {
 }
 
 export function validateHexString(value: string) {
+
   if (!value) {
     return false;
   }

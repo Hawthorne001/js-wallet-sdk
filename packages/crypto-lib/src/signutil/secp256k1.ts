@@ -1,6 +1,6 @@
 import * as elliptic from "../elliptic"
 const ec = new elliptic.ec('secp256k1')
-import { toHex } from '../base';
+import { toHex } from '../lib/base';
 
 import BN from "bn.js"
 

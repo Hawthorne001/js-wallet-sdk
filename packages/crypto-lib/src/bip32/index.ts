@@ -6,3 +6,7 @@ export {
   fromPublicKey,
   fromPrivateKey,
 } from './bip32';
+
+export {
+  fromSeedV2,
+} from './bip32_v2';

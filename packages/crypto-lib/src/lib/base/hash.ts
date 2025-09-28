@@ -3,7 +3,6 @@ import { sha512 } from '@noble/hashes/sha512'
 import { ripemd160 } from '@noble/hashes/ripemd160'
 
 import { keccak_224, keccak_256, keccak_384, keccak_512, sha3_256, sha3_512} from "@noble/hashes/sha3";
-import {assertIsBuffer} from "../abi/util";
 import {blake2b} from "@noble/hashes/blake2b";
 import {Input} from "@noble/hashes/utils";
 

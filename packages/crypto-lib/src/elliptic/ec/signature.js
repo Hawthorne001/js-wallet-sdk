@@ -47,10 +47,6 @@ function getLength(buf, p) {
     return false;
   }
 
-  if(buf[p.place] === 0x00) {
-    return false;
-  }
-
   var val = 0;
   for (var i = 0, off = p.place; i < octetLen; i++, off++) {
     val <<= 8;
@@ -99,9 +95,6 @@ Signature.prototype._importDER = function _importDER(data, enc) {
   if (rlen === false) {
     return false;
   }
-  if ((data[p.place] & 128) !== 0) {
-    return false;
-  }
   var r = data.slice(p.place, rlen + p.place);
   p.place += rlen;
   if (data[p.place++] !== 0x02) {
@@ -112,9 +105,6 @@ Signature.prototype._importDER = function _importDER(data, enc) {
     return false;
   }
   if (data.length !== slen + p.place) {
-    return false;
-  }
-  if ((data[p.place] & 128) !== 0) {
     return false;
   }
   var s = data.slice(p.place, slen + p.place);

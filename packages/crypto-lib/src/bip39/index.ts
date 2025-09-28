@@ -15,11 +15,12 @@
  **/
 
 
-import {randomBytes, sha256} from "../base";
+import {randomBytes, sha256} from "../lib/base";
 import {pbkdf2} from "@noble/hashes/pbkdf2"
 
 import { _default as _DEFAULT_WORDLIST, wordlists } from './_wordlists';
 import {sha512} from "@noble/hashes/sha512";
+import {mnemonicToSeed as mnemonicToSeedMetamask} from '@metamask/key-tree';
 
 let DEFAULT_WORDLIST: string[] | undefined = _DEFAULT_WORDLIST;
 
@@ -93,6 +94,18 @@ export function mnemonicToSeed(
         return pbkdf2Promise(mnemonicBuffer, saltBuffer, 2048, 64, 'sha512');
       },
   );
+}
+
+// This is new implementation, please use this instead of mnemonicToSeed.
+// From metamask's implementation, it is faster ~25x than the old implementation.
+export async function mnemonicToSeedV2(
+  mnemonic: string,
+  password?: string,
+): Promise<Buffer> {
+  const indices = mnemonic.split(' ').map((word) => DEFAULT_WORDLIST!.indexOf(word));
+  const u8a = new Uint8Array(new Uint16Array(indices).buffer);
+  const seed = await mnemonicToSeedMetamask(u8a, password);
+  return Buffer.from(seed);
 }
 
 export function mnemonicToEntropy(

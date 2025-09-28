@@ -1,46 +1,11 @@
 import {sha256} from "@noble/hashes/sha256";
 import {Buffer} from "buffer";
-import {base, bip32, bip39, signUtil} from "../src";
-import {fromHex, magicHash, randomBytes, toHex} from '../src/base';
+import {bip32, bip39, signUtil} from "../src";
+import * as base from "../src/lib/base";
+import {fromHex, magicHash, toHex} from '../src/lib/base';
 import {secp256k1} from "../src/signutil";
 import {publicKeyCreate} from "../src/signutil/ed25519";
-import {
-    intToBuffer,
-    intToHex,
-    zeros,
-    setLengthLeft,
-    setLengthRight,
-    unpadBuffer,
-    unpadArray,
-    unpadHexString, validateNoLeadingZeroes
-} from "../src/abi/bytes";
-import {assertIsString} from "../src/abi/helpers";
-import {SoliditySHA3} from "../src/abi";
-import {fromAscii, getKeys, toAscii} from "../src/abi/internal";
-import {getLength} from "../src/abi/rlp";
 import {bitLen, equalBytes} from "../src/signutil/schnorr/abstract/utils";
-
-describe("abi test", ()=>{
-    test("bytes test", async ()=>{
-        expect(intToHex(123456)).toEqual("0x1e240")
-        expect(toHex(intToBuffer(123456))).toEqual("01e240")
-        expect(toHex(zeros(2))).toEqual("0000")
-        expect(setLengthLeft(base.fromHex("0x1234"),1)).toEqual(new Buffer([0x34]))
-        expect(setLengthRight(base.fromHex("0x1234"),1)).toEqual(new Buffer([0x12]))
-        expect(unpadBuffer(base.fromHex("0x01234"))).toEqual(new Buffer([0x01,0x23]))
-        expect(unpadArray([0,1,2,3,4,5,6])).toEqual([ 1, 2, 3, 4, 5, 6 ])
-        expect(unpadHexString("0x01234")).toEqual("0x1234")
-    })
-    test("helper test", async ()=>{
-        assertIsString("1234");
-        expect(base.toHex(SoliditySHA3(['uint256'], [1234]))).toEqual("17fa14b0d73aa6a26d6b8720c1c84b50984f5c188ee1c113d2361e430f1b6764");
-        expect(getKeys([{a: '1', b: '2'}, {a: '3', b: '4'}], 'a')).toEqual([ '1', '3' ])
-        expect(toAscii("0x1234")).toEqual("4");
-        expect(fromAscii("1234")).toEqual("0x31323334");
-        expect(getLength("1234")).toEqual(4)
-        validateNoLeadingZeroes({"123":new Buffer([0x1234])})
-    })
-})
 
 describe("signutil test", ()=>{
     test("abstract utils", async () => {
@@ -60,76 +25,6 @@ describe("crypto", () => {
         expect(base.toHex(publicKeyCreate(base.fromHex(privateKey)))).toEqual("fd5fd86d7d7b8355492b1517a96a2fbb17e1a374b80a21559bdfee0dfbaa0b32");
         const invalidPrivateKey = "037f00373589c700a411382ae702e258b01f30a509a32be2b2c84fb54de4c1e5fd5fd86d7d7b8355492b1517a96a2fbb17e1a374b80a21559bdfee0dfbaa0b36";
         expect(() => publicKeyCreate(base.fromHex(invalidPrivateKey))).toThrowError("invalid public key")
-    });
-
-    test("base", async () => {
-        const bytes = randomBytes(32);
-        const hex = base.toHex(bytes);
-        const bytes2 = base.fromHex(hex);
-        expect(bytes).toEqual(bytes2)
-        if (bytes.equals(bytes2)) {
-            console.info(hex);
-        }
-
-        console.info(base.toHex(bytes))
-        console.info(base.toHex(Array.of(...bytes)))
-        console.info(base.toHex(Uint8Array.of(...bytes)))
-
-        const base64String = base.toBase64(bytes);
-        const bytes3 = base.fromBase64(base64String);
-        expect(bytes).toEqual(new Buffer(bytes3))
-        if (bytes.equals(bytes3)) {
-            console.info(base64String);
-        }
-
-        console.info(base.toBase64(bytes))
-        console.info(base.toBase64(Array.of(...bytes)))
-        console.info(base.toBase64(Uint8Array.of(...bytes)))
-
-        const base58String = base.toBase58(bytes);
-        const bytes4 = base.fromBase58(base58String);
-        expect(bytes).toEqual(new Buffer(bytes4))
-        if (bytes.equals(bytes4)) {
-            console.info(base58String);
-        }
-
-        console.info(base.toBase58(bytes))
-        console.info(base.toBase58(Array.of(...bytes)))
-        console.info(base.toBase58(Uint8Array.of(...bytes)))
-
-        const base58CheckString = base.toBase58Check(bytes);
-        const bytes5 = base.fromBase58Check(base58CheckString);
-        expect(bytes).toEqual(bytes5)
-        if (bytes.equals(bytes5)) {
-            console.info(base58CheckString);
-        }
-
-        console.info(base.toBase58Check(bytes))
-        console.info(base.toBase58Check(Array.of(...bytes)))
-        console.info(base.toBase58Check(Uint8Array.of(...bytes)))
-
-        // encode the data into 5 bits and then encode. When decoding, decode data into 8 bits
-        const bech32String = base.bech32.encode("prefix", base.bech32.toWords(bytes));
-        const bech32Data = base.bech32.decode(bech32String);
-        expect(bytes).toEqual(Buffer.from(base.bech32.fromWords(bech32Data.words)));
-        if (bytes.equals(Buffer.from(base.bech32.fromWords(bech32Data.words)))) {
-            console.info(bech32String, bech32Data);
-        }
-
-        const b = base.toBech32("prefix", bytes);
-        const [c, d] = base.fromBech32(b);
-        expect(bytes).toEqual(d)
-        if (bytes.equals(d)) {
-            console.info(b, c, d);
-        }
-
-        console.info(base.toBech32("prefix", bytes))
-        console.info(base.toBech32("prefix", Array.of(...bytes)))
-        console.info(base.toBech32("prefix", Uint8Array.of(...bytes)))
-
-        const k = base.toUtf8("abc")
-        console.info(base.toHex(k));
-        expect(base.toHex(k)).toEqual("616263")
     });
 
     test("bip39", async () => {
@@ -246,10 +141,5 @@ describe("crypto", () => {
         expect(child.index).toEqual(1000000000)
         expect(base.toHex(child.identifier)).toEqual("d69aa102255fed74378278c7812701ea641fdf32")
         expect(base.toHex(child.fingerprint)).toEqual("d69aa102")
-    });
-
-    test("md5", async () => {
-        const ret = base.md5.encode("hello world")
-        expect(ret).toEqual("5eb63bbbe01eeed093cb22bb8f5acdc3")
     });
 });

@@ -1,11 +1,11 @@
-import * as base from "../base"
+import * as base from "../lib/base"
 import { base58check } from "@scure/base"
 /**
  * The MIT License (MIT)
  *
  * Copyright (c) 2011-2018 bitcoinjs-lib contributors
  * */
-import {sha256} from "../base/hash";
+import {sha256} from "../lib/base/hash";
 const bytesCoder = base58check(sha256);
 
 const api = require('./api');

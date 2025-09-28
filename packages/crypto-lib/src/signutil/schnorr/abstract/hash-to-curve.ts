@@ -58,6 +58,9 @@ function isNum(item: unknown): void {
   if (!Number.isSafeInteger(item)) throw new Error('number expected');
 }
 
+// Export internal functions for testing
+export { validateDST, i2osp, strxor, isBytes, isNum };
+
 // Produces a uniformly random byte string using a cryptographic hash function H that outputs b bits
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-5.4.1
 export function expand_message_xmd(

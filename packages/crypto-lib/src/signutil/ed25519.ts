@@ -1,7 +1,12 @@
 import * as elliptic from "../elliptic";
-import {concatBytes, hmacSHA512, randomBytes, sha256, toBase58, toHex} from "../base";
+import {concatBytes, hmacSHA512, randomBytes, sha256, toBase58, toHex} from "../lib/base";
 import BN from "bn.js";
-import {mnemonicToSeed} from "../bip39";
+import {mnemonicToSeedV2} from "../bip39";
+import * as nobleEd25519 from "@noble/ed25519";
+import { sha512 } from "@noble/hashes/sha512";
+
+// enable synchronous signing by providing sha512Sync implementation
+nobleEd25519.utils.sha512Sync = (...m: Uint8Array[]) => sha512(nobleEd25519.utils.concatBytes(...m));
 const ed25519 = new elliptic.eddsa('ed25519');
 const curve = ed25519.curve
 
@@ -16,8 +21,7 @@ export function sign(message: Uint8Array | Buffer, secretKey: Uint8Array | Buffe
         pk = pk.slice(0, 32)
     }
 
-    const key = ed25519.keyFromSecret(Array.from(pk));
-    const signature = key.sign(Array.from(message)).toBytes();
+    const signature = nobleEd25519.sync.sign(message, pk);
     return Uint8Array.from(signature)
 }
 
@@ -41,19 +45,19 @@ export function publicKeyCreate(secretKey: Uint8Array | Buffer): Uint8Array {
 }
 
 function areUint8ArraysEqual(arr1: Uint8Array, arr2: Uint8Array): boolean {
-    // 检查长度是否相等
+    // Check if lengths are equal
     if (arr1.length !== arr2.length) {
         return false;
     }
 
-    // 逐字节比较
+    // Compare byte by byte
     for (let i = 0; i < arr1.length; i++) {
         if (arr1[i] !== arr2[i]) {
             return false;
         }
     }
 
-    // 如果所有字节都相等，返回 true
+    // If all bytes are equal, return true
     return true;
 }
 
@@ -187,7 +191,7 @@ export type DerivePriKeyParams = {
  * @returns string - Private key
  */
 export async function ed25519_getDerivedPrivateKey(mnemonic: string, hdPath: string, concatPub: boolean, encode: 'hex' | 'base58'): Promise<string> {
-    const seed = await mnemonicToSeed(mnemonic);
+    const seed = await mnemonicToSeedV2(mnemonic);
     const derivedSeed = derivePath(hdPath, seed).key;
     const publicKey = publicKeyCreate(derivedSeed);
     const privateKey = concatPub ? concatBytes(derivedSeed, publicKey) : derivedSeed;

@@ -85,27 +85,8 @@ EC.prototype.genKeyPair = function genKeyPair(options) {
   }
 };
 
-EC.prototype._truncateToN = function _truncateToN(msg, truncOnly, bitLength) {
-  var byteLength;
-  if (BN.isBN(msg) || typeof msg === 'number') {
-    msg = new BN(msg, 16);
-    byteLength = msg.byteLength();
-  } else if (typeof msg === 'object') {
-    // BN assumes an array-like input and asserts length
-    byteLength = msg.length;
-    msg = new BN(msg, 16);
-  } else {
-    // BN converts the value to string
-    var str = msg.toString();
-    // HEX encoding
-    byteLength = (str.length + 1) >>> 1;
-    msg = new BN(str, 16);
-  }
-  // Allow overriding
-  if (typeof bitLength !== 'number') {
-    bitLength = byteLength * 8;
-  }
-  var delta = bitLength - this.n.bitLength();
+EC.prototype._truncateToN = function _truncateToN(msg, truncOnly) {
+  var delta = msg.byteLength() * 8 - this.n.bitLength();
   if (delta > 0)
     msg = msg.ushrn(delta);
   if (!truncOnly && msg.cmp(this.n) >= 0)
@@ -130,7 +111,7 @@ EC.prototype.sign = function sign(msg, key, enc, options) {
   }
 
   key = this.keyFromPrivate(key, enc);
-  msg = this._truncateToN(msg, false, options.msgBitLength);
+  msg = this._truncateToN(new BN(msg, 16));
 
   // Would fail further checks, but let's make the error message clear
   assert(!msg.isNeg(), 'Can not sign a negative message');
@@ -192,11 +173,8 @@ EC.prototype.sign = function sign(msg, key, enc, options) {
   }
 };
 
-EC.prototype.verify = function verify(msg, signature, key, enc, options) {
-  if (!options)
-    options = {};
-
-  msg = this._truncateToN(msg, false, options.msgBitLength);
+EC.prototype.verify = function verify(msg, signature, key, enc) {
+  msg = this._truncateToN(new BN(msg, 16));
   key = this.keyFromPublic(key, enc);
   signature = new Signature(this.curve, signature, 'hex');
 
