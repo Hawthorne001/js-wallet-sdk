@@ -5,7 +5,7 @@ import {
   signMessage,
   privateToAddress,
 } from '@okxweb3/coin-ethereum';
-import { base } from '@okxweb3/crypto-lib';
+import { base } from '@okxweb3/coin-base';
 import { formatUnits } from '../Units';
 
 const zksync = require('../zksync-crypto/zksync-crypto-web.js');

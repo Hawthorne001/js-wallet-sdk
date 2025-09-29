@@ -29,7 +29,8 @@
     "bu-*/coin-base",
     "bu-*/coin-ethereum",
     "bu-*/coin-kaia",
-    "bu-*/coin-tron"
+    "bu-*/coin-tron",
+    "bu-*/coin-zkspace"
   ],
   "license": "MIT",
   "files": [
