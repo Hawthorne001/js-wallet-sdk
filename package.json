@@ -27,7 +27,8 @@
   "workspaces": [
     "bu-*/crypto-lib",
     "bu-*/coin-base",
-    "bu-*/coin-ethereum"
+    "bu-*/coin-ethereum",
+    "bu-*/coin-kaia"
   ],
   "license": "MIT",
   "files": [

@@ -19,8 +19,9 @@ import {
     ValidPrivateKeyParams,
     validSignedTransactionError,
     ValidSignedTransactionParams,
+    base,
+    BigNumber,
 } from "@okxweb3/coin-base";
-import {base, BigNumber} from "@okxweb3/crypto-lib";
 import {EthWallet, keccak256} from "@okxweb3/coin-ethereum";
 import {getAddress} from "@ethersproject/address";
 import {computeAddress} from "@ethersproject/transactions";

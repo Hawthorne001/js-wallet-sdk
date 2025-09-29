@@ -1,13 +1,8 @@
-import {
-  BigNumberish,
-  getAddress,
-  computeAddress,
-  SigningKey,
-} from "ethers6";
+import { BigNumberish, computeAddress, getAddress, SigningKey } from 'ethers6';
 
-import { HexStr } from "@kaiachain/js-ext-core";
+import { HexStr } from '@kaiachain/js-ext-core';
 
-import { Wallet } from "./signer";
+import { Wallet } from './signer';
 
 function isSameAddress(a: string, b: string) {
   return getAddress(a) == getAddress(b);
@@ -38,20 +33,18 @@ export class Accounts {
           this.add([list[i][0], list[i][1]]);
         } else {
           throw new Error(
-            "Input has to be the array of [address, privateKey] or [privateKey]"
+            'Input has to be the array of [address, privateKey] or [privateKey]'
           );
         }
       } else {
         throw new Error(
-          "Input has to be Wallet, [address, privateKey], or [privateKey]"
+          'Input has to be Wallet, [address, privateKey], or [privateKey]'
         );
       }
     }
   }
 
-  async add(
-    account: [string, string?],
-  ): Promise<boolean> {
+  async add(account: [string, string?]): Promise<boolean> {
     let addr: string;
     let priv: string;
 
@@ -63,7 +56,7 @@ export class Accounts {
       addr = account[0];
       priv = account[1];
     } else {
-      throw new Error("Input has to be [address, privateKey] or [privateKey]");
+      throw new Error('Input has to be [address, privateKey] or [privateKey]');
     }
 
     for (let i = 0; i < this.wallets.length; i++) {
@@ -91,14 +84,13 @@ export class Accounts {
       addr = account[0];
       priv = account[1];
     } else {
-      throw new Error("Input has to be [address, privateKey] or [privateKey]");
+      throw new Error('Input has to be [address, privateKey] or [privateKey]');
     }
 
     for (let i = 0; i < this.wallets.length; i++) {
       if (
         isSameAddress(await this.wallets[i].getAddress(), addr) &&
-        // @ts-ignore
-        isSamePrivateKey(await this.wallets[i].privateKey, priv)
+        isSamePrivateKey(this.wallets[i].privateKey, priv)
       ) {
         delete this.wallets[i];
         this.wallets.splice(i, 1);
@@ -127,7 +119,7 @@ export class Accounts {
     const ret: Wallet[] = [];
 
     for (let i = 0; i < this.wallets.length; i++) {
-      if (isSameAddress(this.wallets[i].privateKey, privateKey)) {
+      if (isSamePrivateKey(this.wallets[i].privateKey, privateKey)) {
         ret.push(this.wallets[i]);
       }
     }
@@ -233,7 +225,7 @@ export class AccountStore {
     const stripedY = String(zeroPadY).substring(2);
 
     const compressedKey = SigningKey.computePublicKey(
-      HexStr.concat("0x04" + stripedX + stripedY),
+      HexStr.concat('0x04' + stripedX + stripedY),
       true
     );
     const hashedKey = computeAddress(compressedKey);

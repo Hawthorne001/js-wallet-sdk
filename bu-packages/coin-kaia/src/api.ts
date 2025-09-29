@@ -1,4 +1,4 @@
-import {base} from "@okxweb3/crypto-lib"
+import {base} from "@okxweb3/coin-base"
 
 export function validPrivateKey(privateKeyHex: string): boolean {
     if (!base.validateHexString(privateKeyHex)) {
