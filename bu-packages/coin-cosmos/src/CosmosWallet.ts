@@ -21,7 +21,7 @@ import {
   validSignedTransactionError,
   ValidSignedTransactionParams
 } from '@okxweb3/coin-base';
-import {base} from '@okxweb3/crypto-lib';
+import {base} from '@okxweb3/coin-base';
 import {
   addressFromPublic,
   AminoConverters,
@@ -778,6 +778,33 @@ export class InjectiveWallet extends CosmosWallet {
     } catch (e) {
       return Promise.reject(SignMsgError);
     }
+  }
+}
+
+export class InitiaWallet extends CosmosWallet {
+  getPrefix(): string {
+    return 'init';
+  }
+
+  // evmos use ethermint
+  supportEthSign(): boolean {
+    return true;
+  }
+
+  getAminoConverters(): AminoConverters | undefined {
+    return undefined;
+  }
+
+  getExtraTypes(): ReadonlyArray<[string, GeneratedType]> | undefined {
+    return undefined;
+  }
+
+  getSlip44CoinType(): number {
+    return 60;
+  }
+
+  pubKeyUrl(): string | undefined {
+    return "/initia.crypto.v1beta1.ethsecp256k1.PubKey";
   }
 }
 

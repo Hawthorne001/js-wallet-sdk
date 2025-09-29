@@ -1,18 +1,19 @@
-import { base, Long, math, signUtil } from '@okxweb3/crypto-lib';
-import { AuthInfo, SignDoc, SignerInfo, TxRaw } from './types/cosmos/tx/v1beta1/tx';
-import { Any } from './types/google/protobuf/any';
-import { SignMode } from './types/cosmos/tx/signing/v1beta1/signing';
-import { Coin } from './types/cosmos/base/v1beta1/coin';
-import { registry } from './registry';
+import { signUtil } from '@okxweb3/crypto-lib'
+import { base, math, Long } from '@okxweb3/coin-base'
+import { AuthInfo, SignDoc, SignerInfo, TxRaw } from './lib/types/cosmos/tx/v1beta1/tx'
+import { Any } from './lib/types/google/protobuf/any'
+import { SignMode } from './lib/types/cosmos/tx/signing/v1beta1/signing'
+import { Coin } from './lib/types/cosmos/base/v1beta1/coin'
+import { registry } from './registry'
 import {
-    EncodeObject,
-    encodePubkey,
-    encodeSecp256k1Pubkey,
-    encodeSecp256k1Signature,
-    StdFee,
-    TxBodyEncodeObject,
-} from './encoding';
-import { private2Public } from './index';
+  EncodeObject,
+  encodePubkey,
+  encodeSecp256k1Pubkey,
+  encodeSecp256k1Signature,
+  StdFee,
+  TxBodyEncodeObject,
+} from './encoding'
+import { private2Public } from './index'
 
 export interface SignerData {
     readonly accountNumber: number;

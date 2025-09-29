@@ -1,4 +1,3 @@
-import {base} from '@okxweb3/crypto-lib';
 import {
     amount2Coin,
     amount2Coins,
@@ -25,7 +24,7 @@ import {
     JunoWallet,
     KujiraWallet, SecretWallet, StargazeWallet, TerraWallet, DydxWallet, CelestiaWallet, CosmosWallet
 } from '../src';
-import {SignTxParams} from "@okxweb3/coin-base";
+import {base} from "@okxweb3/coin-base";
 
 const featureTimestamp = 1937021303288;
 

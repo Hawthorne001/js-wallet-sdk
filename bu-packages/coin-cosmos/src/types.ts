@@ -1,5 +1,5 @@
-import {Any} from "./typesV2/google/protobuf/any";
-import {IBinaryReader, IBinaryWriter} from "./binary";
+import { Any } from "./lib/typesV2/google/protobuf/any"
+import { IBinaryReader, IBinaryWriter } from "./lib/binary"
 
 export type ProtoMsg = Omit<Any, "typeUrl"> & { typeUrl: any };
 

@@ -1,7 +1,7 @@
-import { base, Long } from '@okxweb3/crypto-lib';
-import { Any } from './types/google/protobuf/any';
-import { Coin } from './types/cosmos/base/v1beta1/coin';
-import { PubKey } from './types/cosmos/crypto/secp256k1/keys';
+import { base, Long } from '@okxweb3/coin-base'
+import { Any } from './lib/types/google/protobuf/any'
+import { Coin } from './lib/types/cosmos/base/v1beta1/coin'
+import { PubKey } from './lib/types/cosmos/crypto/secp256k1/keys'
 
 export interface EncodeObject {
   typeUrl: string;

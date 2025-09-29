@@ -1,5 +1,6 @@
 import {
     CommonCosmosWallet,
+    InitiaWallet,
     InjectiveWallet,
     KavaWallet,
     OsmoWallet,
@@ -8,6 +9,208 @@ import {
 } from "../src";
 import {SignTxParams} from "@okxweb3/coin-base";
 
+describe("initia", ()=> {
+    test("signCommonMsg", async ()=> {
+        let wallet = new InitiaWallet();
+        let privateKey = "ebc42dae1245fad403bd18f59f7283dc18724d2fc843b61e01224b9789057347";
+        let sig = await wallet.signCommonMsg({privateKey:privateKey, message:{walletId:"123456789"}});
+        const addr = await wallet.getNewAddress({privateKey:privateKey});
+
+        expect(addr.address).toEqual("init1mfl9drwvnh32ruecnzv48d05dwy4jc0nq45fpv")
+        expect(addr.publicKey).toEqual("04f79dd7029a5905e557906142b0c57ec21f4745f129b8c057aeccf42e2750ba6e5a3cd57da2dbff48776f6d57d2353f1fff89f59ff04074984d9b46f243c5d50d")
+    })
+
+    test("signTransfer mainnet", async ()=> {
+        const message = `{
+          "sequence": "14",
+          "fee": {
+            "gas": "339086",
+            "amount": [
+              {
+                "denom": "uinit",
+                "amount": "6104"
+              }
+            ]
+          },
+          "msgs": [
+            {
+              "type": "cosmos-sdk/MsgSend",
+              "value": {
+                "from_address": "init1ywqe8057srngat8rtz95tkx0ffl2urarjxl0pa",
+                "to_address": "init1ywqe8057srngat8rtz95tkx0ffl2urarjxl0pa",
+                "amount": [
+                  {
+                    "denom": "uinit",
+                    "amount": "123"
+                  }
+                ]
+              }
+            }
+          ],
+          "account_number": "1094239",
+          "chain_id": "interwoven-1"
+        }`
+        const privateKey: string = "ebc42dae1245fad403bd18f59f7283dc18724d2fc843b61e01224b9789057347"
+        const wallet = new InitiaWallet()
+
+        const data: SignMessageData = {type: "amino", data: message, withTx: true}
+        const signTxParams: SignTxParams = {privateKey, data}
+        const result = await wallet.signMessage(signTxParams)
+        const res = JSON.parse(result)
+        const expected = `CosBCogBChwvY29zbW9zLmJhbmsudjFiZXRhMS5Nc2dTZW5kEmgKK2luaXQxeXdxZTgwNTdzcm5nYXQ4cnR6OTV0a3gwZmZsMnVyYXJqeGwwcGESK2luaXQxeXdxZTgwNTdzcm5nYXQ4cnR6OTV0a3gwZmZsMnVyYXJqeGwwcGEaDAoFdWluaXQSAzEyMxJyClsKUQoqL2luaXRpYS5jcnlwdG8udjFiZXRhMS5ldGhzZWNwMjU2azEuUHViS2V5EiMKIQP3ndcCmlkF5VeQYUKwxX7CH0dF8Sm4wFeuzPQuJ1C6bhIECgIIARgOEhMKDQoFdWluaXQSBDYxMDQQjtkUGkGtjL0s6hisE6pyQV5U7OW7g3o+Sc0IH4ZAsNW+zR9WJUAeUWmake63DMZp+60zjPDAX9YdgmyiyVfNMAOr5mn/AQ==`
+        expect(res.tx).toEqual(expected);
+    })
+
+    test("swap mainnet", async ()=> {
+        let message = `{
+  "account_number": "1094239",
+  "chain_id": "interwoven-1",
+  "fee": {
+    "gas": "317366",
+    "amount": [
+      {
+        "amount": "5713",
+        "denom": "uinit"
+      }
+    ]
+  },
+  "memo": "",
+  "msgs": [
+    {
+      "type": "cosmos-sdk/MsgTransfer",
+      "value": {
+        "memo": "{\\"wasm\\":{\\"contract\\":\\"osmo10a3k4hvk37cc4hnxctw4p95fhscd2z6h2rmx0aukc6rm8u9qqx9smfsh7u\\",\\"msg\\":{\\"swap_and_action\\":{\\"user_swap\\":{\\"swap_exact_asset_in\\":{\\"swap_venue_name\\":\\"osmosis-poolmanager\\",\\"operations\\":[{\\"pool\\":\\"2929\\",\\"denom_in\\":\\"ibc/DD7EA9AF1E58E9FDD7F9810976817E203D5B87BAEF7AEA592FA34DF73310620B\\",\\"denom_out\\":\\"ibc/498A0751C798A0D9A389AA3691123DADA57DAA4FE165D5C75894505B876BA6E4\\"}]}},\\"min_asset\\":{\\"native\\":{\\"denom\\":\\"ibc/498A0751C798A0D9A389AA3691123DADA57DAA4FE165D5C75894505B876BA6E4\\",\\"amount\\":\\"345\\"}},\\"timeout_timestamp\\":1752044094529586132,\\"post_swap_action\\":{\\"ibc_transfer\\":{\\"ibc_info\\":{\\"source_channel\\":\\"channel-750\\",\\"receiver\\":\\"noble1u6lts9ng4etxj0zdaxsada6zgl8dudpge8ay2q\\",\\"memo\\":\\"\\",\\"recover_address\\":\\"osmo1u6lts9ng4etxj0zdaxsada6zgl8dudpgelmuyu\\"}}},\\"affiliates\\":[{\\"basis_points_fee\\":\\"57\\",\\"address\\":\\"osmo1my4tk420gjmhggqwvvha6ey9390gqwfree2p4u\\"},{\\"basis_points_fee\\":\\"18\\",\\"address\\":\\"osmo14gf6xslwe9phn2z965t4dcu7vchhthfgv2lhyy\\"}]}}}}",
+        "receiver": "osmo10a3k4hvk37cc4hnxctw4p95fhscd2z6h2rmx0aukc6rm8u9qqx9smfsh7u",
+        "sender": "init1ywqe8057srngat8rtz95tkx0ffl2urarjxl0pa",
+        "source_channel": "channel-68",
+        "source_port": "transfer",
+        "timeout_height": {
+          "revision_height": "39428749",
+          "revision_number": "1"
+        },
+        "token": {
+          "amount": "1000",
+          "denom": "uinit"
+        }
+      }
+    }
+  ],
+  "sequence": "15"
+}`
+
+        const privateKey: string = "ebc42dae1245fad403bd18f59f7283dc18724d2fc843b61e01224b9789057347"
+        const wallet = new InitiaWallet()
+
+        const data: SignMessageData = {type: "amino", data: message, withTx: true}
+        const signTxParams: SignTxParams = {privateKey, data}
+        const result = await wallet.signMessage(signTxParams)
+        const expected = `Cs0BCsoBCikvaWJjLmFwcGxpY2F0aW9ucy50cmFuc2Zlci52MS5Nc2dUcmFuc2ZlchKcAQoIdHJhbnNmZXISCmNoYW5uZWwtNjgaDQoFdWluaXQSBDEwMDAiK2luaXQxeXdxZTgwNTdzcm5nYXQ4cnR6OTV0a3gwZmZsMnVyYXJqeGwwcGEqP29zbW8xMGEzazRodmszN2NjNGhueGN0dzRwOTVmaHNjZDJ6Nmgycm14MGF1a2M2cm04dTlxcXg5c21mc2g3dTIHCAEQjcXmEhJyClsKUQoqL2luaXRpYS5jcnlwdG8udjFiZXRhMS5ldGhzZWNwMjU2azEuUHViS2V5EiMKIQP3ndcCmlkF5VeQYUKwxX7CH0dF8Sm4wFeuzPQuJ1C6bhIECgIIARgPEhMKDQoFdWluaXQSBDU3MTMQtq8TGkGNC7qhDH3dCDoSLDCEDBGxnMPb7pnIo9Ad8pC/PTl6AD8TijErsvHwTPybRERakUFqkNoX0U3UfqnBXJqJy9DmAQ==`;
+        const res = JSON.parse(result)
+        expect(res.tx).toEqual(expected)
+    })
+})
+
+
+describe("initia", ()=> {
+    test("signCommonMsg", async ()=> {
+        let wallet = new InitiaWallet();
+        let privateKey = "ebc42dae1245fad403bd18f59f7283dc18724d2fc843b61e01224b9789057347";
+        let sig = await wallet.signCommonMsg({privateKey:privateKey, message:{walletId:"123456789"}});
+        const addr = await wallet.getNewAddress({privateKey:privateKey});
+
+        expect(addr.address).toEqual("init1mfl9drwvnh32ruecnzv48d05dwy4jc0nq45fpv")
+        expect(addr.publicKey).toEqual("04f79dd7029a5905e557906142b0c57ec21f4745f129b8c057aeccf42e2750ba6e5a3cd57da2dbff48776f6d57d2353f1fff89f59ff04074984d9b46f243c5d50d")
+    })
+
+    test("signTransfer mainnet", async ()=> {
+        const message = `{
+          "sequence": "14",
+          "fee": {
+            "gas": "339086",
+            "amount": [
+              {
+                "denom": "uinit",
+                "amount": "6104"
+              }
+            ]
+          },
+          "msgs": [
+            {
+              "type": "cosmos-sdk/MsgSend",
+              "value": {
+                "from_address": "init1ywqe8057srngat8rtz95tkx0ffl2urarjxl0pa",
+                "to_address": "init1ywqe8057srngat8rtz95tkx0ffl2urarjxl0pa",
+                "amount": [
+                  {
+                    "denom": "uinit",
+                    "amount": "123"
+                  }
+                ]
+              }
+            }
+          ],
+          "account_number": "1094239",
+          "chain_id": "interwoven-1"
+        }`
+        const privateKey: string = "ebc42dae1245fad403bd18f59f7283dc18724d2fc843b61e01224b9789057347"
+        const wallet = new InitiaWallet()
+
+        const data: SignMessageData = {type: "amino", data: message, withTx: true}
+        const signTxParams: SignTxParams = {privateKey, data}
+        const result = await wallet.signMessage(signTxParams)
+        const res = JSON.parse(result)
+        const expected = `CosBCogBChwvY29zbW9zLmJhbmsudjFiZXRhMS5Nc2dTZW5kEmgKK2luaXQxeXdxZTgwNTdzcm5nYXQ4cnR6OTV0a3gwZmZsMnVyYXJqeGwwcGESK2luaXQxeXdxZTgwNTdzcm5nYXQ4cnR6OTV0a3gwZmZsMnVyYXJqeGwwcGEaDAoFdWluaXQSAzEyMxJyClsKUQoqL2luaXRpYS5jcnlwdG8udjFiZXRhMS5ldGhzZWNwMjU2azEuUHViS2V5EiMKIQP3ndcCmlkF5VeQYUKwxX7CH0dF8Sm4wFeuzPQuJ1C6bhIECgIIARgOEhMKDQoFdWluaXQSBDYxMDQQjtkUGkGtjL0s6hisE6pyQV5U7OW7g3o+Sc0IH4ZAsNW+zR9WJUAeUWmake63DMZp+60zjPDAX9YdgmyiyVfNMAOr5mn/AQ==`
+        expect(res.tx).toEqual(expected);
+    })
+
+    test("swap mainnet", async ()=> {
+        let message = `{
+  "account_number": "1094239",
+  "chain_id": "interwoven-1",
+  "fee": {
+    "gas": "317366",
+    "amount": [
+      {
+        "amount": "5713",
+        "denom": "uinit"
+      }
+    ]
+  },
+  "memo": "",
+  "msgs": [
+    {
+      "type": "cosmos-sdk/MsgTransfer",
+      "value": {
+        "memo": "{\\"wasm\\":{\\"contract\\":\\"osmo10a3k4hvk37cc4hnxctw4p95fhscd2z6h2rmx0aukc6rm8u9qqx9smfsh7u\\",\\"msg\\":{\\"swap_and_action\\":{\\"user_swap\\":{\\"swap_exact_asset_in\\":{\\"swap_venue_name\\":\\"osmosis-poolmanager\\",\\"operations\\":[{\\"pool\\":\\"2929\\",\\"denom_in\\":\\"ibc/DD7EA9AF1E58E9FDD7F9810976817E203D5B87BAEF7AEA592FA34DF73310620B\\",\\"denom_out\\":\\"ibc/498A0751C798A0D9A389AA3691123DADA57DAA4FE165D5C75894505B876BA6E4\\"}]}},\\"min_asset\\":{\\"native\\":{\\"denom\\":\\"ibc/498A0751C798A0D9A389AA3691123DADA57DAA4FE165D5C75894505B876BA6E4\\",\\"amount\\":\\"345\\"}},\\"timeout_timestamp\\":1752044094529586132,\\"post_swap_action\\":{\\"ibc_transfer\\":{\\"ibc_info\\":{\\"source_channel\\":\\"channel-750\\",\\"receiver\\":\\"noble1u6lts9ng4etxj0zdaxsada6zgl8dudpge8ay2q\\",\\"memo\\":\\"\\",\\"recover_address\\":\\"osmo1u6lts9ng4etxj0zdaxsada6zgl8dudpgelmuyu\\"}}},\\"affiliates\\":[{\\"basis_points_fee\\":\\"57\\",\\"address\\":\\"osmo1my4tk420gjmhggqwvvha6ey9390gqwfree2p4u\\"},{\\"basis_points_fee\\":\\"18\\",\\"address\\":\\"osmo14gf6xslwe9phn2z965t4dcu7vchhthfgv2lhyy\\"}]}}}}",
+        "receiver": "osmo10a3k4hvk37cc4hnxctw4p95fhscd2z6h2rmx0aukc6rm8u9qqx9smfsh7u",
+        "sender": "init1ywqe8057srngat8rtz95tkx0ffl2urarjxl0pa",
+        "source_channel": "channel-68",
+        "source_port": "transfer",
+        "timeout_height": {
+          "revision_height": "39428749",
+          "revision_number": "1"
+        },
+        "token": {
+          "amount": "1000",
+          "denom": "uinit"
+        }
+      }
+    }
+  ],
+  "sequence": "15"
+}`
+
+        const privateKey: string = "ebc42dae1245fad403bd18f59f7283dc18724d2fc843b61e01224b9789057347"
+        const wallet = new InitiaWallet()
+
+        const data: SignMessageData = {type: "amino", data: message, withTx: true}
+        const signTxParams: SignTxParams = {privateKey, data}
+        const result = await wallet.signMessage(signTxParams)
+        const expected = `Cs0BCsoBCikvaWJjLmFwcGxpY2F0aW9ucy50cmFuc2Zlci52MS5Nc2dUcmFuc2ZlchKcAQoIdHJhbnNmZXISCmNoYW5uZWwtNjgaDQoFdWluaXQSBDEwMDAiK2luaXQxeXdxZTgwNTdzcm5nYXQ4cnR6OTV0a3gwZmZsMnVyYXJqeGwwcGEqP29zbW8xMGEzazRodmszN2NjNGhueGN0dzRwOTVmaHNjZDJ6Nmgycm14MGF1a2M2cm04dTlxcXg5c21mc2g3dTIHCAEQjcXmEhJyClsKUQoqL2luaXRpYS5jcnlwdG8udjFiZXRhMS5ldGhzZWNwMjU2azEuUHViS2V5EiMKIQP3ndcCmlkF5VeQYUKwxX7CH0dF8Sm4wFeuzPQuJ1C6bhIECgIIARgPEhMKDQoFdWluaXQSBDU3MTMQtq8TGkGNC7qhDH3dCDoSLDCEDBGxnMPb7pnIo9Ad8pC/PTl6AD8TijErsvHwTPybRERakUFqkNoX0U3UfqnBXJqJy9DmAQ==`;
+        const res = JSON.parse(result)
+        expect(res.tx).toEqual(expected)
+    })
+})
 describe("sign message with tx", ()=> {
 
     test("signCommonMsg", async () => {

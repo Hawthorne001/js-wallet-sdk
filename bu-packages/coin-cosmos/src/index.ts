@@ -1,22 +1,23 @@
-import {base, Long, signUtil} from "@okxweb3/crypto-lib";
-import {Coin} from "./types/cosmos/base/v1beta1/coin";
-import {GeneratedType, registerExtraTypes, registry} from './registry';
-import {OsmosisAminoConverters, OsmosisRegistry} from "./osmosis";
-import {CosmWasmAminoConverter, CosmWasmRegistry} from "./cosmwasm";
-import {KavaAminoConverters, KavaRegistry} from "./kava";
+import { signUtil } from "@okxweb3/crypto-lib"
+import { base, Long } from '@okxweb3/coin-base'
+import { Coin } from "./lib/types/cosmos/base/v1beta1/coin"
+import { GeneratedType, registerExtraTypes, registry } from './registry'
+import { OsmosisAminoConverters, OsmosisRegistry } from "./lib/osmosis"
+import { CosmWasmAminoConverter, CosmWasmRegistry } from "./lib/cosmwasm"
+import { KavaAminoConverters, KavaRegistry } from "./lib/kava"
 
-import {doSign, makeSignBytes, makeSignDoc, signTx} from './tx';
+import { doSign, makeSignBytes, makeSignDoc, signTx } from './tx'
 
-import {Height, MsgTransfer} from './types/ibc/applications/transfer/v1/tx';
-import {EncodeObject, encodeSecp256k1Signature, StdFee} from './encoding';
-import {AminoConverter, AminoConverters, AminoMsg, AminoTypes} from './amino/aminotypes';
-import {createDefaultAminoConverters} from './amino/aminoRegistry';
+import { Height, MsgTransfer } from './lib/types/ibc/applications/transfer/v1/tx'
+import { EncodeObject, encodeSecp256k1Signature, StdFee } from './encoding'
+import { AminoConverter, AminoConverters, AminoMsg, AminoTypes } from './lib/amino/aminotypes'
+import { createDefaultAminoConverters } from './lib/amino/aminoRegistry'
 
-import * as amino from "./amino/signDoc"
-import {AuthInfo, SignDoc, TxRaw} from './types/cosmos/tx/v1beta1/tx';
-import {PubKey} from './types/cosmos/crypto/secp256k1/keys';
-import {CosmosWallet} from "./CosmosWallet";
-import {jsonStringifyUniform} from "@okxweb3/coin-base";
+import * as amino from "./lib/amino/signDoc"
+import { AuthInfo, SignDoc, TxRaw } from './lib/types/cosmos/tx/v1beta1/tx'
+import { PubKey } from './lib/types/cosmos/crypto/secp256k1/keys'
+import { CosmosWallet } from "./CosmosWallet"
+import { jsonStringifyUniform } from "@okxweb3/coin-base"
 
 export function public2Address(publicKey: Uint8Array, useEthSecp256k1: boolean): Uint8Array {
     return useEthSecp256k1 ? base.keccak(publicKey.slice(1)).slice(-20) : base.hash160(publicKey)

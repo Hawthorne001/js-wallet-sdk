@@ -1,18 +1,18 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { MsgMultiSend, MsgSend } from './types/cosmos/bank/v1beta1/tx';
-import { Coin } from "./types/cosmos/base/v1beta1/coin";
-import { TxBody } from "./types/cosmos/tx/v1beta1/tx";
-import { Any } from "./types/google/protobuf/any";
-import { protobuf } from "@okxweb3/crypto-lib";
-import { MsgTransfer } from './types/ibc/applications/transfer/v1/tx';
+import { MsgMultiSend, MsgSend } from './lib/types/cosmos/bank/v1beta1/tx'
+import { Coin } from "./lib/types/cosmos/base/v1beta1/coin"
+import { TxBody } from "./lib/types/cosmos/tx/v1beta1/tx"
+import { Any } from "./lib/types/google/protobuf/any"
+import { protobuf } from "@okxweb3/coin-base"
+import { MsgTransfer } from './lib/types/ibc/applications/transfer/v1/tx'
 import {
   MsgBeginRedelegate,
   MsgCreateValidator,
   MsgDelegate,
   MsgEditValidator, MsgUndelegate,
-} from './types/cosmos/staking/v1beta1/tx';
-import { DecodeObject, EncodeObject, TxBodyEncodeObject, TxBodyValue } from './encoding';
-import {TelescopeGeneratedCodec} from "./types";
+} from './lib/types/cosmos/staking/v1beta1/tx'
+import { DecodeObject, EncodeObject, TxBodyEncodeObject, TxBodyValue } from './encoding'
+import { TelescopeGeneratedCodec } from "./types"
 
 // transfer
 export const bankTypes: ReadonlyArray<[string, GeneratedType]> = [

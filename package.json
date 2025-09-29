@@ -33,7 +33,8 @@
     "bu-*/coin-zkspace",
     "bu-*/coin-aptos",
     "bu-*/coin-bitcoin",
-    "bu-*/coin-cardano"
+    "bu-*/coin-cardano",
+    "bu-*/coin-cosmos"
   ],
   "license": "MIT",
   "files": [
