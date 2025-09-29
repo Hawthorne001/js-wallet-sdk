@@ -26,7 +26,7 @@ import {
     validSignedTransactionError,
     jsonStringifyUniform, ValidPrivateKeyData, ValidPrivateKeyParams, SignCommonMsgParams, buildCommonSignMsg, SignType
 } from '@okxweb3/coin-base';
-import {base} from '@okxweb3/crypto-lib';
+import {base} from '@okxweb3/coin-base';
 import * as tron from "./index";
 
 
@@ -159,11 +159,7 @@ export class TrxWallet extends BaseWallet {
         let message = param.data as TypedMessage;
         let address = param.address || "";
         return await this.ecRecover(message, signature).then((recoveredAddress) => {
-            return new Promise(
-                function (resolve, rejected) {
-                    resolve(address.toLowerCase() === recoveredAddress.toLowerCase());
-                }
-            );
+            return Promise.resolve(address.toLowerCase() === recoveredAddress.toLowerCase());
         });
     }
 
@@ -178,7 +174,7 @@ export class TrxWallet extends BaseWallet {
 
     async getMPCRawTransaction(param: MpcRawTransactionParam): Promise<any> {
         try {
-            return this.signTransaction(param as SignTxParams);
+            return await this.signTransaction(param as SignTxParams);
         } catch (e) {
             return Promise.reject(GetMpcRawTransactionError);
         }
@@ -225,7 +221,7 @@ export class TrxWallet extends BaseWallet {
 
     async getHardWareRawTransaction(param: SignTxParams): Promise<any> {
         try {
-            return this.signTransaction(param);
+            return await this.signTransaction(param);
         } catch (e) {
             return Promise.reject(GetHardwareRawTransactionError);
         }

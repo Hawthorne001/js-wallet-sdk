@@ -28,7 +28,8 @@
     "bu-*/crypto-lib",
     "bu-*/coin-base",
     "bu-*/coin-ethereum",
-    "bu-*/coin-kaia"
+    "bu-*/coin-kaia",
+    "bu-*/coin-tron"
   ],
   "license": "MIT",
   "files": [

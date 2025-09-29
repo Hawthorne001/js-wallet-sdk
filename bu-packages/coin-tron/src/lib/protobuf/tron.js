@@ -1,7 +1,7 @@
 /*eslint-disable block-scoped-var, id-length, no-control-regex, no-magic-numbers, no-prototype-builtins, no-redeclare, no-shadow, no-var, sort-vars*/
 "use strict";
 
-const metax_crypto_1 = require("@okxweb3/crypto-lib");
+const metax_crypto_1 = require("@okxweb3/coin-base");
 const $protobuf = metax_crypto_1._m0
 
 // Common aliases

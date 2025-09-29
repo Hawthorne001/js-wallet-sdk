@@ -1,6 +1,8 @@
-import { base, Long, signUtil,abi } from '@okxweb3/crypto-lib';
-import { google, protocol } from './protobuf/tron';
-import * as eth from "@okxweb3/coin-ethereum"
+import { signUtil } from '@okxweb3/crypto-lib';
+import { base, Long } from '@okxweb3/coin-base';
+import {abi} from '@okxweb3/coin-base';
+import { google, protocol } from './lib/protobuf/tron';
+import * as eth from "@okxweb3/coin-ethereum";
 
 import ContractType = protocol.Transaction.Contract.ContractType;
 
