@@ -4,8 +4,8 @@
 import { Serializer, Serializable } from "../serializer";
 import { Deserializer } from "../deserializer";
 import { HexInput } from "../../types";
-import { Hex } from "../../core/hex";
 import { TransactionArgument } from "../../transactions/instances/transactionArgument";
+import {Hex} from "../../core/hex";
 
 /**
  *  This class exists to represent a contiguous sequence of already serialized BCS-bytes.

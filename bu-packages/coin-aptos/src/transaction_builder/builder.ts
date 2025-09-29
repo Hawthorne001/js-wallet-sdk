@@ -28,7 +28,6 @@ import {
     EntryFunction, ModuleId,
 } from './aptos_types';
 import {bcsToBytes, Bytes, Deserializer, Serializer, Uint64, Uint8} from './bcs';
-import {base} from '@okxweb3/crypto-lib';
 import {HexString, MaybeHexString} from '../hex_string';
 import {ArgumentABI, EntryFunctionABI, ScriptABI, TransactionScriptABI, TypeArgumentABI} from './aptos_types/abi';
 import {argToTransactionArgument, serializeArg} from './builder_utils';

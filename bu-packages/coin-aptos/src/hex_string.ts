@@ -97,7 +97,7 @@ export class HexString {
     }
 
     /**
-     * Trims extra zeroes in the beginning of a string
+     * Trimmes extra zeroes in the begining of a string
      * @returns Inner hexString without leading zeroes
      * @example
      * ```

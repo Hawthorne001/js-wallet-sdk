@@ -1,8 +1,8 @@
 import { Serializable } from "../../bcs";
 import { HexInput } from "../../types";
 import { AuthenticationKey } from "../authenticationKey";
-import { Hex } from "../hex";
 import { Signature } from "./signature";
+import {Hex} from "../hex";
 
 /**
  * Arguments for verifying a signature

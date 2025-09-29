@@ -4,10 +4,10 @@
 import { sha3_256 as sha3Hash } from "@noble/hashes/sha3";
 import { AccountAddress } from "./accountAddress";
 import type { AccountPublicKey } from "./crypto";
-import { Hex } from "./hex";
 import { AuthenticationKeyScheme, HexInput } from "../types";
 import { Serializable, Serializer } from "../bcs/serializer";
 import { Deserializer } from "../bcs/deserializer";
+import {Hex} from "./hex";
 
 /**
  * Each account stores an authentication key. Authentication key enables account owners to rotate

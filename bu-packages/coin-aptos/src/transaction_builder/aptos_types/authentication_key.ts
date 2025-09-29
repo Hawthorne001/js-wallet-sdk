@@ -9,7 +9,6 @@
 import { HexString } from "../../hex_string";
 import { Bytes } from "../bcs";
 import { MultiEd25519PublicKey } from "./multi_ed25519";
-import { base } from '@okxweb3/crypto-lib';
 import { sha3_256 as sha3Hash } from "@noble/hashes/sha3";
 import {Ed25519PublicKey} from "./ed25519";
 /**

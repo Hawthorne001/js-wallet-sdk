@@ -4,6 +4,8 @@ import { Network } from "../utils/apiEndpoints";
 import { OrderBy, TokenStandard } from "./indexer";
 
 export * from "./indexer";
+export { CallArgument } from "@aptos-labs/script-composer-pack";
+
 
 export enum MimeType {
   /**
@@ -59,6 +61,7 @@ export enum ScriptTransactionArgumentVariants {
   U16 = 6,
   U32 = 7,
   U256 = 8,
+  Serialized = 9,
 }
 
 /**
@@ -93,7 +96,7 @@ export enum TransactionAuthenticatorVariant {
 }
 
 /**
- * Transaction Authenticator enum as they are represented in Rust
+ * Variants of account authenticators used in transactions.
  * {@link https://github.com/aptos-labs/aptos-core/blob/main/types/src/transaction/authenticator.rs#L414}
  */
 export enum AccountAuthenticatorVariant {
@@ -101,16 +104,30 @@ export enum AccountAuthenticatorVariant {
   MultiEd25519 = 1,
   SingleKey = 2,
   MultiKey = 3,
+  NoAccountAuthenticator = 4,
+  Abstraction = 5,
+}
+
+/**
+ * Variants of private keys that can comply with the AIP-80 standard.
+ * {@link https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-80.md}
+ */
+export enum PrivateKeyVariants {
+  Ed25519 = "ed25519",
+  Secp256k1 = "secp256k1",
 }
 
 export enum AnyPublicKeyVariant {
   Ed25519 = 0,
   Secp256k1 = 1,
+  Keyless = 3,
+  FederatedKeyless = 4,
 }
 
 export enum AnySignatureVariant {
   Ed25519 = 0,
   Secp256k1 = 1,
+  Keyless = 3,
 }
 
 /**

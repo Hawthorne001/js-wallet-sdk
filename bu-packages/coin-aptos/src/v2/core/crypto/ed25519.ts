@@ -5,13 +5,13 @@ import { ed25519 } from "@noble/curves/ed25519";
 import { Deserializer } from "../../bcs/deserializer";
 import { Serializable, Serializer } from "../../bcs/serializer";
 import { AuthenticationKey } from "../authenticationKey";
-import { Hex } from "../hex";
 import { HexInput, SigningScheme as AuthenticationKeyScheme } from "../../types";
 import { CKDPriv, deriveKey, HARDENED_OFFSET, isValidHardenedPath, mnemonicToSeed, splitPath } from "./hdKey";
 import { PrivateKey } from "./privateKey";
 import { AccountPublicKey, VerifySignatureArgs } from "./publicKey";
 import { Signature } from "./signature";
 import { convertSigningMessage } from "./utils";
+import {Hex} from "../hex";
 
 /**
  * L is the value that greater than or equal to will produce a non-canonical signature, and must be rejected

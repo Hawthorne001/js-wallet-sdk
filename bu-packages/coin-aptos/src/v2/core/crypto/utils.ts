@@ -1,5 +1,5 @@
 import { HexInput } from "../../types";
-import { Hex } from "../hex";
+import {Hex} from "../hex";
 
 /**
  * Helper function to convert a message to sign or to verify to a valid message input

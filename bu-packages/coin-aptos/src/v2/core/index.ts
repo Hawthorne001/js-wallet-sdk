@@ -5,4 +5,3 @@ export * from "./accountAddress";
 export * from "./authenticationKey";
 export * from "./common";
 export * from "./crypto";
-export * from "./hex";

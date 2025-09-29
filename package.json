@@ -30,7 +30,8 @@
     "bu-*/coin-ethereum",
     "bu-*/coin-kaia",
     "bu-*/coin-tron",
-    "bu-*/coin-zkspace"
+    "bu-*/coin-zkspace",
+    "bu-*/coin-aptos"
   ],
   "license": "MIT",
   "files": [

@@ -1,5 +1,5 @@
 import { Serializable } from "../../bcs";
-import { Hex } from "../hex";
+import {Hex} from "../hex";
 
 /**
  * An abstract representation of a crypto signature,
