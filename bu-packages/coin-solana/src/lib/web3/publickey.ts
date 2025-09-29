@@ -3,12 +3,12 @@
  * https://github.com/solana-labs/solana-web3.js/tree/master/packages/library-legacy/src
  */
 
-import {BN} from '@okxweb3/crypto-lib';
+import {BN, base} from '@okxweb3/coin-base';
 import {Buffer} from 'buffer';
 
 import {Struct, SOLANA_SCHEMA} from './utils/borsh-schema';
 import {toBuffer} from './utils/to-buffer';
-import {base, signUtil} from "@okxweb3/crypto-lib";
+import {signUtil} from "@okxweb3/crypto-lib";
 
 /**
  * Maximum length of derived pubkey seed

@@ -38,7 +38,8 @@
     "bu-*/coin-eos",
     "bu-*/coin-kaspa",
     "bu-*/coin-near",
-    "bu-*/coin-nostrassets"
+    "bu-*/coin-nostrassets",
+    "bu-*/coin-solana"
   ],
   "license": "MIT",
   "files": [

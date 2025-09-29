@@ -1,5 +1,6 @@
-import {signUtil, base} from "@okxweb3/crypto-lib";
-import {spl, web3} from "./sdk";
+import {signUtil} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
+import {spl, web3} from "./lib";
 import {
     VersionedTransaction,
     TransactionMessage,
@@ -8,15 +9,15 @@ import {
     TransactionInstruction,
     Keypair,
     Transaction, CompiledInstruction,
-} from './sdk/web3';
-import {TokenStandard, transferNftBuilder, getSignedTransaction, getSerializedTransaction} from "./sdk/metaplex";
-import {TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID} from "./sdk/spl";
+} from './lib/web3';
+import {TokenStandard, transferNftBuilder, getSignedTransaction, getSerializedTransaction} from "./lib/metaplex";
+import {TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID} from "./lib/spl";
 import {
     COMPUTE_BUDGET_INSTRUCTION_LAYOUTS,
     ComputeBudgetProgram
-} from "./sdk/web3/programs/compute-budget";
+} from "./lib/web3/programs/compute-budget";
 
-import {decodeData} from "./sdk/web3/instruction";
+import {decodeData} from "./lib/web3/instruction";
 
 export function getNewAddress(privateKey: string): string {
     if (!privateKey) {
@@ -152,10 +153,27 @@ export async function appendTokenBurnInstruction(transaction: web3.Transaction, 
     )
 }
 
-export async function signMessage(message: string, privateKey: string): Promise<string> {
-    const signData = base.fromBase58(message)
-    const signature = signUtil.ed25519.sign(signData, base.fromBase58(privateKey))
-    return Promise.resolve(base.toBase58(signature))
+export type SignMessageExtra = {
+    encoding: string;
+}
+export async function signMessage(message: string, privateKey: string, extra?: SignMessageExtra): Promise<string> {
+    let encoding = extra?.encoding || 'base58';
+    // privateKey is always base58
+    if (encoding === 'base58') {
+        const signData = base.fromBase58(message)
+        const pk = base.fromBase58(privateKey);
+        const signature = signUtil.ed25519.sign(signData, pk)
+        const sig = base.toBase58(signature);
+        return Promise.resolve(sig);
+    } else if (encoding === 'base64') {
+        const signData = base.fromBase64(message)
+        const pk = base.fromBase58(privateKey);
+        const signature = signUtil.ed25519.sign(signData, pk)
+        const sig = base.toBase64(signature);
+        return Promise.resolve(sig);
+    } else {
+        return Promise.reject('invalid encoding, only base58 and base64 are supported')
+    }
 }
 
 export async function deserializeMessages(messages: string[]): Promise<any> {
@@ -235,7 +253,6 @@ export async function deserializeMessages(messages: string[]): Promise<any> {
                  }
              }*/
         } catch (e) {
-            console.log(e);
             deserialized = false;
         }
 

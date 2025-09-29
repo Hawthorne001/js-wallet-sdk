@@ -3,7 +3,7 @@
  * https://github.com/solana-labs/buffer-layout-utils/tree/master/src
  */
 import { Layout } from '../layout';
-import {BigNumber} from '@okxweb3/crypto-lib';
+import {BigNumber} from '@okxweb3/coin-base';
 import { encodeDecode } from './base';
 import { u128 } from './bigint';
 

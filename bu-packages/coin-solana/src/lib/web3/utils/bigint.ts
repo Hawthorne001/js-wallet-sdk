@@ -5,7 +5,7 @@
 
 import {Buffer} from 'buffer';
 import {blob, Layout} from '../../buffer-layout';
-import {toBigIntLE, toBufferLE} from 'bigint-buffer';
+import {toBigIntLE, toBufferLE} from '../../bigint-buffer-noble';
 
 interface EncodeDecode<T> {
   decode(buffer: Buffer, offset?: number): T;

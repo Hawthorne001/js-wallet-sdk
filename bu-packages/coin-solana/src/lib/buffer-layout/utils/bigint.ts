@@ -4,7 +4,7 @@
  */
 import { Buffer } from 'buffer';
 import { blob, Layout } from '../layout';
-import { toBigIntBE, toBigIntLE, toBufferBE, toBufferLE } from 'bigint-buffer';
+import { toBigIntBE, toBigIntLE, toBufferBE, toBufferLE } from '../../bigint-buffer-noble';
 import { encodeDecode } from './base';
 
 export const bigInt =

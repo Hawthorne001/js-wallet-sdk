@@ -3,7 +3,7 @@
  * https://github.com/solana-labs/solana-web3.js/tree/master/packages/library-legacy/src/message
  */
 
-import {base} from '@okxweb3/crypto-lib';
+import {base} from '@okxweb3/coin-base';
 import * as BufferLayout from '../../buffer-layout';
 
 import * as Layout from '../layout';

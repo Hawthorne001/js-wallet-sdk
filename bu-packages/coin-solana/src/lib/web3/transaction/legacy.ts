@@ -14,7 +14,8 @@ import invariant from '../utils/assert';
 import type {Signer} from '../keypair';
 import type {Blockhash} from '../blockhash';
 import type {CompiledInstruction} from '../message';
-import {base, signUtil} from '@okxweb3/crypto-lib';
+import {base} from '@okxweb3/coin-base';
+import {signUtil} from '@okxweb3/crypto-lib';
 
 /**
  * Transaction signature as base-58 encoded string

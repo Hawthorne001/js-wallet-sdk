@@ -3,7 +3,7 @@
  * https://github.com/metaplex-foundation/js/tree/main/packages/js/src/types
  */
 import type { Buffer } from 'buffer';
-import { BN } from '@okxweb3/crypto-lib';
+import { BN } from '@okxweb3/coin-base';
 import type { Opaque, Option } from '../utils';
 
 export type BigNumber = Opaque<BN, 'BigNumber'>;

@@ -9,7 +9,7 @@ import {
     TransactionSignature,
 } from '../../web3';
 import {Signer, Program, getSignerHistogram} from '../types';
-import {base} from '@okxweb3/crypto-lib';
+import {base} from '@okxweb3/coin-base';
 
 export type BlockhashWithExpiryBlockHeight = Readonly<{
     blockhash: string;

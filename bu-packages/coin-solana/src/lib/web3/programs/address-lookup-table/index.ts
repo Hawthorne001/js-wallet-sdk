@@ -3,7 +3,7 @@
  * https://github.com/solana-labs/solana-web3.js/tree/master/packages/library-legacy/src/programs
  */
 
-import {toBufferLE} from 'bigint-buffer';
+import {toBufferLE} from '../../../bigint-buffer-noble';
 import * as BufferLayout from '../../../buffer-layout';
 
 import * as Layout from '../../layout';

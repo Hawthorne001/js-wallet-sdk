@@ -24,10 +24,11 @@ import {
     buildCommonSignMsg,
     SignType,
 } from '@okxweb3/coin-base';
-import {base,signUtil} from '@okxweb3/crypto-lib';
+import {base} from '@okxweb3/coin-base';
+import {signUtil} from '@okxweb3/crypto-lib';
 import {api, web3} from "./index";
-import {ComputeBudgetProgram} from "./sdk/web3/programs/compute-budget";
-import {TokenStandard} from "./sdk/metaplex";
+import {ComputeBudgetProgram} from "./lib/web3/programs/compute-budget";
+import {TokenStandard} from "./lib/metaplex";
 
 export type TransactionType = "transfer" | "tokenTransfer" | "mplTransfer"
 export type SolSignParam = {
@@ -49,6 +50,15 @@ export type SolSignParam = {
 }
 export type deserializeMessagesParams = {
     data: any[];
+};
+
+export type SignTxParamsExtra = SignTxParams & {
+    extra?: any;
+};
+
+type Extra = { encoding?: 'base58' | 'base64', retEncoding?: 'base58' | 'base64' };
+export type CalcTxHashParamsExtra = CalcTxHashParams & {
+    extra?: Extra;
 };
 
 export class SolWallet extends BaseWallet {
@@ -179,10 +189,10 @@ export class SolWallet extends BaseWallet {
         }
     }
 
-    async signMessage(param: SignTxParams): Promise<string> {
+    async signMessage(param: SignTxParamsExtra): Promise<string> {
         try {
             const message: string = param.data
-            const data = await api.signMessage(message, param.privateKey)
+            const data = await api.signMessage(message, param.privateKey, param.extra)
             return Promise.resolve(data);
         } catch (e) {
             return Promise.reject(SignTxError);
@@ -251,19 +261,39 @@ export class SolWallet extends BaseWallet {
         }
     }
 
-    async calcTxHash(param: CalcTxHashParams): Promise<string> {
+    async calcTxHash(param: CalcTxHashParamsExtra): Promise<string> {
         try {
-            const signedTx = base.fromBase58(param.data as string);
+            const encoding = param.extra?.encoding ?? 'base58';
+            let signedTxBytes: Uint8Array;
+            if (encoding === 'base58') {
+                signedTxBytes = base.fromBase58(param.data as string);
+            } else if (encoding === 'base64') {
+                signedTxBytes = base.fromBase64(param.data as string);
+            } else {
+                return Promise.reject('invalid encoding, only base58 and base64 are supported');
+            }
+
             let transaction;
             try {
-                transaction = web3.Transaction.from(signedTx);
+                transaction = web3.Transaction.from(signedTxBytes);
             } catch (e) {
-                transaction = web3.VersionedTransaction.deserialize(signedTx);
+                transaction = web3.VersionedTransaction.deserialize(signedTxBytes);
             }
             if (transaction.signature == null) {
                 return Promise.reject(CalcTxHashError);
             }
-            return Promise.resolve(base.toBase58(transaction.signature));
+
+            const sigBytes = transaction.signature as Uint8Array;
+            const retEncoding = param.extra?.retEncoding ?? 'base58';
+            let result: string;
+            if (retEncoding === 'base64') {
+                result = base.toBase64(sigBytes);
+            } else if (retEncoding === 'base58') {
+                result = base.toBase58(sigBytes);
+            } else {
+                return Promise.reject('invalid retEncoding, only base58 and base64 are supported');
+            }
+            return Promise.resolve(result);
         } catch (e) {
             return Promise.reject(CalcTxHashError);
         }
@@ -271,7 +301,7 @@ export class SolWallet extends BaseWallet {
 
     async getHardWareRawTransaction(param: SignTxParams): Promise<any> {
         try {
-            return this.signTransaction(param);
+            return await this.signTransaction(param);
         } catch (e) {
             return Promise.reject(GetHardwareRawTransactionError);
         }
@@ -279,8 +309,8 @@ export class SolWallet extends BaseWallet {
 
     async getHardWareSignedTransaction(param: HardwareRawTransactionParam): Promise<any> {
         try {
-            const signedTx = api.getHardwareTransaction(param.raw, param.pubKey!, param.sig!);
-            return Promise.resolve(signedTx);
+            const signedTx = await api.getHardwareTransaction(param.raw, param.pubKey!, param.sig!);
+            return signedTx;
         } catch (e) {
             return Promise.reject(GetHardwareSignedTransactionError);
         }
