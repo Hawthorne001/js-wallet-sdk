@@ -1,6 +1,7 @@
 import {
     BaseWallet,
-    buildCommonSignMsg, jsonStringifyUniform,
+    buildCommonSignMsg,
+    jsonStringifyUniform,
     SignCommonMsgParams,
     ValidPrivateKeyData,
     ValidPrivateKeyParams
@@ -14,6 +15,7 @@ import {
     SignTxParams,
     ValidAddressData,
     ValidAddressParams,
+    base,
 } from "@okxweb3/coin-base";
 import {
     CalcTxHashError,
@@ -21,9 +23,29 @@ import {
     NewAddressError,
     SignTxError,
 } from "@okxweb3/coin-base";
-import {base, signUtil} from "@okxweb3/crypto-lib";
-import {getNewAddress, pubKeyFromPrivateKey, getDerivedPrivateKey, checkPrivateKey} from "./account";
-import {calcTxHash, transfer, minAda, MultiAssetData, TxData, minFee, signTx, signData} from "./transaction";
+import {signUtil} from "@okxweb3/crypto-lib";
+import {
+    getNewAddress,
+    pubKeyFromPrivateKey,
+    getDerivedPrivateKey,
+    checkPrivateKey,
+    bech32AddressToHexAddress
+} from "./account";
+import {
+    calcTxHash,
+    transfer,
+    calcMinAda,
+    MultiAssetData,
+    TxData,
+    calcMinFee,
+    signTx,
+    TxInput,
+    getFilteredUtxos,
+    getBalance,
+    getTxFee,
+    getNetworkId
+} from "./transaction";
+import {signData} from "./message";
 
 export class AdaWallet extends BaseWallet {
     async getDerivedPath(param: GetDerivedPathParam): Promise<any> {
@@ -95,44 +117,44 @@ export class AdaWallet extends BaseWallet {
         try {
             const data: TxData = param.data;
             if (data.type === "rawTx") {
-                return signTx(data.tx!, data.privateKey || param.privateKey)
+                return await signTx(data.tx!, data.privateKey || param.privateKey)
             }
-            return transfer(data);
+            return await transfer(data, param.privateKey);
         } catch (e) {
-            return Promise.reject(SignTxError);
+            return Promise.reject(e);
         }
     }
 
     async calcTxHash(param: CalcTxHashParams): Promise<string> {
         try {
-            return calcTxHash(param.data);
+            return await calcTxHash(param.data);
         } catch (e) {
-            return Promise.reject(CalcTxHashError);
+            return Promise.reject(e);
         }
     }
 
     static async minAda(address: string, multiAsset?: MultiAssetData): Promise<string> {
         try {
-            return minAda(address, multiAsset);
+            return await calcMinAda(address, multiAsset);
         } catch (e) {
-            return Promise.reject(SignTxError);
+            return Promise.reject(e);
         }
     }
 
     static async minFee(param: SignTxParams): Promise<string> {
         try {
             const data: TxData = param.data;
-            return minFee(data);
+            return await calcMinFee(data);
         } catch (e) {
-            return Promise.reject(SignTxError);
+            return Promise.reject(e);
         }
     }
 
     async signMessage(param: SignTxParams): Promise<any> {
         try {
-            return signData(param.data.address, param.data.message, param.data.privateKey || param.privateKey);
+            return await signData(param.data.address, param.data.message, param.data.privateKey || param.privateKey);
         } catch (e) {
-            return Promise.reject(SignTxError);
+            return Promise.reject(e);
         }
     }
 
@@ -150,5 +172,25 @@ export class AdaWallet extends BaseWallet {
         } catch (e) {
             return Promise.reject(SignTxError);
         }
+    }
+
+    getFilteredUtxos = (txInputs: TxInput[], filterCbor?: string) => {
+        return getFilteredUtxos(txInputs, filterCbor)
+    }
+
+    getBalance = (txInputs: TxInput[], filterCbor?: string) => {
+        return getBalance(txInputs)
+    }
+
+    getNetworkId = (txCbor: string) =>  {
+        return getNetworkId(txCbor)
+    }
+
+    getTxFee = (txCbor: string) =>  {
+        return getTxFee(txCbor)
+    }
+
+    bech32AddressToHexAddress(address: string) {
+        return bech32AddressToHexAddress(address)
     }
 }

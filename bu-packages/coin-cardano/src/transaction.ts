@@ -1,5 +1,14 @@
-import { base } from "@okxweb3/crypto-lib";
-import Loader from "./libs/loader";
+import {Cardano, coalesceValueQuantities, Serialization} from "@cardano-sdk/core";
+import {
+    computeMinimumCost,
+    createTransactionInternals,
+    minAdaRequired,
+} from "@cardano-sdk/tx-construction"
+import { SelectionResult} from "@cardano-sdk/input-selection"
+import * as Crypto from "@cardano-sdk/crypto"
+import {HexBlob} from "@cardano-sdk/util"
+import {DefaultMainnetProtocolParameters} from "./parameters"
+import {base} from "@okxweb3/coin-base";
 
 export type MultiAssetData = {
     policyId: string
@@ -15,7 +24,7 @@ export type TxInput = {
     address: string
     amount: string
     multiAsset?: MultiAssetData
-    privateKey: string
+    privateKey?: string
 };
 
 export type TxData = {
@@ -31,312 +40,324 @@ export type TxData = {
     privateKey?: string
 };
 
-export async function transfer(txData: TxData) {
-    await Loader.load();
-    // @ts-ignore
-    const { hash_transaction, TransactionWitnessSet, Vkeywitnesses, PrivateKey, make_vkey_witness, Transaction } = Loader.Cardano;
+export function getMultiAsset(multiAsset?: MultiAssetData) {
+    const assets = new Map<Cardano.AssetId, Cardano.Lovelace>();
+    // Add multi-assets to the output if present
+    if (multiAsset && multiAsset.length > 0) {
+        for (const policy of multiAsset) {
+            for (const asset of policy.assets) {
+                const assetId = Cardano.AssetId(`${policy.policyId}${asset.assetName}`);
+                assets.set(assetId, BigInt(asset.amount));
+            }
+        }
+    }
+    return assets
+}
 
-    const tx = await buildTx(txData);
+export function getUtxos(inputs: TxInput[]): Cardano.Utxo[] {
+    // Convert inputs to Cardano.Utxo format
+    return inputs.map(input => {
+        // Create basic UTXO with ADA amount
+        const value: Cardano.Value = {
+            coins: BigInt(input.amount)
+        };
 
-    const txHash = hash_transaction(tx.body());
-    const witnesses = TransactionWitnessSet.new();
+        const assets = getMultiAsset(input.multiAsset);
+        if (assets.size > 0) {
+            value.assets = assets;
+        }
 
-    const vkeyWitnesses = Vkeywitnesses.new();
-    const privateKeySet = new Set<string>();
-    txData.inputs.forEach(input => privateKeySet.add(input.privateKey));
-    privateKeySet.forEach(privateKey => {
-        const prvKey = PrivateKey.from_extended_bytes(base.fromHex(privateKey.slice(0, 128)));
-        const vkeyWitness = make_vkey_witness(txHash, prvKey);
-        vkeyWitnesses.add(vkeyWitness);
+        return [
+            {
+                txId: Cardano.TransactionId(input.txId),
+                index: input.index,
+                address: Cardano.PaymentAddress(input.address)
+            },
+            {
+                address: Cardano.PaymentAddress(input.address),
+                value
+            }
+        ] as Cardano.Utxo;
+    })
+}
+
+export function hasSufficientAda(output: Cardano.TxOut) {
+    const requiredAda = minAdaRequired(output, BigInt(DefaultMainnetProtocolParameters.coinsPerUtxoByte))
+    return output.value.coins >= requiredAda
+}
+
+export async function signTxBody(txBody: Serialization.TransactionBody, auxilaryData?: Serialization.AuxiliaryData, privKey?: string): Promise<Serialization.Transaction> {
+    const txHash = HexBlob(txBody.hash())
+
+    let publicKey = new Crypto.Ed25519PublicKey(Buffer.alloc(32));
+    let signature = new Crypto.Ed25519Signature(Buffer.alloc(64));
+
+    if (privKey) {
+        await Crypto.ready()
+        const privateKey = Crypto.Ed25519PrivateKey.fromExtendedBytes(
+            base.fromHex(privKey.toLowerCase()).slice(0, 64) // payment key
+        );
+        publicKey = privateKey.toPublic();
+        signature = privateKey.sign(txHash);
+    }
+
+    const vKeys = Serialization.CborSet.fromCore([[publicKey.hex(), signature.hex()]], Serialization.VkeyWitness.fromCore);
+    const witnessSet = new Serialization.TransactionWitnessSet();
+    witnessSet.setVkeys(vKeys);
+
+    // Create a transaction with body and witness set
+    return new Serialization.Transaction(
+        txBody,
+        witnessSet,
+        auxilaryData
+    );
+}
+
+export async function getSelection(txData: TxData, withChangeAda = true) {
+    const utxoToSpend = getUtxos(txData.inputs);
+
+    const output: Cardano.TxOut = {
+        address: Cardano.PaymentAddress(txData.address),
+        value: {
+            coins: BigInt(txData.amount)
+        }
+    };
+    const outputAssets = getMultiAsset(txData.multiAsset);
+    if (outputAssets.size > 0) {
+        output.value.assets = outputAssets;
+    }
+    if (!hasSufficientAda(output)) {
+        throw new Error(`not enough ada for output`)
+    }
+
+
+    const totalInputLovelace = txData.inputs.reduce((acc, input) => acc + BigInt(input.amount), BigInt(0));
+    const totalOutputLovelace = BigInt(txData.amount)
+    let totalChangeLovelace = totalInputLovelace - totalOutputLovelace;
+
+    if (totalChangeLovelace < 0) {
+        throw new Error(`not enough input ada`)
+    }
+
+    const changeAssets = new Map<Cardano.AssetId, Cardano.Lovelace>();
+    for (const utxo of utxoToSpend) {
+        const assets = utxo[1].value.assets;
+        if (assets) {
+            for (const [assetId, quantity] of assets.entries()) {
+                const currentQuantity = changeAssets.get(assetId) ?? BigInt(0n)
+                changeAssets.set(assetId,  currentQuantity + quantity);
+            }
+        }
+    }
+    if (output.value.assets) {
+        for (const [assetId, quantity] of output.value.assets.entries()) {
+            const newQuantity = (changeAssets.get(assetId) ?? BigInt(0n)) - quantity
+            if (newQuantity < 0) {
+                throw new Error(`not enough input assets ${assetId}`)
+            }
+            if (newQuantity === 0n) {
+                changeAssets.delete(assetId)
+            } else {
+                changeAssets.set(assetId,  newQuantity)
+            }
+        }
+    }
+
+    let changeAssetOutput: Cardano.TxOut | undefined;
+    if (changeAssets.size > 0) {
+        changeAssetOutput = {
+            address: Cardano.PaymentAddress(txData.changeAddress),
+            value: {
+                coins: BigInt(300000),
+                assets: changeAssets
+            }
+        }
+        const changeAssetOutputAda = minAdaRequired(changeAssetOutput, BigInt(DefaultMainnetProtocolParameters.coinsPerUtxoByte))
+        changeAssetOutput.value.coins = changeAssetOutputAda
+        totalChangeLovelace = totalChangeLovelace - changeAssetOutputAda
+
+        if (totalChangeLovelace < 0) {
+            throw new Error(`not enough input ada`)
+        }
+    }
+
+    let selection: SelectionResult['selection'] = {
+        change: [],
+        fee: BigInt(300000),
+        inputs: new Set([...utxoToSpend]),
+        outputs: new Set([output]),
+    }
+
+    if (changeAssetOutput) {
+        selection.outputs.add(changeAssetOutput)
+    }
+
+    const changeAdaOutput = {
+        address: Cardano.PaymentAddress(txData.changeAddress),
+        value: {
+            coins: totalChangeLovelace,
+        }
+    }
+    if (withChangeAda && hasSufficientAda(changeAdaOutput)) {
+        selection.change.push(changeAdaOutput)
+    }
+
+    // Estimate
+    const buildTransaction  = async (selection:any) => {
+        const txBodyWithHash = createTransactionInternals({
+            inputSelection: selection,
+            validityInterval: {
+                invalidHereafter: txData.ttl ? Cardano.Slot(parseInt(txData.ttl)) : undefined
+            }
+        });
+        const transaction = await signTxBody(Serialization.TransactionBody.fromCore(txBodyWithHash.body), undefined, txData.privateKey);
+        return transaction.toCore();
+    }
+
+    let minFee = (await computeMinimumCost(
+        DefaultMainnetProtocolParameters,
+        buildTransaction,
+        {evaluate: (tx, resolvedInputs) => Promise.resolve([])},
+        {},
+    )(selection)).fee
+
+    if (selection.change.length > 0) {
+        selection.fee = minFee
+        selection.change[0].value.coins = totalChangeLovelace - minFee
+        if (hasSufficientAda(selection.change[0])) {
+            return {selection, minFee, valid:true}
+        }
+        selection.change = []
+        minFee = (await computeMinimumCost(
+            DefaultMainnetProtocolParameters,
+            buildTransaction,
+            {evaluate: (tx, resolvedInputs) => Promise.resolve([])},
+            {},
+        )(selection)).fee
+    }
+
+    if (totalChangeLovelace < minFee) {
+        selection.fee = minFee
+        return {selection, minFee, valid:false}
+    }
+
+    selection.fee = totalChangeLovelace
+    return {selection, minFee, valid:true}
+}
+
+export async function buildTx(txData: TxData) {
+    const {selection, valid} = await getSelection(txData)
+    if (!valid) {
+        throw new Error(`not enough input ada`)
+    }
+
+    const tx = createTransactionInternals({
+        inputSelection: selection,
+        validityInterval: {
+            invalidHereafter: txData.ttl ? Cardano.Slot(parseInt(txData.ttl)) : undefined
+        }
     });
 
-    witnesses.set_vkeys(vkeyWitnesses);
-    const transaction = Transaction.new(
-        tx.body(),
-        witnesses,
-        undefined, // transaction metadata
-    );
-
-    return base.toBase64(transaction.to_bytes());
+    return Serialization.TransactionBody.fromCore(tx.body)
 }
 
-async function getMultiAsset(data: MultiAssetData) {
-    await Loader.load();
-    // @ts-ignore
-    const { MultiAsset, Assets, AssetName, BigNum, ScriptHash } = Loader.Cardano;
-
-    const multiAsset = MultiAsset.new();
-
-    if (data) {
-        data.forEach(item => {
-            const assets = Assets.new();
-            item.assets.forEach(asset => {
-                assets.insert(
-                    AssetName.new(base.fromHex(asset.assetName)),
-                    BigNum.from_str(asset.amount),
-                );
-            });
-
-            multiAsset.insert(ScriptHash.from_hex(item.policyId), assets);
-        });
-    }
-
-    return multiAsset;
-}
-
-async function getTxBuilder(txData: TxData) {
-    await Loader.load();
-    // @ts-ignore
-    const { TransactionBuilderConfigBuilder, LinearFee, BigNum, TransactionBuilder, Value, Address, TransactionInput, TransactionHash, TransactionOutput, ExUnits, ExUnitPrices, TransactionUnspentOutput } = Loader.Cardano;
-
-    const txBuilderCfg = TransactionBuilderConfigBuilder.new()
-        .fee_algo(LinearFee.new(BigNum.from_str('44'), BigNum.from_str('155381')))
-        .pool_deposit(BigNum.from_str('500000000'))
-        .key_deposit(BigNum.from_str('2000000'))
-        .max_value_size(5000)
-        .max_tx_size(16384)
-        .coins_per_utxo_byte(BigNum.from_str('4310'))
-        .collateral_percentage(150)
-        .max_collateral_inputs(3)
-        .max_tx_ex_units(ExUnits.new(BigNum.from_str('14000000'), BigNum.from_str('10000000000')))
-        .ex_unit_prices(ExUnitPrices.from_float(5.77e-2, 7.21e-5))
-        .build();
-
-    const txBuilder = TransactionBuilder.new(txBuilderCfg);
-
-    for (const input of txData.inputs) {
-        const value = Value.new(BigNum.from_str(input.amount));
-        if (input.multiAsset) {
-            value.set_multiasset(await getMultiAsset(input.multiAsset));
-        }
-        txBuilder.add_input(
-            TransactionUnspentOutput.new(
-                TransactionInput.new(
-                    TransactionHash.from_hex(input.txId),
-                    BigNum.from_str(input.index.toString()),
-                ),
-                TransactionOutput.new(
-                    Address.from_bech32(input.address),
-                    value,
-                )
-            )
-        );
-    }
-
-    const value = Value.new(BigNum.from_str(txData.amount));
-    if (txData.multiAsset) {
-        value.set_multiasset(await getMultiAsset(txData.multiAsset));
-    }
-    txBuilder.add_output(
-        TransactionOutput.new(
-            Address.from_bech32(txData.address),
-            value,
-        )
-    );
-
-    if (txData.ttl) {
-        txBuilder.set_ttl(BigNum.from_str(txData.ttl));
-    }
-
-    return txBuilder;
-}
-
-async function buildTx(txData: TxData) {
-    await Loader.load();
-    // @ts-ignore
-    const { Address } = Loader.Cardano;
-
-    const txBuilder = await getTxBuilder(txData);
-    txBuilder.balance(
-        Address.from_bech32(txData.changeAddress)
-    );
-
-    return txBuilder.build_tx();
+export async function transfer(txData: TxData, privateKey?: string) {
+    const txBodyWithHash = await buildTx(txData)
+    const privKey = privateKey ?? txData.privateKey ?? txData.inputs.find(input => input.privateKey)?.privateKey
+    const transaction = await signTxBody(txBodyWithHash, undefined, privKey);
+    return base.toBase64(base.fromHex(transaction.toCbor()))
 }
 
 export async function calcTxHash(txData: string | TxData) {
-    await Loader.load();
-    // @ts-ignore
-    const { hash_transaction, Transaction } = Loader.Cardano;
-
     if (typeof txData === 'string') {
-        return hash_transaction(Transaction.from_bytes(base.fromBase64(txData)).body()).to_hex();
+        txData = base.toHex(base.fromBase64(txData))
+        const tx = Serialization.Transaction.fromCbor(Serialization.TxCBOR(txData));
+        return tx.getId().toString();
     } else {
-        return hash_transaction(await buildTx(txData)).to_hex();
+        const txBody = await buildTx(txData)
+        return txBody.hash().toString();
     }
 }
 
-export async function minAda(address: string, multiAsset?: MultiAssetData) {
-    await Loader.load();
-    // @ts-ignore
-    const { Value, BigNum, TransactionOutput, Address, min_ada_required } = Loader.Cardano;
-
-    const value = Value.new(BigNum.from_str('1000000'));
-    if (multiAsset) {
-        value.set_multiasset(await getMultiAsset(multiAsset));
-    }
-    const output = TransactionOutput.new(Address.from_bech32(address), value);
-    return min_ada_required(output, BigNum.from_str("4310")).to_str();
-}
-
-export async function minFee(txData: TxData) {
-    await Loader.load();
-    // @ts-ignore
-    const { Address, TransactionOutput } = Loader.Cardano;
-
-    const txBuilder = await getTxBuilder(txData);
-    const value = txBuilder.get_total_input().checked_sub(txBuilder.get_total_output());
-    txBuilder.add_output(TransactionOutput.new(Address.from_bech32(txData.changeAddress), value));
-
-    return txBuilder.min_fee().to_str();
-}
-
-export const signData = async (
-  address: string,
-  payload: string,
-  privateKey: string,
-) => {
-    await Loader.load();
-    // @ts-ignore
-    const { PrivateKey } = Loader.Cardano;
-    // @ts-ignore
-    const { HeaderMap, Label, AlgorithmId, CBORValue, ProtectedHeaderMap, Headers, COSESign1Builder, COSEKey, KeyType, Int, BigNum } = Loader.Message;
-
-    const keyHash = await extractKeyHash(address);
-    const prefix = keyHash.startsWith('addr_vkh') ? 'addr_vkh' : 'stake_vkh';
-    const paymentKey = PrivateKey.from_extended_bytes(base.fromHex(privateKey.slice(0, 128)));
-    const stakeKey = PrivateKey.from_extended_bytes(base.fromHex(privateKey.slice(128)));
-    const accountKey = prefix === 'addr_vkh' ? paymentKey : stakeKey;
-
-    const publicKey = accountKey.to_public();
-    if (keyHash !== publicKey.hash().to_bech32(prefix))
-        throw new Error("Private key does not match address");
-    const protectedHeaders = HeaderMap.new();
-    protectedHeaders.set_algorithm_id(
-      Label.from_algorithm_id(AlgorithmId.EdDSA)
-    );
-    protectedHeaders.set_header(
-      Label.new_text('address'),
-      CBORValue.new_bytes((await addressFromHexOrBech32(address)).to_bytes())
-    );
-    const protectedSerialized =
-      ProtectedHeaderMap.new(protectedHeaders);
-    const unprotectedHeaders = HeaderMap.new();
-    const headers = Headers.new(
-      protectedSerialized,
-      unprotectedHeaders
-    );
-    const builder = COSESign1Builder.new(
-      headers,
-      base.fromHex(payload),
-      false
-    );
-    const toSign = builder.make_data_to_sign().to_bytes();
-
-    const signedSigStruc = accountKey.sign(toSign).to_bytes();
-    const coseSign1 = builder.build(signedSigStruc);
-
-    const key = COSEKey.new(
-      Label.from_key_type(KeyType.OKP)
-    );
-    key.set_algorithm_id(
-      Label.from_algorithm_id(AlgorithmId.EdDSA)
-    );
-    key.set_header(
-      Label.new_int(
-        Int.new_negative(BigNum.from_str('1'))
-      ),
-      CBORValue.new_int(
-        Int.new_i32(6) // Loader.Message.CurveType.Ed25519
-      )
-    ); // crv (-1) set to Ed25519 (6)
-    key.set_header(
-      Label.new_int(
-        Int.new_negative(BigNum.from_str('2'))
-      ),
-      CBORValue.new_bytes(publicKey.as_bytes())
-    ); // x (-2) set to public key
-
-    return {
-        signature: base.toHex(coseSign1.to_bytes()),
-        key: base.toHex(key.to_bytes()),
+export async function calcMinAda(address: string, multiAsset?: MultiAssetData) {
+    const assets = getMultiAsset(multiAsset);
+    const output: Cardano.TxOut = {
+        address: Cardano.PaymentAddress(address),
+        value: {
+            coins: BigInt('1000000')
+        }
     };
-};
+    if (assets.size > 0) {
+        output.value.assets = assets;
+    }
+    return minAdaRequired(output, BigInt(DefaultMainnetProtocolParameters.coinsPerUtxoByte)).toString();
+}
 
-export const signTx = async (
-  tx: string,
-  privateKey: string,
-  partialSign: boolean = false,
-) => {
-    await Loader.load();
-    // @ts-ignore
-    const { PrivateKey } = Loader.Cardano;
-    // @ts-ignore
-    const { Transaction, TransactionWitnessSet, Vkeywitnesses, hash_transaction, make_vkey_witness } = Loader.Cardano;
+export async function calcMinFee(txData: TxData) {
+    // we assume that there is no change output for smaller tx size and  fee
+    const {minFee} = await getSelection(txData, false)
+    return minFee.toString()
+}
 
-    const paymentKey = PrivateKey.from_extended_bytes(base.fromHex(privateKey.slice(0, 128)));
-    const stakeKey = PrivateKey.from_extended_bytes(base.fromHex(privateKey.slice(128)));
-    const paymentKeyHash = base.toHex(paymentKey.to_public().hash().to_bytes());
-    const stakeKeyHash = base.toHex(stakeKey.to_public().hash().to_bytes());
+export async function signTx(
+    tx: string,
+    privateKey: string,
+    partialSign: boolean = false,
+) {
+    const transaction = Serialization.Transaction.fromCbor(Serialization.TxCBOR(tx));
 
-    const rawTx = Transaction.from_bytes(base.fromHex(tx));
+    const signedTx = await signTxBody(transaction.body(), transaction.auxiliaryData(), privateKey);
+    return signedTx.witnessSet().toCbor()
+}
 
-    const txWitnessSet = TransactionWitnessSet.new();
-    const vkeyWitnesses = Vkeywitnesses.new();
-    const txHash = hash_transaction(rawTx.body());
-    const keyHashes = [paymentKeyHash];
-    keyHashes.forEach((keyHash) => {
-        let signingKey;
-        if (keyHash === paymentKeyHash) signingKey = paymentKey;
-        else if (keyHash === stakeKeyHash) signingKey = stakeKey;
-        else if (!partialSign) throw new Error("Could not sign the data");
-        else return;
-        const vkey = make_vkey_witness(txHash, signingKey);
-        vkeyWitnesses.add(vkey);
-    });
-
-    txWitnessSet.set_vkeys(vkeyWitnesses);
-    return base.toHex(txWitnessSet.to_bytes());
-};
-
-const addressFromHexOrBech32 = async (address: string) => {
-    await Loader.load();
-    // @ts-ignore
-    const { Address } = Loader.Cardano;
-
-    try {
-        return Address.from_bytes(base.fromHex(address));
-    } catch (e) {
-        try {
-            return Address.from_bech32(address);
-        } catch (e) {
-            throw new Error("Could not deserialize address.");
+// reference: https://github.com/input-output-hk/cardano-js-sdk/blob/17add5a25bceebc2eb0440fb39c9a544971efe18/packages/wallet/src/cip30.ts#L128-L148
+export function filterUtxos(utxos: Cardano.Utxo[], target: Cardano.Value) {
+    const selectedUtxos: Cardano.Utxo[] = [];
+    const filterAmountAssets = [...(target.assets?.entries() || [])];
+    let foundEnough = false;
+    for (const utxo of utxos) {
+        selectedUtxos.push(utxo);
+        const selectedValue = coalesceValueQuantities(selectedUtxos.map(([_, { value }]) => value));
+        foundEnough =
+            selectedValue.coins >= target.coins &&
+            filterAmountAssets.every(
+                ([assetId, requestedQuantity]) => (selectedValue.assets?.get(assetId) || 0n) >= requestedQuantity
+            );
+        if (foundEnough) {
+            break;
         }
     }
+    if (!foundEnough) {
+        return [];
+    }
+    return selectedUtxos;
 }
 
-const extractKeyHash = async (address: string) => {
-    await Loader.load();
-    // @ts-ignore
-    const { BaseAddress, EnterpriseAddress, PointerAddress, RewardAddress } = Loader.Cardano;
+export function getFilteredUtxos(txInputs: TxInput[], filterCbor?: string) {
+    let utxos = getUtxos(txInputs)
+    if (filterCbor) {
+        const val = Serialization.Value.fromCbor(HexBlob(filterCbor)).toCore();
+        utxos = filterUtxos(utxos, val);
+    }
+    return utxos.map(utxo => Serialization.TransactionUnspentOutput.fromCore(utxo).toCbor().toString())
+}
 
+export function getBalance(txInputs: TxInput[]) {
+    let utxos = getUtxos(txInputs)
+    const value = coalesceValueQuantities(utxos.map(([_, { value }]) => value));
+    return Serialization.Value.fromCore(value).toCbor().toString()
+}
 
-    const parsedAddress = await addressFromHexOrBech32(address);
-    try {
-        const baseAddress = BaseAddress.from_address(parsedAddress);
-        return baseAddress.payment_cred().to_keyhash().to_bech32('addr_vkh');
-    } catch (e) {}
-    try {
-        const enterpriseAddress = EnterpriseAddress.from_address(parsedAddress);
-        return enterpriseAddress.payment_cred().to_keyhash().to_bech32('addr_vkh');
-    } catch (e) {}
-    try {
-        const pointerAddress = PointerAddress.from_address(parsedAddress);
-        return pointerAddress.payment_cred().to_keyhash().to_bech32('addr_vkh');
-    } catch (e) {}
-    try {
-        const rewardAddress = RewardAddress.from_address(parsedAddress);
-        return rewardAddress.payment_cred().to_keyhash().to_bech32('stake_vkh');
-    } catch (e) {}
-    throw new Error("Address not pk");
-};
+export function getNetworkId(txCbor: string) {
+    const tx = Serialization.Transaction.fromCbor(Serialization.TxCBOR(txCbor));
+    let networkId = tx.body().networkId()
+    if (networkId === undefined) {
+        networkId = tx.body().outputs()[0].address().getNetworkId().valueOf()
+    }
+    return networkId.valueOf()
+}
+
+export function getTxFee(txCbor: string) {
+    const tx = Serialization.Transaction.fromCbor(Serialization.TxCBOR(txCbor));
+    return tx.body().fee().toString()
+}

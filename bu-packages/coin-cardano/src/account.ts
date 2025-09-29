@@ -1,8 +1,7 @@
-import {base, bip39, signUtil} from "@okxweb3/crypto-lib";
-import {Bip32PrivateKey} from './cardano-sdk/crypto/Bip32'
-import {Credential, CredentialType} from "./cardano-sdk/core/Cardano";
-import {BaseAddress} from "./cardano-sdk/core/Cardano";
-import {NetworkId} from "./cardano-sdk/core/Cardano";
+import {bip39, signUtil} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
+import { Cardano } from "@cardano-sdk/core"
+import * as Crypto from "@cardano-sdk/crypto";
 
 export async function getNewAddress(privateKey: string) {
     await checkPrivateKey(privateKey)
@@ -25,9 +24,10 @@ export async function checkPrivateKey(privateKey: string) {
 
 export async function pubKeyFromPrivateKey(privateKey: string) {
     await checkPrivateKey(privateKey)
+    const privKey = base.fromHex(privateKey.toLowerCase())
 
-    const paymentPrivateKey = base.fromHex(privateKey.slice(0, 64))
-    const stakePrivateKey = base.fromHex(privateKey.slice(128, 192))
+    const paymentPrivateKey = privKey.slice(0, 32)
+    const stakePrivateKey = privKey.slice(64, 96)
 
     const paymentKey = signUtil.ed25519.ed25519MulBase(paymentPrivateKey)
     const stakeKey = signUtil.ed25519.ed25519MulBase(stakePrivateKey)
@@ -36,13 +36,14 @@ export async function pubKeyFromPrivateKey(privateKey: string) {
 }
 
 export async function addressFromPubKey(publicKey: string) {
-    const paymentHash =base.blake2b(base.fromHex(publicKey.slice(0, 64)), {dkLen: 28, key: undefined})
-    const stakeHash =base.blake2b(base.fromHex(publicKey.slice(64)), {dkLen: 28, key: undefined})
+    const pubKey = base.fromHex(publicKey.toLowerCase())
+    const paymentHash =base.blake2b(pubKey.slice(0, 32), {dkLen: 28, key: undefined})
+    const stakeHash =base.blake2b(pubKey.slice(32), {dkLen: 28, key: undefined})
 
-    const paymentCredential : Credential =  {type: CredentialType.KeyHash, hash: base.toHex(paymentHash)}
-    const stakeCredential : Credential =  {type: CredentialType.KeyHash, hash: base.toHex(stakeHash)}
+    const paymentCredential: Cardano.Credential =  {type: Cardano.CredentialType.KeyHash, hash: Crypto.Hash28ByteBase16(base.toHex(paymentHash))}
+    const stakeCredential: Cardano.Credential =  {type: Cardano.CredentialType.KeyHash, hash: Crypto.Hash28ByteBase16(base.toHex(stakeHash))}
 
-    const address = BaseAddress.fromCredentials(NetworkId.Mainnet, paymentCredential, stakeCredential)
+    const address = Cardano.BaseAddress.fromCredentials(Cardano.NetworkId.Mainnet, paymentCredential, stakeCredential)
     return address.toAddress().toBech32()
 }
 
@@ -70,8 +71,9 @@ export async function addressFromPubKey(publicKey: string) {
  */
 
 export async function getDerivedPrivateKey(mnemonic: string, path: string) {
+    await Crypto.ready()
     const entropy = bip39.mnemonicToEntropy(mnemonic);
-    const rootKey = await  Bip32PrivateKey.fromBip39Entropy(base.fromHex(entropy), '');
+    const rootKey = Crypto.Bip32PrivateKey.fromBip39Entropy(base.fromHex(entropy), '');
 
     const harden = (num: number): number => {
         return 0x80000000 + num;
@@ -81,7 +83,7 @@ export async function getDerivedPrivateKey(mnemonic: string, path: string) {
         throw new Error("invalid path")
     }
     const pathArray: number[] = [];
-    splitPath.map((e, i) => {
+    splitPath.forEach((e, i) => {
         if (i < 3) {
             if (e.substring(e.length - 1, e.length) != "'") throw new Error("invalid path");
             pathArray.push(harden(parseInt(e.substring(0, e.length - 1), 10)))
@@ -89,13 +91,20 @@ export async function getDerivedPrivateKey(mnemonic: string, path: string) {
             pathArray.push(parseInt(e, 10))
         }
     });
-    const accountKey = await rootKey.derive(pathArray.slice(0, 3))
-    const keyToRawKeyHex = (key: Bip32PrivateKey) => Buffer.from(key.bytes().slice(0, 64)).toString("hex")
+    const accountKey = rootKey.derive(pathArray.slice(0, 3))
+    const keyToRawKeyHex = (key: Crypto.Bip32PrivateKey) => key.toRawKey().hex()
 
-    const paymentKey = await accountKey.derive([0, pathArray[4]]).
-        then(key => keyToRawKeyHex(key))
-    const stakeKey = await accountKey.derive([2, pathArray[4]]).
-        then(key => keyToRawKeyHex(key))
+    const paymentKey = keyToRawKeyHex(accountKey.derive([0, pathArray[4]]))
+    const stakeKey = keyToRawKeyHex(accountKey.derive([2, pathArray[4]]))
 
     return paymentKey + stakeKey
+}
+
+
+export function bech32AddressToHexAddress(address: string) {
+    const [hrp, data] = base.fromBech32(address, false);
+    if (hrp !== "addr" || data.length === 0) {
+        throw new Error("invalid bech32 address");
+    }
+    return base.toHex(data)
 }
