@@ -34,7 +34,8 @@
     "bu-*/coin-aptos",
     "bu-*/coin-bitcoin",
     "bu-*/coin-cardano",
-    "bu-*/coin-cosmos"
+    "bu-*/coin-cosmos",
+    "bu-*/coin-eos"
   ],
   "license": "MIT",
   "files": [

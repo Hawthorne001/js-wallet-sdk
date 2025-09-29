@@ -9,9 +9,10 @@ import {
     NewAddressError,
     SignTxError,
     BaseWallet,
+    base,
     assertBufferLength, ValidPrivateKeyParams, ValidPrivateKeyData, SignCommonMsgParams, buildCommonSignMsg, SignType
 } from '@okxweb3/coin-base';
-import {base, signUtil} from '@okxweb3/crypto-lib';
+import { signUtil} from '@okxweb3/crypto-lib';
 import {
     KeyType,
     TransferParam,
@@ -28,7 +29,6 @@ import {
 
 export class EosWallet extends BaseWallet {
     getAmountString(amount: string | number, precision?: number, symbol?: string) {
-        // return toAssetString(Number(amount), 4, 'EOS');
         precision = precision == null || undefined ? 4 : precision
         symbol = symbol == null || undefined ? 'EOS' : symbol
         return toAssetString(Number(amount), precision, symbol);
@@ -171,7 +171,6 @@ export class EosWallet extends BaseWallet {
 
 export class WaxWallet extends EosWallet {
     getAmountString(amount: string | number, precision?: number, symbol?: string) {
-        // return toAssetString(Number(amount), 8, 'WAX');
         precision = precision == null || undefined ? 8 : precision
         symbol = symbol == null || undefined ? 'WAX' : symbol
         return toAssetString(Number(amount), precision, symbol);

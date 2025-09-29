@@ -1,6 +1,7 @@
 import {TxBuilder} from './txBuilder';
 import {Action, KeyType, PackedTransaction} from './types';
-import {base, signUtil} from "@okxweb3/crypto-lib"
+import {signUtil} from "@okxweb3/crypto-lib"
+import {base} from "@okxweb3/coin-base"
 import {
     buyRamAction,
     CommonParam,
@@ -111,7 +112,6 @@ export function transfer(param: TransferParam) {
         transferAction(param),
     ];
     const abiMap = new Map<string, string>();
-    // abiMap.set('eosio.token', eosioTokenAbi);
     if (param.contract) {
         abiMap.set(param.contract, eosioTokenAbi);
     } else {
@@ -145,10 +145,6 @@ export function signSerializedTransaction(chainId: string, privateKeys: string[]
 }
 
 export function signMessage(chainId: string, privateKey: string, serializedTransaction: string, serializedContextFreeData?: string) {
-    /*const builder = new TxBuilder(chainId);
-    const serializedTransactionRaw = base.fromHex(serializedTransaction)
-    const serializedContextFreeDataRaw = serializedContextFreeData ? base.fromHex(serializedContextFreeData) : undefined
-    return builder.sign([privateKey], serializedTransactionRaw, serializedContextFreeDataRaw)[0]*/
     return signSerializedTransaction(chainId, [privateKey], serializedTransaction, serializedContextFreeData)[0]
 }
 

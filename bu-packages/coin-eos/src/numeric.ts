@@ -5,7 +5,7 @@
 /**
  * @module Numeric
  */
-import { base } from '@okxweb3/crypto-lib';
+import { base } from '@okxweb3/coin-base';
 import {
   Key,
   KeyType,
