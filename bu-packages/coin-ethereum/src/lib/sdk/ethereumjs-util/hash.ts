@@ -8,7 +8,7 @@
 import * as rlp from './rlp'
 import { toBuffer, setLengthLeft } from './bytes'
 import { assertIsString, assertIsBuffer, assertIsArray, assertIsHexString } from './helpers'
-import { base } from '@okxweb3/crypto-lib'
+import { base } from '@okxweb3/coin-base'
 import {Buffer} from "buffer";
 
 export const keccak = base.keccak

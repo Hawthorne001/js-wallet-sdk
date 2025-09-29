@@ -23,10 +23,11 @@ import {
     ValidSignedTransactionParams,
     VerifyMessageParams
 } from '@okxweb3/coin-base';
-import {abi, base, BigNumber} from '@okxweb3/crypto-lib';
+import {base, BigNumber} from '@okxweb3/coin-base';
+import {abi} from '@okxweb3/coin-base';
 import * as eth from './index';
-import {hexToBytes, unpadBytes, concatBytes, rlp as RLP} from './sdk/ethereumjs-util';
-import type {AuthorizationListItem} from './sdk/ethereumjs-tx/types';
+import {hexToBytes, unpadBytes, concatBytes, rlp as RLP} from './lib/sdk/ethereumjs-util';
+import type {AuthorizationListItem} from './lib/sdk/ethereumjs-tx/types';
 import {bytesToHex, unpadBuffer} from "./index";
 
 export type EthEncryptedData = eth.sigUtil.EthEncryptedData

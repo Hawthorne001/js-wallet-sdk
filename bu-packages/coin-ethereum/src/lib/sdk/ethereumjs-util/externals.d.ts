@@ -5,7 +5,7 @@
  * file LICENSE or https://opensource.org/license/mpl-2-0/.
  */
 
-import { BN } from '@okxweb3/crypto-lib';
+import { BN } from '@okxweb3/coin-base';
 import * as rlp from './rlp';
 export { BN };
 export { rlp };

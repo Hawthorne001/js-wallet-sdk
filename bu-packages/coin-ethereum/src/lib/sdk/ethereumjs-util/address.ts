@@ -6,7 +6,6 @@
  */
 
 const assert = require('assert')
-import {BN} from '@okxweb3/crypto-lib'
 import { toBuffer, zeros } from './bytes'
 import {
   isValidAddress,

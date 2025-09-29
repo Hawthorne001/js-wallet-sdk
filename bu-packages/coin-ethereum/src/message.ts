@@ -1,6 +1,6 @@
-import * as signUtil from './sdk/eth-sig-util';
-import * as ethUtil from './sdk/ethereumjs-util';
-import {base} from '@okxweb3/crypto-lib';
+import * as signUtil from './lib/sdk/eth-sig-util';
+import * as ethUtil from './lib/sdk/ethereumjs-util';
+import {base} from '@okxweb3/coin-base';
 
 export enum MessageTypes {
     ETH_SIGN = 0,

@@ -5,8 +5,7 @@
  * file LICENSE or https://opensource.org/license/mpl-2-0/.
  */
 
-import {base} from "@okxweb3/crypto-lib";
-import {signUtil} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
 
 /**
  * Pads a `String` to have an even length
@@ -70,7 +69,7 @@ export function getBinarySize(str: string) {
  * @returns {String} ascii string representation of hex value
  */
 export function toUtf8(hex: string) {
-    const bufferValue = new Buffer(padToEven(base.stripHexPrefix(hex).replace(/^0+|0+$/g, '')), 'hex');
+    const bufferValue = new Buffer(padToEven(base.stripHexPrefix(hex).replace(/(^0+)|(0+$)/g, '')), 'hex');
 
     return bufferValue.toString('utf8');
 }
@@ -109,7 +108,7 @@ export function toAscii(hex: string) {
 export function fromUtf8(stringValue: string) {
     const str = new Buffer(stringValue, 'utf8');
 
-    return `0x${padToEven(str.toString('hex')).replace(/^0+|0+$/g, '')}`;
+    return `0x${padToEven(str.toString('hex')).replace(/(^0+)|(0+$)/g, '')}`;
 }
 
 /**

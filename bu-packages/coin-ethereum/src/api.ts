@@ -1,4 +1,5 @@
-import {base, signUtil} from "@okxweb3/crypto-lib"
+import {signUtil} from "@okxweb3/crypto-lib"
+import {base} from "@okxweb3/coin-base"
 import {
     AccessListEIP2930TxData,
     ecdsaSign,
@@ -12,10 +13,11 @@ import {
     toChecksumAddress,
     TransactionFactory,
     TxData
-} from "./sdk";
+} from "./lib/sdk";
 import {hashMessage, MessageTypes} from "./message"
-import {padWithZeroes,} from './sdk/eth-sig-util';
-import {signTypedMessage, TypedDataUtils, typedSignatureHash} from "eth-sig-util";
+import {padWithZeroes, SignTypedDataVersion,} from './lib/sdk/eth-sig-util';
+import {signTypedMessage,TypedDataUtils, typedSignatureHash} from "eth-sig-util";
+import {signTypedData, TypedDataUtils as TypedDataUtilsNew} from "@metamask/eth-sig-util";
 
 
 export function getNewAddress(privateKeyHex: string) {
@@ -73,11 +75,11 @@ export function signMessage(messageType: MessageTypes, message: string, privateK
     }
 
     if (messageType == MessageTypes.TYPE_DATA_V1) {
-        return signTypedMessage(privateKey, {data: JSON.parse(message)}, "V1");
+        return signTypedData({privateKey:privateKey,data:JSON.parse(message), version:SignTypedDataVersion.V1});
     } else if (messageType == MessageTypes.TYPE_DATA_V3) {
-        return signTypedMessage(privateKey, {data: JSON.parse(message)}, "V3");
+        return signTypedData({privateKey:privateKey,data:JSON.parse(message), version:SignTypedDataVersion.V3});
     } else if (messageType == MessageTypes.TYPE_DATA_V4) {
-        return signTypedMessage(privateKey, {data: JSON.parse(message)}, "V4");
+        return signTypedData({privateKey:privateKey,data:JSON.parse(message), version:SignTypedDataVersion.V4});
     }
 
     const msgHash = hashMessage(messageType, message)

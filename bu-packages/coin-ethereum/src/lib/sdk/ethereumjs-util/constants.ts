@@ -6,7 +6,7 @@
  */
 
 const Buffer = require('buffer').Buffer
-import {BN} from '@okxweb3/crypto-lib'
+import {BN} from '@okxweb3/coin-base'
 
 /**
  * The max integer that this VM can handle
