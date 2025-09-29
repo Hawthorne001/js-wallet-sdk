@@ -9,8 +9,7 @@ import {
     TBtcWallet
 } from "../src"
 import {buildRuneMainMintData, fromVarInt, toVarInt, toVarIntV2} from "../src/rune"
-import {SignTxParams} from "@okxweb3/coin-base";
-import {base, signUtil} from '@okxweb3/crypto-lib';
+import {SignTxParams,base} from "@okxweb3/coin-base";
 import {
     buildRuneMainDeployData,
     checkEtching,

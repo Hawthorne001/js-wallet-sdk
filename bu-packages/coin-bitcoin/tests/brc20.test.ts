@@ -15,8 +15,7 @@ import {
     TBtcWallet
 } from "../src";
 import * as bscript from "../src/bitcoinjs-lib/script";
-import {base} from "@okxweb3/crypto-lib";
-import {SignTxParams} from "@okxweb3/coin-base";
+import {SignTxParams, base} from "@okxweb3/coin-base";
 
 describe("brc20 test", () => {
 
@@ -132,7 +131,7 @@ describe("brc20 test", () => {
 
         const txs: InscribeTxs = inscribe(network, request);
         console.log(txs);
-        expect(txs.commitTxFee).toEqual(1239)
+        expect(txs.commitTxFee).toEqual(1241)
     });
 
     test("inscribe", async () => {

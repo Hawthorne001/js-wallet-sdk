@@ -14,7 +14,7 @@ import {
   StackFunction,
 } from './index';
 import * as lazy from './lazy';
-import {base}  from '@okxweb3/crypto-lib';
+import {base}  from '@okxweb3/coin-base';
 const OPS = bscript.OPS;
 
 function stacksEqual(a: Buffer[], b: Buffer[]): boolean {

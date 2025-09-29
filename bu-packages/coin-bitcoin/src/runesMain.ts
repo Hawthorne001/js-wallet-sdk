@@ -1,9 +1,10 @@
 import * as bitcoin from "./bitcoinjs-lib";
-import {base, signUtil} from "@okxweb3/crypto-lib";
+import {signUtil} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
 import * as taproot from "./taproot";
 import * as bcrypto from "./bitcoinjs-lib/crypto";
 import {vectorSize} from "./bitcoinjs-lib/transaction";
-import {getAddressType, private2public, privateKeyFromWIF, sign, wif2Public} from "./txBuild";
+import {fakeSign, getAddressType, private2public, privateKeyFromWIF, sign, wif2Public} from "./txBuild";
 import * as bscript from './bitcoinjs-lib/script';
 import {countAdjustedVsize} from "./sigcost";
 import {base26Encode, commitment, encodeLEB128, Flag, getSpacersVal, removeSpacers, Tag} from "./runestones";
@@ -183,7 +184,7 @@ export class RunesMainInscriptionTool {
         tx.addOutput(changePkScript, 0);
 
         const txForEstimate = tx.clone();
-        signTx(txForEstimate, commitTxPrevOutputList, this.network);
+        signTx(txForEstimate, commitTxPrevOutputList.map(i => ({...i, privateKey: ''})), this.network);
 
         const vsize = countAdjustedVsize(txForEstimate, commitTxPrevOutputList.map(a => a.address), network)
         const fee = Math.floor(vsize * commitFeeRate);
@@ -330,6 +331,18 @@ export function runesMainInscribe(network: bitcoin.Network, request: RunesMainIn
 function signTx(tx: bitcoin.Transaction, commitTxPrevOutputList: PrevOutput[], network: bitcoin.Network) {
     tx.ins.forEach((input, i) => {
         const addressType = getAddressType(commitTxPrevOutputList[i].address, network);
+
+        if (commitTxPrevOutputList[i].privateKey == '') {
+            const {witness, script} = fakeSign(addressType);
+            if (witness !== undefined) {
+                input.witness = witness
+            }
+            if (script !== undefined) {
+                input.script = script
+            }
+            return
+        }
+
         const privateKey = base.fromHex(privateKeyFromWIF(commitTxPrevOutputList[i].privateKey, network));
         const privateKeyHex = base.toHex(privateKey);
         const publicKey = private2public(privateKeyHex);
@@ -499,7 +512,7 @@ export function inscribe(network: bitcoin.Network, request: RunesMainInscription
     };
 }
 
-//todo 编码校验 和 rust实现对比
+// TODO: Encoding validation and comparison with Rust implementation
 export function buildRuneMainDeployData(etching: Etching, useDefaultOutput: boolean, defaultOutput: number): Buffer {
     let msg = buildMessage(etching, useDefaultOutput, defaultOutput);
     let msgBuff = toBuffer(msg);

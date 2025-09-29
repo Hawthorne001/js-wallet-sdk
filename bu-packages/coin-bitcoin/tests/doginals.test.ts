@@ -13,8 +13,7 @@ import {
     utxoOutput,
     utxoTx
 } from "../src";
-import {base} from "@okxweb3/crypto-lib";
-import {SignTxParams} from "@okxweb3/coin-base";
+import {SignTxParams,base} from "@okxweb3/coin-base";
 
 describe("doginals test", () => {
 

@@ -16,7 +16,7 @@ import {
 } from './bip341';
 import { Payment, PaymentOpts } from './index';
 import * as lazy from './lazy';
-import { base } from '@okxweb3/crypto-lib';
+import { base } from '@okxweb3/coin-base';
 
 const OPS = bscript.OPS;
 const TAPROOT_WITNESS_VERSION = 0x01;
@@ -57,7 +57,7 @@ export function p2tr(a: Payment, opts?: PaymentOpts): Payment {
   );
 
   const _address = lazy.value(() => {
-    const result = base.bech32m.decode(a.address!);
+    const result = base.bech32m.decode(a.address! as any);
     const version = result.words.shift();
     const data = base.bech32m.fromWords(result.words);
     return {

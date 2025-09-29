@@ -8,7 +8,7 @@ import * as bscript from '../script';
 import { isPoint, typeforce as typef } from '../types';
 import { Payment, PaymentOpts, StackElement, StackFunction } from './index';
 import * as lazy from './lazy';
-import { base } from '@okxweb3/crypto-lib';
+import { base } from '@okxweb3/coin-base';
 const OPS = bscript.OPS;
 
 const EMPTY_BUFFER = Buffer.alloc(0);
@@ -63,7 +63,7 @@ export function p2wsh(a: Payment, opts?: PaymentOpts): Payment {
   );
 
   const _address = lazy.value(() => {
-    const result = base.bech32.decode(a.address!);
+    const result = base.bech32.decode(a.address! as any);
     const version = result.words.shift();
     const data = base.bech32.fromWords(result.words);
     return {

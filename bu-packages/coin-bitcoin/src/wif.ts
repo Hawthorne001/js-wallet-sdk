@@ -1,4 +1,4 @@
-import {base} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
 
 export function decodeRaw(buffer: Buffer, version?: number) {
     // check version only if defined

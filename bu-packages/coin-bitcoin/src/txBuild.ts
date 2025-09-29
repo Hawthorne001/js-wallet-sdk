@@ -1,15 +1,16 @@
 import * as bitcoin from "./bitcoinjs-lib";
-import {Network, Transaction} from "./bitcoinjs-lib";
-import {base, signUtil, typeforce} from "@okxweb3/crypto-lib"
-import {utxoInput, utxoOutput, utxoTx} from "./type";
-import * as wif from "./wif"
-import {Base58CheckResult, Bech32Result, fromBase58Check, fromBech32} from './bitcoinjs-lib/address';
+import { Network, Transaction } from "./bitcoinjs-lib";
+import { signUtil } from "@okxweb3/crypto-lib";
+import { base, typeforce } from "@okxweb3/coin-base";
+import { utxoInput, utxoOutput, utxoTx } from "./type";
+import * as wif from "./wif";
+import { Base58CheckResult, Bech32Result, fromBase58Check, fromBech32 } from './bitcoinjs-lib/address';
 import * as bcrypto from './bitcoinjs-lib/crypto';
 import * as taproot from "./taproot";
 import * as bscript from './bitcoinjs-lib/script';
-import {OPS} from './bitcoinjs-lib/ops';
-import {Stack} from "./bitcoinjs-lib/payments";
-import {countAdjustedVsize} from "./sigcost";
+import { OPS } from './bitcoinjs-lib/ops';
+import { Stack } from "./bitcoinjs-lib/payments";
+import { countAdjustedVsize } from "./sigcost";
 
 const schnorr = signUtil.schnorr.secp256k1.schnorr
 
@@ -73,8 +74,9 @@ export class TxBuild {
     outputs: Output[];
     bitcoinCash: boolean
     hardware: boolean
+    fakeKey: boolean
 
-    constructor(version?: number, network?: bitcoin.Network, bitcoinCash?: boolean, hardware?: boolean) {
+    constructor(version?: number, network?: bitcoin.Network, bitcoinCash?: boolean, hardware?: boolean, fakeKey?: boolean) {
         if (version) {
             this.tx.version = version;
         } else {
@@ -87,6 +89,7 @@ export class TxBuild {
         this.outputs = [];
         this.bitcoinCash = bitcoinCash || false
         this.hardware = hardware || false
+        this.fakeKey = fakeKey || false
     }
 
     addInput(txId: string, index: number, privateKey: string, address: string, script?: string, value?: number, publicKey?: string, sequence?: number): void {
@@ -174,6 +177,18 @@ export class TxBuild {
                 }
             } else {
                 const addressType = getAddressType(this.inputs[i].address, this.network);
+
+                if (this.fakeKey) {
+                    const {witness, script} = fakeSign(addressType);
+                    if (witness !== undefined) {
+                        this.tx.ins[i].witness = witness
+                    }
+                    if (script !== undefined) {
+                        this.tx.ins[i].script = script
+                    }
+                    continue
+                }
+
                 if (addressType === "legacy") {
                     const script = bitcoin.payments.p2pkh({pubkey: ecPub}).output as Buffer;
                     hash = this.tx.hashForSignature(i, script, hashType)
@@ -188,7 +203,7 @@ export class TxBuild {
                     const payment = bitcoin.payments.p2pkh({
                         output: script,
                         pubkey: ecPub,
-                        signature: bitcoin.script.signature.encode(signature, hashType)
+                        signature: bitcoin.script.signature.encode(signature, hashType),
                     });
                     if (payment.input) {
                         this.tx.ins[i].script = payment.input;
@@ -393,8 +408,8 @@ export function signBch(utxoTx: utxoTx, privateKey: string, network?: bitcoin.Ne
 }
 
 
-export function calculateTxSize(inputs: [], outputs: [], changeAddress: string, privateKey: string, network: bitcoin.Network, dustSize: Number, hardware?: boolean, memo?: string, pos?: number) {
-    let preTxBuild = new TxBuild(2, network, false, hardware);
+export function calculateTxSize(inputs: [], outputs: [], changeAddress: string, privateKey: string, network: bitcoin.Network, dustSize: number, hardware?: boolean, memo?: string, pos?: number) {
+    let preTxBuild = new TxBuild(2, network, false, hardware, true);
     let inputAmount = 0;
     for (let i = 0; i < inputs.length; i++) {
         let input = inputs[i] as utxoInput;
@@ -604,3 +619,20 @@ export function estimateBchFee(utxoTx: utxoTx, network?: bitcoin.Network) {
     return virtualSize * feePerB;
 }
 
+export function fakeSign(addressType: string) {
+    let witness
+    let script
+
+    if (addressType === 'segwit_taproot') {
+        witness = [Buffer.alloc(64)];
+    } else if (addressType === 'legacy') {
+        script = Buffer.alloc(107);
+    } else {
+        witness = [Buffer.alloc(72), Buffer.alloc(33)];
+
+        if (addressType === "segwit_nested") {
+            script = Buffer.alloc(23);
+        }
+    }
+    return {witness, script}
+}

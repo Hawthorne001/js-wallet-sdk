@@ -13,7 +13,7 @@ import {
     utxoTx
 } from "../index"
 import {buildRuneMainMintData, buildRuneMainMintOp} from "../rune";
-import {base} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
 import {runesMainInscribe, RunesMainInscriptionRequest} from "../runesMain";
 
 export const ErrCodeLessRunesMainAmt     = 2010300
@@ -438,7 +438,6 @@ export class RuneMainWallet extends BtcWallet {
                 mintNum : param.data.runeData.mintNum,
             }
 
-            let batchMintStatNum = runeTx.outputs.length
             for (let i = 0; i<mintData.mintNum-1; i++){
                 runeTx.outputs.push({
                     address:param.data.address,
@@ -550,7 +549,6 @@ export class RuneMainWallet extends BtcWallet {
         const network = this.network()
         let txHex = null;
         try {
-            const privateKey = param.privateKey;
             if (!param.data.runeData) {
                 return Promise.reject("missing runeData");
             }

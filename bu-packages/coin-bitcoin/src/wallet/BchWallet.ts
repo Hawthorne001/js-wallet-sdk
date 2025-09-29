@@ -15,7 +15,7 @@ import {
     ValidAddressData,
     ValidAddressParams
 } from "@okxweb3/coin-base";
-import {base} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
 import {BtcWallet, convert2UtxoTx} from "./BtcWallet";
 
 import * as bitcoin from "../index"

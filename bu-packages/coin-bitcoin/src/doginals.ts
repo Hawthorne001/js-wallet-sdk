@@ -1,5 +1,5 @@
 import * as bitcoin from "./bitcoinjs-lib";
-import {base} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
 import * as bcrypto from "./bitcoinjs-lib/crypto";
 import {
     getAddressType,

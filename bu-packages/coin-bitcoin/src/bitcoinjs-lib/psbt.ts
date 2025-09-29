@@ -47,7 +47,8 @@ import {
     isP2WSHScript,
     isP2SHScript,
 } from './psbt/psbtutils';
-import {base, signUtil} from '@okxweb3/crypto-lib';
+import {signUtil} from '@okxweb3/crypto-lib';
+import {base} from '@okxweb3/coin-base';
 import {signature as bitcoinSignature} from './script';
 import {taprootTweakPubkey} from '../taproot';
 import * as buffer from "buffer";

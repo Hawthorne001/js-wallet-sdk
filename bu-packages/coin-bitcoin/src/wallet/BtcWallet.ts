@@ -35,7 +35,8 @@ import {
     ValidSignedTransactionParams,
     VerifyMessageParams
 } from '@okxweb3/coin-base';
-import {base, bip32, bip39} from '@okxweb3/crypto-lib';
+import {bip32, bip39} from '@okxweb3/crypto-lib';
+import {base} from '@okxweb3/coin-base';
 import * as bitcoin from "../index"
 import {
     AtomicalTestWallet,
@@ -307,13 +308,13 @@ export class BtcWallet extends BaseWallet {
 
     getDerivedPrivateKey(param: DerivePriKeyParams): Promise<any> {
         let network = this.network();
-        return bip39.mnemonicToSeed(param.mnemonic)
+        return bip39.mnemonicToSeedV2(param.mnemonic)
             .then(masterSeed => {
-                let childKey = bip32.fromSeed(masterSeed).derivePath(param.hdPath);
+                let childKey = bip32.fromSeedV2(masterSeed, param.hdPath);
                 if (!childKey.privateKey) {
                     return Promise.reject(GenPrivateKeyError);
                 }
-                const wif = bitcoin.private2Wif(childKey.privateKey, network);
+                const wif = bitcoin.private2Wif(Buffer.from(childKey.privateKey), network);
                 return Promise.resolve(wif);
             }).catch((e) => {
                 return Promise.reject(GenPrivateKeyError);
@@ -571,11 +572,7 @@ export class BtcWallet extends BaseWallet {
             }
         } else {
             let txHex = null;
-            try {
-                return Promise.resolve(txHex);
-            } catch (e) {
-                return Promise.reject(SignTxError);
-            }
+            return Promise.resolve(txHex);
         }
     }
 

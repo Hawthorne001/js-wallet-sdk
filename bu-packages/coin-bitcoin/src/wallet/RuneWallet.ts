@@ -3,7 +3,7 @@ import {BtcWallet} from "./BtcWallet";
 import * as bitcoin from "../index"
 import {networks, signBtc, utxoTx} from "../index"
 import {buildRuneData} from "../rune";
-import {base} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
 
 export class RuneWallet extends BtcWallet {
 

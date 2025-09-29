@@ -1,5 +1,6 @@
 import * as bitcoin from "./bitcoinjs-lib";
-import {base, signUtil} from "@okxweb3/crypto-lib";
+import {signUtil} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
 import * as taproot from "./taproot";
 import * as bcrypto from "./bitcoinjs-lib/crypto";
 import {

@@ -1,4 +1,5 @@
-import {base, signUtil} from "@okxweb3/crypto-lib"
+import {signUtil} from "@okxweb3/crypto-lib"
+import {base} from "@okxweb3/coin-base"
 import {privateKeyFromWIF} from './txBuild';
 import {Network} from './bitcoinjs-lib';
 
@@ -121,7 +122,7 @@ const SEGWIT_TYPES = {
 }
 
 function decodeBech32 (address: string) {
-  const result = base.bech32.decode(address)
+  const result = base.bech32.decode(address as any)
   const data = base.bech32.fromWords(result.words.slice(1))
   return Buffer.from(data)
 }

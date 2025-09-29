@@ -1,7 +1,7 @@
 import {REVERSE_OPS} from "./bitcoinjs-lib/ops";
 import {Transaction} from "./bitcoinjs-lib";
 import {getAddressType} from "./txBuild";
-import {base} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
 import * as bitcoin from "./bitcoinjs-lib";
 
 export function countScriptSigops(script: string, isRawScript: boolean = false, witness: boolean = false): number {

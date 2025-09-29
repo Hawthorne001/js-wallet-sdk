@@ -22,8 +22,8 @@ import {
 
 import {Tap} from '@cmdcode/tapscript';
 import {randomBytes} from 'crypto';
-import Decimal from 'decimal.js';
 import {EcKeyService} from "./eckey";
+import {private2Wif} from "../../txBuild";
 
 const ISSUE_PUBKEY =
     '0250929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0';
@@ -165,12 +165,7 @@ export const outpoint2ByteString = function (outpoint: string) {
 export function getDummySigner(
     privateKey?: bsv.PrivateKey | bsv.PrivateKey[],
 ): TestWallet {
-    return new TestWallet(
-        bsv.PrivateKey.fromWIF(
-            'cRn63kHoi3EWnYeT4e8Fz6rmGbZuWkDtDG5qHnEZbmE5mGvENhrv',
-        ),
-        new DummyProvider(),
-    );
+    return TestWallet.random(new DummyProvider())
 }
 
 export const dummyUTXO = {
@@ -242,11 +237,12 @@ export function scaleByDecimals(amount: bigint, decimals: number) {
     return amount * BigInt(Math.pow(10, decimals));
 }
 
-export function unScaleByDecimals(amount: bigint, decimals: number): string {
-    return new Decimal(amount.toString().replace('n', ''))
-        .div(Math.pow(10, decimals))
-        .toFixed(decimals);
-}
+// this API is not used in the project, remove it because the decimal.js is not compatible with SES
+// export function unScaleByDecimals(amount: bigint, decimals: number): string {
+//     return new Decimal(amount.toString().replace('n', ''))
+//         .div(Math.pow(10, decimals))
+//         .toFixed(decimals);
+// }
 
 export function resetTx(tx: btc.Transaction) {
     for (let i = 0; i < tx.inputs.length; i++) {
@@ -296,8 +292,10 @@ export function verifyContract(
     return true;
 }
 
-export function getDummyEcKey(){
-    return new EcKeyService({privateKey: 'L4EpxBBbTqztn8Q9W73Cf7e36ttHhDWRSzr4sHazjUcCrucwEJLy'})
+export function getDummyEcKey() {
+    let privateKey = randomBytes(32)
+    const wif = private2Wif(privateKey)
+    return new EcKeyService({privateKey: wif})
 }
 
 export function getDummySignature() {

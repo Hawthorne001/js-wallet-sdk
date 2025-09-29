@@ -2,7 +2,7 @@ import * as bscript from './bitcoinjs-lib/script';
 import {OPS} from './bitcoinjs-lib/ops';
 import {Edict} from "./type";
 import {ErrCodeLessRunesMainAmt, ErrCodeOpreturnExceeds} from "./wallet";
-import {base} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
 import * as buffer from "buffer";
 import {number} from "./bitcoinjs-lib/script";
 

@@ -1,5 +1,5 @@
 import {Rune} from "./type";
-import {base} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
 
 export function base26Encode(input: string): bigint {
     let result = 0n
@@ -30,7 +30,8 @@ export function base26Decode(s: bigint): string {
         symbol.push("ABCDEFGHIJKLMNOPQRSTUVWXYZ".charAt(Number(i)))
         s = (s - 1n) / 26n;
     }
-    return symbol.reverse().join('')
+    symbol.reverse();
+    return symbol.join('');
 }
 
 

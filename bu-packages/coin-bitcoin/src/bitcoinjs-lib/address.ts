@@ -7,7 +7,7 @@ import * as networks from './networks';
 import * as payments from './payments';
 import * as bscript from './script';
 import * as types from './types';
-import { base } from '@okxweb3/crypto-lib';
+import { base } from '@okxweb3/coin-base';
 const { typeforce } = types;
 
 export interface Base58CheckResult {
@@ -74,14 +74,14 @@ export function fromBech32(address: string): Bech32Result {
   let result;
   let version;
   try {
-    result = base.bech32.decode(address);
+    result = base.bech32.decode(address as any);
   } catch (e) {}
 
   if (result) {
     version = result.words[0];
     if (version !== 0) throw new TypeError(address + ' uses wrong encoding');
   } else {
-    result = base.bech32m.decode(address);
+    result = base.bech32m.decode(address as any);
     version = result.words[0];
     if (version === 0) throw new TypeError(address + ' uses wrong encoding');
   }

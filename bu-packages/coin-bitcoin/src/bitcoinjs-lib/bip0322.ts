@@ -2,7 +2,7 @@
  * The following methods are based on `bitcoinjs`, thanks for their work
  * https://github.com/bitcoinjs/bitcoinjs-lib
  */
-import { base } from "@okxweb3/crypto-lib"
+import { base } from "@okxweb3/coin-base"
 import { toOutputScript } from './address';
 import { Network } from './networks';
 import { Transaction } from './transaction';

@@ -1,4 +1,5 @@
-import {base, signUtil} from "@okxweb3/crypto-lib";
+import {signUtil} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
 import {privateKeyFromWIF} from "./txBuild";
 
 const secp256k1 = signUtil.schnorr.secp256k1

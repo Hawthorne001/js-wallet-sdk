@@ -1,5 +1,6 @@
 import {Psbt, PsbtInputExtended, PsbtOutputExtended} from "./bitcoinjs-lib/psbt";
-import {base, signUtil} from '@okxweb3/crypto-lib';
+import {signUtil} from '@okxweb3/crypto-lib';
+import {base} from '@okxweb3/coin-base';
 import {getAddressType, privateKeyFromWIF, sign, signBtc, wif2Public} from './txBuild';
 import {address, Network, networks, payments, Transaction} from './bitcoinjs-lib';
 import * as taproot from "./taproot";
@@ -163,7 +164,7 @@ export function signPsbtWithKeyPathAndScriptPathImpl(psbt: Psbt, privateKey: str
     const privKeyHex = privateKeyFromWIF(privateKey, network);
     const signInputMap = new Map<number, toSignInput>();
     if (signInputs != undefined) {
-        signInputs.map(e => {
+        signInputs.forEach(e => {
             signInputMap.set(e.index, e);
         });
     }
@@ -304,7 +305,7 @@ export function signPsbtWithKeyPathAndScriptPathImpl(psbt: Psbt, privateKey: str
                 }
                 // script path spend
                 if (input.tapLeafScript && input.tapLeafScript?.length > 0 && !input.tapMerkleRoot) {
-                    input.tapLeafScript.map(e => {
+                    input.tapLeafScript.forEach(e => {
                         if (e.controlBlock && e.script) {
                             signer.publicKey = wif2Public(privateKey, network);
                             signer.needTweak = false;
@@ -586,7 +587,7 @@ export function generateMPCUnsignedListingPSBT(psbtBase64: string, pubKeyHex: st
         if (i != SELLER_INDEX) {
             continue;
         }
-        const {hash, sighashType} = psbt.getHashAndSighashType(i, publicKey, sighashTypes);
+        const {hash} = psbt.getHashAndSighashType(i, publicKey, sighashTypes);
         signHashList.push(base.toHex(hash))
     }
     return {
@@ -618,7 +619,7 @@ export function generateMPCUnsignedBuyingPSBT(psbtBase64: string, pubKeyHex: str
         if (i >= sellerIndex && i < sellerIndex + batchSize) {
             continue;
         }
-        const {hash, sighashType} = psbt.getHashAndSighashType(i, publicKey, sighashTypes);
+        const {hash} = psbt.getHashAndSighashType(i, publicKey, sighashTypes);
         signHashList.push(base.toHex(hash))
     }
     return {
@@ -660,7 +661,7 @@ export function generateMPCUnsignedPSBT(psbtStr: string, pubKeyHex: string, netw
     let signHashList: string[] = [];
     for (let i = 0; i < psbt.inputCount; i++) {
         try {
-            const {hash, sighashType} = psbt.getHashAndSighashType(i, publicKey, allowedSighashTypes);
+            const {hash} = psbt.getHashAndSighashType(i, publicKey, allowedSighashTypes);
             signHashList.push(base.toHex(hash))
         } catch (e) {
             // todo handle err
@@ -670,7 +671,7 @@ export function generateMPCUnsignedPSBT(psbtStr: string, pubKeyHex: string, netw
     }
     const m = new Map<string, number>();
 
-    signHashList.map((e, i) => {
+    signHashList.forEach((e, i) => {
         let count = m.get(e);
         count = count == undefined ? 0 : count
         if (count != undefined && count >= 1) {
