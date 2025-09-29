@@ -13,7 +13,8 @@ import {
     ValidAddressData,
     ValidAddressParams, ValidPrivateKeyData, ValidPrivateKeyParams
 } from '@okxweb3/coin-base';
-import {base, BN, signUtil} from '@okxweb3/crypto-lib';
+import {signUtil} from '@okxweb3/crypto-lib';
+import {base, BN} from '@okxweb3/coin-base';
 import {
     AccessKey,
     addKey, checkPrivateKey,
@@ -31,6 +32,7 @@ import {
     validateAddress
 } from "./index";
 import {MessagePayload, SignMessageParamsNEP} from "./nearlib";
+import { functionCallAccessKey, fullAccessKey } from "./transaction";
 import {serialize} from "borsh";
 
 export enum NearTypes {
@@ -105,6 +107,18 @@ export type AddKeyParams = {
     receiverId: string
     publicKey: string
     accessKey: AccessKey
+}
+
+export type AddKeyParamsSES = {
+    from: string
+    blockHash: string
+    nonce: number
+    receiverId: string
+    publicKey: string
+    accessKeyUseFull: boolean, // Extension wallets always set this to false
+    accessKeyReceiverId: string,
+    accessKeyMethodNames: string[],
+    accessKeyAllowance: string, // need convert to BN
 }
 
 export type DelKeyParams = {
@@ -255,7 +269,7 @@ export class NearWallet extends BaseWallet {
     async signMessage(param: SignTxParams): Promise<string> {
         try {
             const data = param.data as SignMessageParamsNEP;
-            const {message, nonce, recipient, callbackUrl, state} = data;
+            const {message, nonce, recipient, callbackUrl} = data;
             const nonceArray = Buffer.from(nonce);
             if (nonceArray.length !== 32) {
                 throw Error('Expected nonce to be a 32 bytes buffer')
@@ -288,12 +302,13 @@ export class NearWallet extends BaseWallet {
                 const [_, signedTx] = await signTransaction(tx, prvHex)
                 return Promise.resolve(base.toBase64(signedTx.encode()));
             } else if (type === NearTypes.AddKey) {
-                let data = param.data as AddKeyParams
-                if (data.publicKey == undefined || null || data.accessKey == undefined || null) {
+                let data = param.data as AddKeyParamsSES
+                if (data.publicKey == undefined || data.accessKeyReceiverId == undefined || data.accessKeyMethodNames == undefined || data.accessKeyAllowance == undefined) {
                     return Promise.reject(SignTxError);
                 }
                 const tx = createTransaction((data.from == undefined || null) || (data.from == '') ? addr : data.from, publicKey, data.receiverId, data.nonce, [], base.fromBase58(data.blockHash))
-                tx.actions.push(addKey(publicKeyFromBase58(data.publicKey), data.accessKey))
+                const accessKey = data.accessKeyUseFull ? fullAccessKey() : functionCallAccessKey(data.accessKeyReceiverId, data.accessKeyMethodNames, new BN(data.accessKeyAllowance));
+                tx.actions.push(addKey(publicKeyFromBase58(data.publicKey), accessKey))
                 const [_, signedTx] = await signTransaction(tx, prvHex)
                 return Promise.resolve(base.toBase64(signedTx.encode()));
             } else if (type === NearTypes.DelKey) {

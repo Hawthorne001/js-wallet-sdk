@@ -2,9 +2,8 @@
  * Author:https://github.com/nbd-wtf/nostr-tools
  * */
 import {getPublicKey} from "./keys";
-import {
-    base, signUtil
-} from "@okxweb3/crypto-lib";
+import {signUtil} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
 
 const schnorr = signUtil.schnorr.secp256k1.schnorr
 

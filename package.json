@@ -35,7 +35,10 @@
     "bu-*/coin-bitcoin",
     "bu-*/coin-cardano",
     "bu-*/coin-cosmos",
-    "bu-*/coin-eos"
+    "bu-*/coin-eos",
+    "bu-*/coin-kaspa",
+    "bu-*/coin-near",
+    "bu-*/coin-nostrassets"
   ],
   "license": "MIT",
   "files": [

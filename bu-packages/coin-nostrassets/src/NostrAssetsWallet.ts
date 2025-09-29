@@ -9,10 +9,11 @@ import {
     secp256k1SignTest,
     GenPrivateKeyError,
     DerivePriKeyParams,
+    base,
     ValidPrivateKeyParams, ValidPrivateKeyData, SignCommonMsgParams, buildCommonSignMsg, SignType,
 } from "@okxweb3/coin-base";
 import {
-    base, bip32, bip39
+     bip32, bip39
 } from "@okxweb3/crypto-lib";
 import {encrypt, decrypt, npubEncode, nsecFromPrvKey, decodeBytes, nsec, nostrHdp} from "./nostrassets";
 import * as crypto from "crypto";
@@ -40,6 +41,13 @@ export class CryptTextParams {
     }
 };
 
+export interface CryptTextParamsSES {
+    type: nipOpType;
+    pubkey: string;
+    text: string;
+    isCryptText: boolean;
+}
+
 // @ts-ignore
 if (typeof crypto !== 'undefined' && !crypto.subtle && crypto.webcrypto) {
     // @ts-ignore
@@ -57,9 +65,9 @@ export class NostrAssetsWallet extends BaseWallet {
     }
 
     getDerivedPrivateKey(param: DerivePriKeyParams): Promise<any> {
-        return bip39.mnemonicToSeed(param.mnemonic)
+        return bip39.mnemonicToSeedV2(param.mnemonic)
             .then((masterSeed: Buffer) => {
-                let childKey = bip32.fromSeed(masterSeed).derivePath(param.hdPath)
+                let childKey = bip32.fromSeedV2(masterSeed, param.hdPath);
                 if (childKey.privateKey) {
                     return Promise.resolve(nsecFromPrvKey(base.toHex(childKey.privateKey, false)));
                 } else {
@@ -102,7 +110,7 @@ export class NostrAssetsWallet extends BaseWallet {
     }
 
     async validPrivateKey(param: ValidPrivateKeyParams): Promise<any> {
-        const [c, d] = base.fromBech32(param.privateKey);
+        const [c] = base.fromBech32(param.privateKey);
         let isValid = nsec == c
         const data: ValidPrivateKeyData = {
             isValid: isValid,
@@ -114,7 +122,7 @@ export class NostrAssetsWallet extends BaseWallet {
     async validAddress(param: ValidAddressParams): Promise<any> {
         var valid = false
         try {
-            const [c, d] = base.fromBech32(param.address);
+            const [c] = base.fromBech32(param.address);
             valid = nostrHdp == c
         } catch (e) {
             console.log(e)
@@ -127,13 +135,13 @@ export class NostrAssetsWallet extends BaseWallet {
     }
 
     async signCommonMsg(params: SignCommonMsgParams): Promise<any> {
-        const [c, d] = base.fromBech32(params.privateKey);
+        const [, d] = base.fromBech32(params.privateKey);
         return super.signCommonMsg({privateKey:params.privateKey,privateKeyHex:base.toHex(d, false), message:params.message, signType:SignType.Secp256k1})
     }
 
     async signTransaction(param: SignTxParams): Promise<any> {
-        if (param.data instanceof CryptTextParams) {
-            const textParams = param.data as CryptTextParams;
+        if (Object.prototype.toString.call(param.data) === '[object Object]' && param.data.isCryptText) {
+            const textParams = param.data as CryptTextParamsSES;
             switch (textParams.type) {
                 case nipOpType.NIP04_Decrypt:
                     return decrypt(param.privateKey, textParams.pubkey, textParams.text)

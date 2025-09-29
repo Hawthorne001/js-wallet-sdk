@@ -2,9 +2,8 @@
  * Author:https://github.com/nbd-wtf/nostr-tools
  * */
 
-import {
-    base, secp256k1
-} from "@okxweb3/crypto-lib";
+import {secp256k1} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
 
 // warning!!! If you want to run these two test case `encrypt`, you need to enable the next line of code.
 // import * as crypto from "crypto";
@@ -37,7 +36,7 @@ export function decodeBytes(prefix: string, data: string): string {
     try {
         const [c, d] = base.fromBech32(data);
         if (prefix !== c) {
-            throw 'invalid data'
+            throw new Error('invalid data')
         }
         return base.toHex(d, false)
     } catch (e) {

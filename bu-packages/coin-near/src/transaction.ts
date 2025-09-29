@@ -5,7 +5,8 @@
 import { KeyType, PublicKey } from './keypair';
 import { Assignable, Enum } from './enums';
 import { serialize, deserialize } from 'borsh';
-import { base, signUtil, BN } from '@okxweb3/crypto-lib';
+import { signUtil } from '@okxweb3/crypto-lib';
+import { base, BN } from '@okxweb3/coin-base';
 import { base_encode } from './serialize';
 import {MessagePayload} from "./nearlib";
 

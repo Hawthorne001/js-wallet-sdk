@@ -1,7 +1,7 @@
 import { validate } from "./validation";
 import { convert as convertBits } from "./convertBits";
 import * as base32 from "./base32";
-import { base } from "@okxweb3/crypto-lib";
+import { base } from "@okxweb3/coin-base";
 
 export function encodePubKeyAddress(pubKey: string, prefix: string) {
   const eight0 = [0,0,0,0,0,0,0,0];

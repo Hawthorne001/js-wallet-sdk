@@ -91,12 +91,22 @@ describe("nostr", () => {
             let privkey = nsecFromPrvKey('0x425824242e3038e026f7cbeb6fe289cb6ffcfad1fa955c318c116aa1f2f32bfc')
             const encrypted = await wallet.signTransaction({
                 privateKey: privkey,
-                data: new CryptTextParams(nipOpType.NIP04_Encrypt, '0x8a0523d045d09c30765029af9307d570cb0d969e4b9400c08887c23250626eea', text)
+                data: {
+                    type: nipOpType.NIP04_Encrypt,
+                    pubkey: '0x8a0523d045d09c30765029af9307d570cb0d969e4b9400c08887c23250626eea',
+                    text: text,
+                    isCryptText: true,
+                }
             });
             console.log('encrypted', encrypted)
             const decrypted = await wallet.signTransaction({
                 privateKey: privkey,
-                data: new CryptTextParams(nipOpType.NIP04_Decrypt, '8a0523d045d09c30765029af9307d570cb0d969e4b9400c08887c23250626eea', encrypted)
+                data: {
+                    type: nipOpType.NIP04_Decrypt,
+                    pubkey: '8a0523d045d09c30765029af9307d570cb0d969e4b9400c08887c23250626eea',
+                    text: encrypted,
+                    isCryptText: true,
+                }
             });
             console.log('decrypted', decrypted)
             expect(decrypted).toBe(text);

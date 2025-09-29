@@ -1,4 +1,5 @@
-import {base, signUtil} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
+import {signUtil} from "@okxweb3/crypto-lib";
 import {encodePubKeyAddress, decodeAddress} from "./lib/address";
 
 export function pubKeyFromPrvKey(prvKey: string) {

@@ -19,8 +19,8 @@ import {
     transfer,
     validateAddress,
 } from '../src';
-import {base, BN, signUtil} from '@okxweb3/crypto-lib';
-import {SignTxParams} from "@okxweb3/coin-base";
+import {signUtil} from '@okxweb3/crypto-lib';
+import {base, BN, SignTxParams} from "@okxweb3/coin-base";
 import {serialize} from "borsh";
 import {PublicKey} from "../src/keypair";
 import {MessagePayload} from "../src/nearlib";
@@ -422,7 +422,7 @@ describe("near", () => {
     test("wallet-DAppTx", async () => {
         let wallet = new NearWallet();
         let param: SignTxParams = {
-            privateKey: "ed25519:4yNHZKYxR4bk76CZ3MFQxpMeavbPTJVuGNrPZSBp5nzZTc64w35xmrGggbTWLHM1sUJCN5moESgsZKbDVDCj",
+            privateKey: "ed25519:5Y5W9HDZLWYi2vq2JFvwLNBue5z2RDyivs44T372T2XsxJwSttPzpuhwbnZnYyq7P7Ynb4GDdEQiQxHgzTLoLMUM",
             data: {
                 blockHash: "EekjoegUYx2iibbWDuUSQENYCvUGkxj2Et1hTonbwBuN",
                 type: NearTypes.DAppTx,
@@ -438,15 +438,11 @@ describe("near", () => {
             }
         }
         let result = await wallet.signTransaction(param)
-        expect(result).toEqual("QAAAADVhY2Y3N2M4MDQ3NWQ1Y2NkMzEwODI3ZTNiYTQ2MGQ4MzEyYmUwN2ZlMjRiNjg4OTJjN2Q4ZmI2ZDdlNDkxMzIA9gAyV7f0vO0NkNKZ/i9QeY4Psrqk0U07GW2Se5FE50ABAAAAAAAAAAwAAAB3cmFwLnRlc3RuZXTK09/sPqo/tovZAodbjoanaXDPd73Gh9LyGzXoqsRZdQEAAAACDAAAAG5lYXJfZGVwb3NpdAIAAAB7fQAAAAAAAAAAAABAsrrJ4BkeAgAAAAAAAADzpEm3+vL2aF6b6/qyg2la7yxvEqQ5P5aUqdkQJ77V+6VP6kpBJmjX8VEGdDdhiT39REe2MEiuzPxpQCetI9QN")
+        expect(result).toEqual("QAAAADU4MDY0YmU0YWI2YTAwOTdiNmM3OTRmNWNmMTk4M2VmMzZjNjBlYTgyYzE3ZTg0ODgxMDc0MzNmNjM4NmI1YmEAWAZL5KtqAJe2x5T1zxmD7zbGDqgsF+hIgQdDP2OGtboBAAAAAAAAAAwAAAB3cmFwLnRlc3RuZXTK09/sPqo/tovZAodbjoanaXDPd73Gh9LyGzXoqsRZdQEAAAACDAAAAG5lYXJfZGVwb3NpdAIAAAB7fQAAAAAAAAAAAABAsrrJ4BkeAgAAAAAAAABFmzOItOHLq4U4EAuG6qEBzulHKga1pcYZU+VGZ19UjAFwGCYWy/J7OPK2aJ4f1apPwpkN5AKZWrBRvN6Khr8D")
     });
 
     test("wallet-AddKey", async () => {
         let wallet = new NearWallet();
-        // let randPrv = await wallet.getRandomPrivateKey()
-        // console.info("randPrv",randPrv);
-        // let randPub = await wallet.getNewAddress({privateKey: randPrv})
-        // console.info("randPub",randPub);
         let randPub = {
             address: '13f7a5dfd91f5bc206d949b3222429487119d6ca0bcdb6d4bb6715cd40701a15',
             publicKey: 'ed25519:2LwmWPaqQ5964ecdn8a2kJW8QRUmt1CUvJMJgwhCC1ji'
@@ -460,7 +456,6 @@ describe("near", () => {
         console.info(privateKey);
         let addr = await wallet.getNewAddress({privateKey: privateKey})
         console.log('addr', addr)
-        let accessKey: AccessKey = fullAccessKey()
         let param: SignTxParams = {
             privateKey: privateKey,
             data: {
@@ -469,7 +464,10 @@ describe("near", () => {
                 nonce: '111917601000112',
                 receiverId: addr.address,
                 publicKey: randPub.publicKey,
-                accessKey: accessKey,
+                accessKeyUseFull: true,
+                accessKeyReceiverId: '',
+                accessKeyMethodNames: [],
+                accessKeyAllowance: '',
             }
         }
         let result = await wallet.signTransaction(param)
@@ -506,7 +504,7 @@ describe("near", () => {
     test("wallet-DAppTxs", async () => {
         let wallet = new NearWallet();
         let param: SignTxParams = {
-            privateKey: "ed25519:4yNHZKYxR4bk76CZ3MFQxpMeavbPTJVuGNrPZSBp5nzZTc64w35xmrGggbTWLHM1sUJCN5moESgsZKbDVDCj",
+            privateKey: "ed25519:5Y5W9HDZLWYi2vq2JFvwLNBue5z2RDyivs44T372T2XsxJwSttPzpuhwbnZnYyq7P7Ynb4GDdEQiQxHgzTLoLMUM",
             data: {
                 blockHash: "EekjoegUYx2iibbWDuUSQENYCvUGkxj2Et1hTonbwBuN",
                 type: NearTypes.DAppTxs,
@@ -525,7 +523,7 @@ describe("near", () => {
         }
         let result = await wallet.signTransaction(param)
         console.info(result)
-        expect(result).toEqual(["QAAAADVhY2Y3N2M4MDQ3NWQ1Y2NkMzEwODI3ZTNiYTQ2MGQ4MzEyYmUwN2ZlMjRiNjg4OTJjN2Q4ZmI2ZDdlNDkxMzIA9gAyV7f0vO0NkNKZ/i9QeY4Psrqk0U07GW2Se5FE50ABAAAAAAAAAAwAAAB3cmFwLnRlc3RuZXTK09/sPqo/tovZAodbjoanaXDPd73Gh9LyGzXoqsRZdQEAAAACDAAAAG5lYXJfZGVwb3NpdAIAAAB7fQAAAAAAAAAAAABAsrrJ4BkeAgAAAAAAAADzpEm3+vL2aF6b6/qyg2la7yxvEqQ5P5aUqdkQJ77V+6VP6kpBJmjX8VEGdDdhiT39REe2MEiuzPxpQCetI9QN",])
+        expect(result).toEqual(["QAAAADU4MDY0YmU0YWI2YTAwOTdiNmM3OTRmNWNmMTk4M2VmMzZjNjBlYTgyYzE3ZTg0ODgxMDc0MzNmNjM4NmI1YmEAWAZL5KtqAJe2x5T1zxmD7zbGDqgsF+hIgQdDP2OGtboBAAAAAAAAAAwAAAB3cmFwLnRlc3RuZXTK09/sPqo/tovZAodbjoanaXDPd73Gh9LyGzXoqsRZdQEAAAACDAAAAG5lYXJfZGVwb3NpdAIAAAB7fQAAAAAAAAAAAABAsrrJ4BkeAgAAAAAAAABFmzOItOHLq4U4EAuG6qEBzulHKga1pcYZU+VGZ19UjAFwGCYWy/J7OPK2aJ4f1apPwpkN5AKZWrBRvN6Khr8D",])
     });
 
     test("createAccount", async () => {

@@ -1,4 +1,5 @@
-import { base, signUtil } from "@okxweb3/crypto-lib";
+import { base } from "@okxweb3/coin-base";
+import { signUtil } from "@okxweb3/crypto-lib";
 import { decodeAddress } from "./lib/address";
 
 type TransactionInput = {
