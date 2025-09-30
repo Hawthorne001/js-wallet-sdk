@@ -1,5 +1,5 @@
 import {
-    BaseWallet, buildCommonSignMsg,
+    BaseWallet,
     CalcTxHashError,
     CalcTxHashParams,
     DerivePriKeyParams,
@@ -7,10 +7,15 @@ import {
     GetDerivedPathParam,
     NewAddressData,
     NewAddressError,
-    NewAddressParams, SignCommonMsgParams,
+    NewAddressParams,
+    SignCommonMsgParams,
     SignTxError,
-    SignTxParams, SignType,
-    ValidAddressParams, ValidPrivateKeyData, ValidPrivateKeyParams,
+    SignTxParams,
+    SignType,
+    ValidAddressParams,
+    ValidPrivateKeyData,
+    ValidPrivateKeyParams,
+    base,
 } from "@okxweb3/coin-base";
 import {
     checkSeed,
@@ -18,114 +23,40 @@ import {
     getAddressBySeed,
     getPubKeyBySeed,
     getVenomAddressBySeed,
+    getWalletContract,
     parseAddress,
 } from "./api/address";
-import {jettonTransfer, JettonTxData, signMultiTransaction, transfer, TxData, venomTransfer} from "./api/transaction";
-// import {mnemonicToSeed, validateMnemonic} from "./tonweb-mnemonic/src";
-import {mnemonicToSeed, validateMnemonic} from "tonweb-mnemonic";
-import {base, signUtil} from "@okxweb3/crypto-lib";
-import {WalletContractV4} from "./ton/wallets/WalletContractV4";
-import {Address, beginCell, Cell, Contract, storeStateInit} from "./ton-core";
-import nacl from "tweetnacl";
-import {buildNftTransferPayload, buildNotcoinVoucherExchange} from "./api";
+import {
+    addExtension,
+    jettonMultiTransfer,
+    jettonTransfer,
+    // relayTransfer,
+    removeExtension,
+    setSignatureAuth,
+    signMultiTransaction,
+    transfer,
+    venomTransfer
+} from "./api/transaction";
+import {buildNftTransferPayload, buildNotcoinVoucherExchange} from "./api/nfts";
 import {NFT_TRANSFER_TONCOIN_AMOUNT, NOTCOIN_VOUCHERS_ADDRESS} from "./api/constant";
-
-export type ValidateMnemonicParams = {
-    mnemonicArray: string[],
-    password: string
-}
-
-export type SignTonProofParams = {
-    privateKey: string,
-    walletAddress: string,
-    tonProofItem: string,
-    messageAction: string,
-    messageSalt: string,
-    proof: ApiTonConnectProof,
-}
-
-export type GetWalletInformationParams = {
-    workChain: number,
-    publicKey?: string,
-    privateKey?: string,
-    walletVersion?: string
-}
-
-export interface ApiTonConnectProof {
-    timestamp: number;
-    domain: string;
-    payload: string;
-}
-
-export type TonTransferParam = {
-    toAddress: string;
-    amount: string;
-    payload?: string;
-    stateInit?: string; //base64
-    isBase64Payload?: boolean;
-}
-
-export type SignMultiTransactionParams = {
-    messages: TonTransferParam[],
-    seqno: number,
-    expireAt?: number,
-    workchain?: number
-}
-
-export interface TransactionPayloadMessage {
-    address: string;
-    amount: string;
-    payload?: string;
-    stateInit?: string;
-    isBase64Payload?: boolean;
-}
-
-export interface TransactionPayload {
-    valid_until?: number;
-    messages: TransactionPayloadMessage[];
-    seqno: number,
-    network?: string;
-    from?: string;
-    publicKey?: string;
-}
-
-export interface ApiNft {
-    index: number;
-    name?: string;
-    address: string;
-    thumbnail: string;
-    image: string;
-    description?: string;
-    collectionName?: string;
-    collectionAddress?: string;
-    isOnSale: boolean;
-    isHidden?: boolean;
-    isOnFragment?: boolean;
-    isScam?: boolean;
-}
-
-export type SignMultiTransactionForNFTParams = {
-    fromNFTAddress: string;
-    nftAddresses: string[];
-    toAddress: string;
-    comment?: string;
-    nfts?: ApiNft[];
-    seqno: number,
-    expireAt?: number,
-    workchain?: number
-}
-
-export type BuildNotcoinVoucherExchangeParams = {
-    fromNFTAddress: string,
-    nftAddress: string,
-    nftIndex: number,
-}
-
-export type BuildNftTransferPayloadParams = {
-    fromNFTAddress: string,
-    nftAddress: string,
-    comment: string,
-}
+import {
+    BuildNftTransferPayloadParams,
+    BuildNotcoinVoucherExchangeParams,
+    ExtensionParam,
+    GetWalletInformationParams,
+    JettonMultiTxData,
+    JettonTxData,
+    SignMultiTransactionForNFTParams,
+    SignTonProofParams,
+    TransactionPayload,
+    TxData,
+    ValidateMnemonicParams
+} from "./api/types";
+import {mnemonicToSeed, validateMnemonic} from "tonweb-mnemonic";
+import {signUtil} from "@okxweb3/crypto-lib";
+import {WalletContractV4, WalletContractV5R1} from "./ton";
+import {Address, beginCell, Cell, Contract, storeStateInit} from "./lib/ton-core";
+import nacl from "tweetnacl";
 
 
 function checkPrivateKey(privateKeyHex: string):boolean{
@@ -170,7 +101,7 @@ export class TonWallet extends BaseWallet {
                 return Promise.reject(NewAddressError);
             }
             const data: NewAddressData = {
-                address: getAddressBySeed(param.privateKey.toLowerCase()),
+                address: getAddressBySeed(param.privateKey.toLowerCase(), param.addressType),
                 publicKey: getPubKeyBySeed(param.privateKey.toLowerCase()),
             };
             return Promise.resolve(data);
@@ -242,6 +173,22 @@ export class TonWallet extends BaseWallet {
         }
     }
 
+    async signJettonMultiTransaction(param: SignTxParams): Promise<any> {
+        try {
+            return jettonMultiTransfer(param.data as JettonMultiTxData, param.privateKey);
+        } catch (e) {
+            return Promise.reject(SignTxError);
+        }
+    }
+
+    // async signRelayTransaction(param: SignTxParams): Promise<any> {
+    //     try {
+    //         return relayTransfer(param.data as TxData, param.privateKey);
+    //     } catch (e) {
+    //         return Promise.reject(SignTxError);
+    //     }
+    // }
+
     async getWalletInformation(params: GetWalletInformationParams) {
         const {workChain, publicKey, privateKey, walletVersion} = params;
         //const {secretKey, publicKey} = signUtil.ed25519.fromSeed(base.fromHex(seed));
@@ -256,6 +203,8 @@ export class TonWallet extends BaseWallet {
         let wallet: Contract;
         if (!walletVersion || walletVersion == "v4r2" || walletVersion == "v4R2") {
             wallet = WalletContractV4.create({workchain: chain, publicKey: pub});
+        } else if (walletVersion == "v5r1" || walletVersion == "v5R1") {
+            wallet = WalletContractV5R1.create({workchain: chain, publicKey: pub});
         } else {
             // todo
         }
@@ -269,6 +218,7 @@ export class TonWallet extends BaseWallet {
             .toString('base64');
 
         return {
+            publicKey: pub.toString('hex'),
             initCode: initCode,
             initData: initData,
             walletStateInit: walletStateInit,
@@ -362,8 +312,13 @@ export class TonWallet extends BaseWallet {
 
     async signMultiTransaction(param: SignTxParams) {
         const txPayload = param.data as TransactionPayload;
-        if (txPayload.messages.length > 4) {
-            throw new Error('Payload contains more than 4 messages, which exceeds limit');
+        const wallet = getWalletContract(txPayload.walletVersion, param.data.publicKey || base.fromHex(getPubKeyBySeed(param.privateKey)));
+
+        if (wallet instanceof WalletContractV4 && txPayload.messages.length > 4) {
+            throw new Error('Payload contains more than 4 messages, which exceeds limit of WalletContractV4');
+        }
+        if (wallet instanceof WalletContractV5R1 && txPayload.messages.length > 255) {
+            throw new Error('Payload contains more than 255 messages, which exceeds limit of WalletContractV5');
         }
         let validUntil = txPayload.valid_until;
         if (validUntil && validUntil > 10 ** 10) {
@@ -374,7 +329,7 @@ export class TonWallet extends BaseWallet {
             throw new Error('the confirmation timeout has expired');
         }
         const tonTransferParams: any = []
-        txPayload.messages.map(m => {
+        txPayload.messages.forEach(m => {
             tonTransferParams.push({
                 toAddress: m.address,
                 amount: BigInt(m.amount),
@@ -384,7 +339,7 @@ export class TonWallet extends BaseWallet {
             });
         });
         const network = txPayload.network === "1" || txPayload.network === "testnet" ? 1 : 0
-        return await signMultiTransaction(param.privateKey, tonTransferParams, txPayload.seqno, validUntil, network, txPayload.publicKey);
+        return await signMultiTransaction(param.privateKey, tonTransferParams, txPayload.seqno, validUntil, network, txPayload.publicKey, undefined, txPayload.walletVersion);
     }
 
     async simulateMultiTransaction(param: SignTxParams) {
@@ -438,6 +393,20 @@ export class TonWallet extends BaseWallet {
     async buildNftTransferPayload(params: BuildNftTransferPayloadParams) {
         const payload = buildNftTransferPayload(params.fromNFTAddress, params.nftAddress, params.comment)
         return Promise.resolve(payload.toBoc().toString('base64'));
+    }
+
+    async addExtension(param: SignTxParams)  {
+        const res = addExtension(param.data as ExtensionParam, param.privateKey)
+        return Promise.resolve(res)
+    }
+    async removeExtension(param: SignTxParams)  {
+        const res = removeExtension(param.data as ExtensionParam, param.privateKey)
+        return Promise.resolve(res)
+    }
+
+    async setSignatureAuth(param: ExtensionParam) {
+        const res = setSignatureAuth(param)
+        return Promise.resolve(res)
     }
 }
 

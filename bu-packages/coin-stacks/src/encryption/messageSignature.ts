@@ -5,7 +5,7 @@
  * https://github.com/hirosystems/stacks.js/blob/main/LICENSE
  * */
 
-import { base } from '@okxweb3/crypto-lib';
+import { base } from '@okxweb3/coin-base';
 import { concatBytes, utf8ToBytes } from '..//common';
 import { decode, encode, encodingLength } from './varuint';
 

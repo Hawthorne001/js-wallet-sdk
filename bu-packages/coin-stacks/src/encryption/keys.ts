@@ -5,7 +5,8 @@
  * https://github.com/hirosystems/stacks.js/blob/main/LICENSE
  * */
 
-import { base, secp256k1 } from '@okxweb3/crypto-lib';
+import { secp256k1 } from '@okxweb3/crypto-lib';
+import { base } from '@okxweb3/coin-base';
 const nobleGetPublicKey = secp256k1.getPublicKey
 const signSync = secp256k1.signSync
 const utils = secp256k1.utils

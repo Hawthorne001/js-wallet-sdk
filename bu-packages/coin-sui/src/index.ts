@@ -26,7 +26,7 @@ export {fromB64, toB64} from './bcs';
 export {is, assert} from 'superstruct';
 
 
-import {base} from '@okxweb3/crypto-lib';
+import {base} from '@okxweb3/coin-base';
 import {Ed25519PublicKey} from "./cryptography/ed25519-publickey";
 import {SIGNATURE_FLAG_TO_SCHEME, SIGNATURE_SCHEME_TO_FLAG, SignatureScheme} from "./cryptography/signature";
 import {LEGACY_PRIVATE_KEY_SIZE, PRIVATE_KEY_SIZE} from "./cryptography/keypair";

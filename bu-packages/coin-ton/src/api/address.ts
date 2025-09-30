@@ -1,9 +1,28 @@
-import {base, signUtil} from "@okxweb3/crypto-lib";
+import {signUtil} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
 import {VenomWalletV3} from "../ton";
-import {Address} from "../ton-core";
-import {WalletContractV4} from "../ton/wallets/WalletContractV4";
-
+import {Address} from "../lib/ton-core";
+import {WalletContractV4, WalletContractV5R1} from "../ton";
+import {WalletContract} from "./types";
 export type ApiNetwork = 'mainnet' | 'testnet';
+
+
+export function getWalletContract(walletVersion: string | undefined, publicK: Uint8Array | string, workchain?: number): WalletContract {
+    if (typeof(publicK) == 'string') {
+        publicK = base.fromHex(publicK);
+    }
+    workchain = workchain || 0
+
+    if (!walletVersion || walletVersion == "v4r2" || walletVersion == "v4R2") {
+        return WalletContractV4.create({workchain: workchain, publicKey: Buffer.from(publicK)});
+    }
+
+    if (walletVersion == "v5r1" || walletVersion == "v5R1") {
+        return WalletContractV5R1.create({workchain: workchain, publicKey: Buffer.from(publicK)});
+    }
+
+    throw new Error("invalid wallet version");
+}
 
 export function getPubKeyBySeed(seed: string) {
     checkSeed(seed);
@@ -21,10 +40,10 @@ export function checkSeed(seed: string) {
     }
 }
 
-export function getAddressBySeed(seed: string): string {
+export function getAddressBySeed(seed: string, version?: string): string {
     checkSeed(seed);
     const {publicKey} = signUtil.ed25519.fromSeed(base.fromHex(seed));
-    const wallet = WalletContractV4.create({workchain: 0, publicKey: Buffer.from(publicKey)});
+    const wallet = getWalletContract(version, publicKey)
     return wallet.address.toString({bounceable: false});
 }
 

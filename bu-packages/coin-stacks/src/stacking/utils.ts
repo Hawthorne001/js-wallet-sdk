@@ -5,7 +5,7 @@
  * https://github.com/hirosystems/stacks.js/blob/main/LICENSE
  * */
 
-import { base } from '@okxweb3/crypto-lib';
+import { base } from '@okxweb3/coin-base';
 import { bigIntToBytes } from '../common';
 import { base58CheckDecode, base58CheckEncode } from '../encryption';
 import {
@@ -77,7 +77,7 @@ function nativeAddressToSegwitVersion(
 }
 
 function bech32Decode(btcAddress: string) {
-  const { words: bech32Words } = base.bech32.decode(btcAddress);
+  const { words: bech32Words } = base.bech32.decode(btcAddress as any);
   const witnessVersion = bech32Words[0];
 
   if (witnessVersion > 0)
@@ -90,7 +90,7 @@ function bech32Decode(btcAddress: string) {
 }
 
 function bech32MDecode(btcAddress: string) {
-  const { words: bech32MWords } = base.bech32m.decode(btcAddress);
+  const { words: bech32MWords } = base.bech32m.decode(btcAddress as any);
   const witnessVersion = bech32MWords[0];
 
   if (witnessVersion == 0)

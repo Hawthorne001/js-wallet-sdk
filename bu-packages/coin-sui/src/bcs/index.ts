@@ -13,7 +13,7 @@
 
 import { toB64, fromB64 } from "./b64";
 import { toHEX, fromHEX } from "./hex";
-import {base} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
 
 const SUI_ADDRESS_LENGTH = 32;
 

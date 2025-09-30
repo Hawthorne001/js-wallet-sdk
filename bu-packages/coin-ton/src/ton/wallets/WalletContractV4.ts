@@ -12,13 +12,13 @@ import {
     Cell,
     Contract,
     contractAddress,
-    ContractProvider, external,
+    ContractProvider,
     internal,
     MessageRelaxed,
     Sender,
-    SendMode, storeMessage
-} from "../../ton-core";
-import {Maybe} from "../utils/maybe";
+    SendMode,
+} from "../../lib/ton-core";
+import {Maybe} from "../../lib/ton-core/utils/maybe";
 import {createWalletTransferV4} from "./signing/createWalletTransfer";
 
 export class WalletContractV4 implements Contract {
@@ -113,11 +113,6 @@ export class WalletContractV4 implements Contract {
         if (args.sendMode !== null && args.sendMode !== undefined) {
             sendMode = args.sendMode;
         }
-        let isForSimulate: boolean = false;
-        if (!args.secretKey || args.secretKey.length == 0) {
-            args.secretKey = Buffer.alloc(64); // fake seed for simulate
-            isForSimulate = true;
-        }
         const body = createWalletTransferV4({
             seqno: args.seqno,
             sendMode,
@@ -126,19 +121,7 @@ export class WalletContractV4 implements Contract {
             timeout: args.timeout,
             walletId: this.walletId
         });
-        if (isForSimulate) {
-            return body; // fake seed for simulate
-        }
-        // external message for send
-        const externalMessage = external({
-            to: this.address,
-            init: args.seqno === 0 ? {code: this.init.code, data: this.init.data} : undefined,
-            body
-        });
-
-        return beginCell()
-            .store(storeMessage(externalMessage))
-            .endCell();
+        return body
     }
 
     /**

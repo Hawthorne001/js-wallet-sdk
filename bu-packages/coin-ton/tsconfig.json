@@ -2,7 +2,6 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "allowJs": true,
-    // Allows javascript files to be compiled
     "resolveJsonModule": true,
     "outDir": "./dist",
     "rootDir": "./src",
@@ -17,4 +16,3 @@
     "**/node_modules"
   ]
 }
-

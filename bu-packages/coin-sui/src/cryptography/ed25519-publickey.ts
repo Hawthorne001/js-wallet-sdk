@@ -1,6 +1,6 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
-import { base } from '@okxweb3/crypto-lib';
+import { base } from '@okxweb3/coin-base';
 import { fromB64, toB64 } from '../bcs';
 import { bytesEqual, PublicKeyInitData } from './publickey';
 import { SIGNATURE_SCHEME_TO_FLAG } from './signature';

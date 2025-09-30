@@ -10,31 +10,34 @@ import {
     SignTxParams,
     ValidAddressData,
     ValidAddressParams, ValidPrivateKeyData, ValidPrivateKeyParams,
-    VerifyMessageParams
+    VerifyMessageParams,
+    base,
 } from '@okxweb3/coin-base';
-import {base, bip32, bip39} from '@okxweb3/crypto-lib';
+import {bip32, bip39} from '@okxweb3/crypto-lib';
 
 
 import {
     CalculateContractAddressFromHash,
-    CallV2, computeHashOnElements,
+    ContractCall, computeHashOnElements,
     constants,
     CreateContractCall,
     CreateMultiContractCall,
     CreateSignedDeployAccountTx,
     CreateTransferTx,
     DeployAccountContractPayload,
-    ec, GetRandomPrivateKey,
+    ec,
+    GetRandomPrivateKey,
     modPrivateKey,
     signMessage,
     signMessageWithTypeData,
-    typedData,
+    TypedData,
     validateAndParseAddress,
-    verifyMessage
+    verifyMessage,
+    WeierstrassSignatureType
 } from "./index";
-import {encodeShortString} from "./utils/shortString";
-import {starkCurve} from "./utils/ec";
-import {BigNumberish, hexToDecimalString} from "./utils/num";
+import {hexToDecimalString} from "./lib/utils/num";
+import {estimateFeeToBounds} from "./lib/utils/stark";
+import {ZERO} from "./lib/global/constants";
 
 export type StarknetTransactionType =
     "transfer"
@@ -42,10 +45,52 @@ export type StarknetTransactionType =
     | "contract_call"
     | "multi_contract_call"
 
+export type StarknetResourceBounds = {
+    l1_gas: {
+        max_amount: string;
+        max_price_per_unit: string;
+    };
+    l2_gas: {
+        max_amount: string;
+        max_price_per_unit: string;
+    };
+    l1_data_gas: {
+        max_amount: string;
+        max_price_per_unit: string;
+    }
+}
+
+export type StarknetResourceBoundsRPC = {
+    l1_gas_consumed: string,
+    l1_gas_price: string,
+    l1_data_gas_consumed: string,
+    l1_data_gas_price: string,
+    l2_gas_consumed: string,
+    l2_gas_price: string,
+}
+
+export function resourceBoundsFromRPC(rb: StarknetResourceBoundsRPC): StarknetResourceBounds {
+    const toHex = (val: string) => '0x' + BigInt(val).toString(16);
+    return {
+        l1_gas: {
+            max_amount: toHex(rb.l1_gas_consumed),
+            max_price_per_unit: toHex(rb.l1_gas_price),
+        },
+        l1_data_gas: {
+            max_amount: toHex(rb.l1_data_gas_consumed),
+            max_price_per_unit: toHex(rb.l1_data_gas_price),
+        },
+        l2_gas: {
+            max_amount: toHex(rb.l2_gas_consumed),
+            max_price_per_unit: toHex(rb.l2_gas_price),
+        },
+    };
+}
+
 export type StarknetSignData = {
     type: StarknetTransactionType
     nonce: string;
-    maxFee: string;
+    resourceBounds?:  StarknetResourceBoundsRPC;
     chainId?: constants.StarknetChainId;
     transferData?: {
         contractAddress: string
@@ -62,7 +107,7 @@ export type StarknetSignData = {
     }
     multiContractCallData?: {
         from: string
-        calls: CallV2[]
+        calls: ContractCall[]
     }
 }
 
@@ -102,6 +147,30 @@ export class StarknetWallet extends BaseWallet {
     }
 
     async getDerivedPrivateKey(param: DerivePriKeyParams): Promise<any> {
+        return bip39.mnemonicToSeedV2(param.mnemonic)
+            .then((masterSeed: Buffer) => {
+                // Derived ETH seed
+                let ethKey = bip32.fromSeedV2(masterSeed, "m/44'/60'/0'/0/0");
+                if (!ethKey.privateKey) {
+                    return Promise.reject(GenPrivateKeyError);
+                }
+                let starkKey = Buffer.from(ethKey.privateKey);
+                // Derived StarkNet seed
+                let childKey = bip32.fromSeedV2(starkKey, param.hdPath)
+                if (childKey.privateKey) {
+                    let hdKey = base.toHex(childKey.privateKey);
+                    let privateKey = ec.starkCurve.grindKey(hdKey)
+                    return Promise.resolve(`0x${privateKey}`);
+                } else {
+                    return Promise.reject(GenPrivateKeyError);
+                }
+            }).catch((e) => {
+                return Promise.reject(GenPrivateKeyError);
+            });
+    }
+
+    // This is old implementation, please use getDerivedPrivateKey instead.
+    async getDerivedPrivateKeyOld(param: DerivePriKeyParams): Promise<any> {
         return bip39.mnemonicToSeed(param.mnemonic)
             .then((masterSeed: Buffer) => {
                 // Derived ETH seed
@@ -153,12 +222,16 @@ export class StarknetWallet extends BaseWallet {
     async signTransaction(param: SignTxParams): Promise<any> {
         try {
             const data: StarknetSignData = param.data;
-            if (data.nonce === undefined || data.maxFee === undefined) {
+            if (data.nonce === undefined) {
                 return Promise.reject(SignTxError);
             }
             const nonce = data.nonce;
-            const max_fee = data.maxFee;
             const chain_id = data.chainId || constants.StarknetChainId.SN_MAIN;
+            let resourceBounds = estimateFeeToBounds(ZERO)
+            if (data.resourceBounds) {
+                resourceBounds = resourceBoundsFromRPC(data.resourceBounds)
+            }
+
             const pri = modPrivateKey(param.privateKey);
 
             if (data.type == 'transfer' && data.transferData !== undefined) {
@@ -166,22 +239,22 @@ export class StarknetWallet extends BaseWallet {
                 const from = data.transferData.from;
                 const to = data.transferData.to;
                 const amount = data.transferData.amount;
-                const tx = await CreateTransferTx(contractAddress, from, to, amount, nonce, max_fee, chain_id, pri);
+                const tx = await CreateTransferTx(contractAddress, from, to, amount, nonce, resourceBounds, chain_id, pri);
                 return Promise.resolve(tx)
             } else if (data.type == 'deploy_account') {
-                const tx = await CreateSignedDeployAccountTx(nonce, max_fee, chain_id, pri);
+                const tx = await CreateSignedDeployAccountTx(resourceBounds, chain_id, pri);
                 return Promise.resolve(tx)
             } else if (data.type == 'contract_call' && data.contractCallData !== undefined) {
                 const contractAddress = data.contractCallData.contractAddress;
                 const from = data.contractCallData.from;
                 const functionName = data.contractCallData.functionName;
                 const callData = data.contractCallData.callData;
-                const tx = await CreateContractCall(contractAddress, from, functionName, callData, nonce, max_fee, chain_id, pri);
+                const tx = await CreateContractCall(contractAddress, from, functionName, callData, nonce, resourceBounds, chain_id, pri);
                 return Promise.resolve(tx)
             } else if (data.type == 'multi_contract_call' && data.multiContractCallData !== undefined) {
                 const from = data.multiContractCallData.from;
                 const calls = data.multiContractCallData.calls;
-                const tx = CreateMultiContractCall(from, calls, nonce, max_fee, chain_id, pri);
+                const tx = CreateMultiContractCall(from, calls, nonce, resourceBounds, chain_id, pri);
                 return Promise.resolve(tx)
             }
             return Promise.reject(SignTxError);
@@ -212,13 +285,33 @@ export class StarknetWallet extends BaseWallet {
             if (typeof param.data.message === "string") {
                 const msg = param.data.message;
                 if (msg.startsWith("0x")) {
-                    const signature = signMessage(msg, pri);
-                    return Promise.resolve(signature);
+                    const signature = await signMessage(msg, pri);
+                    const sig = signature.signature;
+                    const sigSES = {
+                        signature: {
+                            r: sig.r,
+                            s: sig.s,
+                            recovery: sig.recovery,
+                        },
+                        hash: signature.hash,
+                        publicKey: signature.publicKey,
+                    };
+                    return Promise.resolve(sigSES);
                 }
             } else {
-                const typedDataValidate: typedData.TypedData = param.data.message;
+                const typedDataValidate: TypedData = param.data.message;
                 const signature = await signMessageWithTypeData(typedDataValidate, pri);
-                return Promise.resolve(signature);
+                const sig = signature.signature as WeierstrassSignatureType;
+                const sigSES = {
+                    signature: {
+                        r: sig.r,
+                        s: sig.s,
+                        recovery: sig.recovery,
+                    },
+                    hash: signature.hash,
+                    publicKey: signature.publicKey,
+                };
+                return Promise.resolve(sigSES);
             }
         } catch (e) {
             return Promise.reject(SignTxError + ":" + e);
@@ -243,8 +336,8 @@ export class StarknetWallet extends BaseWallet {
             hash = hash.substring(2)
         }
         const pri = modPrivateKey(params.privateKey);
-        let sig = starkCurve.sign(hash, pri);
-        let point = starkCurve.ProjectivePoint.fromHex(base.toHex(starkCurve.getPublicKey(pri)));
+        let sig = ec.starkCurve.sign(hash, pri);
+        let point = ec.starkCurve.ProjectivePoint.fromHex(base.toHex(ec.starkCurve.getPublicKey(pri)));
         let res = {publicKey:point.x.toString(16),publicKeyY:point.y.toString(16),signedDataR:sig.r.toString(16),signedDataS:sig.s.toString(16)};
         return Promise.resolve(base.toHex(base.toUtf8(jsonStringifyUniform(res))));
     }

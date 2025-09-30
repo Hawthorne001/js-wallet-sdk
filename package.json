@@ -39,7 +39,11 @@
     "bu-*/coin-kaspa",
     "bu-*/coin-near",
     "bu-*/coin-nostrassets",
-    "bu-*/coin-solana"
+    "bu-*/coin-solana",
+    "bu-*/coin-stacks",
+    "bu-*/coin-starknet",
+    "bu-*/coin-sui",
+    "bu-*/coin-xrp"
   ],
   "license": "MIT",
   "files": [

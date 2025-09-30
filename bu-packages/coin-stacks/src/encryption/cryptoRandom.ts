@@ -5,7 +5,7 @@
  * https://github.com/hirosystems/stacks.js/blob/main/LICENSE
  * */
 
-import { base } from '@okxweb3/crypto-lib';
+import { base } from '@okxweb3/coin-base';
 
 /**
  * Reexports @noble/secp256k1's randombytes

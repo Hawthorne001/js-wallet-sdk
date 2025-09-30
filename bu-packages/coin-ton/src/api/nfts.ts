@@ -1,4 +1,4 @@
-import {Address, Builder, Cell} from "../ton-core";
+import {Address, Builder, Cell} from "../lib/ton-core";
 import {NFT_TRANSFER_TONCOIN_FORWARD_AMOUNT, NOTCOIN_EXCHANGERS, NOTCOIN_FORWARD_TON_AMOUNT} from "./constant";
 import {generateQueryId} from "./index";
 

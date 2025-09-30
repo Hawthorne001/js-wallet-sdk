@@ -5,7 +5,7 @@
  * https://github.com/hirosystems/stacks.js/blob/main/LICENSE
  * */
 
-import {base, signUtil} from '@okxweb3/crypto-lib';
+import {base} from '@okxweb3/coin-base';
 import {bytesToHex, concatArray, concatBytes, hexToBytes, utf8ToBytes, with0x} from '../common';
 import { c32addressDecode } from '../c32check';
 // @ts-ignore

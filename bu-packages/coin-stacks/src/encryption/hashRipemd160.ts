@@ -5,7 +5,7 @@
  * https://github.com/hirosystems/stacks.js/blob/main/LICENSE
  * */
 
-import { base } from '@okxweb3/crypto-lib';
+import { base } from '@okxweb3/coin-base';
 
 export function hashRipemd160(data: Uint8Array) {
   return base.ripemd160(data);

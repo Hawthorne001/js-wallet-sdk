@@ -16,8 +16,8 @@ import {
     SendMode,
     storeMessage,
     storeMessageRelaxed,
-} from "../../ton-core";
-import { Maybe } from "../../ton-core/utils/maybe";
+} from "../../lib/ton-core";
+import { Maybe } from "../../lib/ton-core/utils/maybe";
 import { signUtil } from "@okxweb3/crypto-lib";
 
 export class VenomWalletV3 {

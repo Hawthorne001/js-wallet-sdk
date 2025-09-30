@@ -8,7 +8,7 @@ import {
 } from '../cryptography/signature';
 import { SuiAddress } from '../types';
 import {SignerWithProvider} from "./signer-with-provider";
-import {base} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
 
 export class RawSigner extends SignerWithProvider {
   private readonly keypair: Keypair;

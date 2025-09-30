@@ -5,7 +5,7 @@
  * https://github.com/hirosystems/stacks.js/blob/main/LICENSE
  * */
 
-import {BN} from "@okxweb3/crypto-lib"
+import {BN} from "@okxweb3/coin-base";
 export type IntegerType = number | string | bigint | Uint8Array | BN;
 
 export function intToBytes(value: IntegerType, signed: boolean, byteLength: number): Uint8Array {
@@ -128,7 +128,7 @@ export function toTwos(value: bigint, width: bigint): bigint {
     value < -(BigInt(1) << (width - BigInt(1))) ||
     (BigInt(1) << (width - BigInt(1))) - BigInt(1) < value
   ) {
-    throw `Unable to represent integer in width: ${width}`;
+    throw new Error(`Unable to represent integer in width: ${width}`);
   }
   if (value >= BigInt(0)) {
     return BigInt(value);

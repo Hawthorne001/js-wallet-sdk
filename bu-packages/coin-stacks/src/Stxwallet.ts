@@ -1,4 +1,4 @@
-import {base, bip32, bip39} from '@okxweb3/crypto-lib'
+import {bip32, bip39} from '@okxweb3/crypto-lib'
 import {
     DerivePriKeyParams,
     GetDerivedPathParam,
@@ -12,6 +12,7 @@ import {
     VerifyMessageParams,
     BaseWallet,
     secp256k1SignTest,
+    base,
     GenPrivateKeyError,
     GetPayLoadError,
     NewAddressError,
@@ -143,9 +144,9 @@ export class StxWallet extends BaseWallet {
     }
 
     getDerivedPrivateKey(param: DerivePriKeyParams): Promise<any> {
-        return bip39.mnemonicToSeed(param.mnemonic)
+        return bip39.mnemonicToSeedV2(param.mnemonic)
             .then(masterSeed => {
-                let childKey = bip32.fromSeed(masterSeed).derivePath(param.hdPath);
+                let childKey = bip32.fromSeedV2(masterSeed, param.hdPath);
                 if (!childKey.privateKey) {
                     return Promise.reject(GenPrivateKeyError);
                 }

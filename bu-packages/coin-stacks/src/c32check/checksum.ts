@@ -5,7 +5,7 @@
  *
  * https://github.com/stacks-network/c32check/blob/master/LICENSE
  * */
-import { base } from '@okxweb3/crypto-lib';
+import { base } from '@okxweb3/coin-base';
 import { bytesToHex, hexToBytes } from '../common';
 import { c32, c32decode, c32encode, c32normalize } from './encoding';
 

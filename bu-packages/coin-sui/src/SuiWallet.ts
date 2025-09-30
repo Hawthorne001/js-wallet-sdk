@@ -12,9 +12,10 @@ import {
     GenPrivateKeyError,
     NewAddressError,
     SignMsgError,
+    base,
     SignTxError, ValidPrivateKeyParams, ValidPrivateKeyData, SignCommonMsgParams, buildCommonSignMsg, SignType
 } from '@okxweb3/coin-base';
-import {base,signUtil} from '@okxweb3/crypto-lib';
+import {signUtil} from '@okxweb3/crypto-lib';
 import {
     SuiObjectRef,
     Ed25519Keypair,
@@ -55,7 +56,7 @@ export type SuiSignData = {
 
 export class SuiWallet extends BaseWallet {
     async getDerivedPath(param: GetDerivedPathParam): Promise<any> {
-        return `m/44'/784'/0'/0'/${param.index}'`;
+        return `m/44'/784'/${param.index}'/0'/0'`;
     }
 
     async getRandomPrivateKey(): Promise<any> {
@@ -105,7 +106,8 @@ export class SuiWallet extends BaseWallet {
 
     async signCommonMsg(params: SignCommonMsgParams): Promise<any> {
         const pri = tryDecodeSuiPrivateKey(params.privateKey)
-        return super.signCommonMsg({privateKey:params.privateKey,privateKeyHex:pri, message:params.message, signType:SignType.ED25519})
+        return super.signCommonMsg({privateKey:params.privateKey,privateKeyHex:pri,
+            message:params.message, signType:SignType.ED25519, chainName:"sui"})
     }
 
 

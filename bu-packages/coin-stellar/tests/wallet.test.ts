@@ -1,6 +1,5 @@
-import {StellarTxParam, StellarWallet} from "../src";
-import {Account, Asset, Networks, Operation, xdr} from "../src/stellar_base";
-import {Memo} from "../src/stellar_base";
+import {StellarWallet} from "../src";
+import {Networks} from "../src/lib";
 
 describe("tx", () => {
 

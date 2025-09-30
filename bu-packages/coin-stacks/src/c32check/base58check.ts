@@ -12,7 +12,7 @@
  */
 'use strict';
 
-import { base } from '@okxweb3/crypto-lib';
+import { base } from '@okxweb3/coin-base';
 import { hexToBytes } from '../common';
 import  basex from '../base-x';
 

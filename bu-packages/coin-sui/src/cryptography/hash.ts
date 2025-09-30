@@ -1,7 +1,7 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import {base} from "@okxweb3/crypto-lib";
+import {base} from "@okxweb3/coin-base";
 
 /**
  * Generates a Blake2b hash of typed data as a base64 string.

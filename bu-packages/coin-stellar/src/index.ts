@@ -1,6 +1,6 @@
 
 
-export * from "./stellar_base"
+export * from "./lib"
 export * from "./StellarWallet"
 export * from "./PIWallet"
 

@@ -8,6 +8,7 @@ import {
     SignCommonMsgParams,
     SignTxParams,
     SignType,
+    base,
     ValidAddressParams, ValidPrivateKeyData, ValidPrivateKeyParams
 } from "@okxweb3/coin-base";
 import {
@@ -19,8 +20,8 @@ import {
     Memo, Operation,
     StrKey,
     TransactionBuilder
-} from "./stellar_base";
-import {base, signUtil} from "@okxweb3/crypto-lib";
+} from "./lib";
+import {signUtil} from "@okxweb3/crypto-lib";
 import {convertWithDecimals} from "./utils";
 
 export type StellarTxParam = {
@@ -183,7 +184,7 @@ export class StellarWallet extends BaseWallet {
                 throw new Error("missing asset");
             }
             const asset = new Asset(txParam.asset.assetName, txParam.asset.issuer);
-            //创建trustline
+            // Create trustline
             let op = Operation.changeTrust({
                 asset: asset,
                 limit: convertWithDecimals(txParam.asset.amount, txParam.decimals),

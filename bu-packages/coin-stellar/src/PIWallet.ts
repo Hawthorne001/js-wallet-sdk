@@ -1,13 +1,8 @@
 import {
-    BaseWallet,
-    DerivePriKeyParams,
-    GenPrivateKeyError,
     GetDerivedPathParam
 } from "@okxweb3/coin-base";
 import {StellarWallet} from "./StellarWallet";
-import {StrKey} from "./stellar_base";
-import {base, signUtil} from "@okxweb3/crypto-lib";
-import {ed25519_getDerivedPrivateKey} from "@okxweb3/crypto-lib/dist/signutil/ed25519";
+
 
 
 export const PINetworks = {
