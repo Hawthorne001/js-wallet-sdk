@@ -1,6 +1,6 @@
 {
   "name": "@okxweb3/coin-eos",
-  "version": "2.4.0-beta.0",
+  "version": "2.4.0",
   "description": "An eos SDK for building Web3 wallets and applications.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -44,7 +44,7 @@
     "@polkadot/x-textdecoder": "9.7.2",
     "@polkadot/x-textencoder": "9.7.2",
     "pako": "2.1.0",
-    "@okxweb3/crypto-lib": "2.0.4-beta.0",
-    "@okxweb3/coin-base": "2.0.3-beta.0"
+    "@okxweb3/crypto-lib": "2.0.4",
+    "@okxweb3/coin-base": "2.0.3"
   }
 }

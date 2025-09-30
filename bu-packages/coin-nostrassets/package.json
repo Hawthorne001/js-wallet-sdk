@@ -1,6 +1,6 @@
 {
   "name": "@okxweb3/coin-nostrassets",
-  "version": "2.4.0-beta.0",
+  "version": "2.4.0",
   "description": "A NostrAssets SDK for building Web3 wallets and applications.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -39,7 +39,7 @@
   ],
   "devDependencies": {},
   "dependencies": {
-    "@okxweb3/crypto-lib": "2.0.4-beta.0",
-    "@okxweb3/coin-base": "2.0.3-beta.0"
+    "@okxweb3/crypto-lib": "2.0.4",
+    "@okxweb3/coin-base": "2.0.3"
   }
 }

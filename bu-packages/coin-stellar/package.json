@@ -1,6 +1,6 @@
 {
   "name": "@okxweb3/coin-stellar",
-  "version": "2.4.0-beta.0",
+  "version": "2.4.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
@@ -43,8 +43,8 @@
   },
   "dependencies": {
     "@babel/preset-flow": "^7.25.7",
-    "@okxweb3/coin-base": "2.0.3-beta.0",
-    "@okxweb3/crypto-lib": "2.0.4-beta.0",
+    "@okxweb3/coin-base": "2.0.3",
+    "@okxweb3/crypto-lib": "2.0.4",
     "@stellar/js-xdr": "3.1.2",
     "base32.js": "0.1.0",
     "bignumber.js": "9.1.2",

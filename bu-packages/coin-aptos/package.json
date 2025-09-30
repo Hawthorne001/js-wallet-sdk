@@ -1,6 +1,6 @@
 {
   "name": "@okxweb3/coin-aptos",
-  "version": "2.4.0-beta.0",
+  "version": "2.4.0",
   "description": "A aptos SDK for building Web3 wallets and applications.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -34,7 +34,7 @@
     "@scure/bip32": "1.6.2",
     "@scure/bip39": "1.5.4",
     "tweetnacl": "1.0.3",
-    "@okxweb3/crypto-lib": "2.0.4-beta.0",
-    "@okxweb3/coin-base": "2.0.3-beta.0"
+    "@okxweb3/crypto-lib": "2.0.4",
+    "@okxweb3/coin-base": "2.0.3"
   }
 }
