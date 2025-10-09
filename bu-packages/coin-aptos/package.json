@@ -34,7 +34,7 @@
     "@scure/bip32": "1.6.2",
     "@scure/bip39": "1.5.4",
     "tweetnacl": "1.0.3",
-    "@okxweb3/crypto-lib": "2.0.4",
+    "@okxweb3/crypto-lib": "2.0.5",
     "@okxweb3/coin-base": "2.0.3"
   }
 }

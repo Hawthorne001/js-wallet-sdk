@@ -40,7 +40,7 @@
   "dependencies": {
     "@ethersproject/bignumber": "5.7.0",
     "@okxweb3/coin-ethereum": "2.4.0",
-    "@okxweb3/crypto-lib": "2.0.4",
+    "@okxweb3/crypto-lib": "2.0.5",
     "@okxweb3/coin-base": "2.0.3"
   }
 }
