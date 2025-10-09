@@ -1,6 +1,6 @@
 import {base} from "@okxweb3/coin-base";
 import {signUtil} from "@okxweb3/crypto-lib";
-import {encodePubKeyAddress, decodeAddress} from "./lib/address";
+import {encodePubKeyAddress, payToAddrScript} from "./lib/address";
 
 export function pubKeyFromPrvKey(prvKey: string) {
     if(!checkPrvKey(prvKey)){
@@ -28,7 +28,7 @@ export function addressFromPrvKey(prvKey: string) {
 
 export function validateAddress(address: string) {
     try {
-        decodeAddress(address);
+        payToAddrScript(address);
     } catch (e) {
         return false;
     }

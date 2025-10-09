@@ -23,7 +23,7 @@ export function encodePubKeyAddress(pubKey: string, prefix: string) {
   return 'kaspa:' + base32.encode(payload);
 }
 
-export function decodeAddress(address: string) {
+export function payToAddrScript(address: string) {
   validate(hasSingleCase(address), 'Mixed case');
   address = address.toLowerCase();
 
@@ -33,27 +33,49 @@ export function decodeAddress(address: string) {
   const prefix = pieces[0];
   validate(prefix === 'kaspa', 'Invalid prefix: ' + address);
   const encodedPayload = pieces[1];
-  const payload = base32.decode(encodedPayload);
-  validate(validChecksum(prefix, payload), 'Invalid checksum: ' + address);
+  const decoded = base32.decode(encodedPayload);
+  validate(validChecksum(prefix, decoded), 'Invalid checksum: ' + address);
 
-  const convertedBits = convertBits(payload.slice(0, -8), 5, 8, true);
-  const versionByte = convertedBits[0];
-  const hashOrPublicKey = convertedBits.slice(1);
+  const convertedBits = convertBits(decoded.slice(0, -8), 5, 8, true);
+  const version = convertedBits[0];
+  const payload = convertedBits.slice(1);
 
-  if (versionByte === 1) {
-    validate(264 === hashOrPublicKey.length * 8, 'Invalid hash size: ' + address);
-  } else {
-    validate(256 === hashOrPublicKey.length * 8, 'Invalid hash size: ' + address);
-  }
+  switch (version) {
+  case 0x00: // Schnorr P2PK
+    if (payload.length !== 32) {
+      throw new Error("Invalid Schnorr public key length");
+    }
+    return Buffer.concat([
+      Buffer.from([0x20]), // Push 32 bytes
+      payload, // 32-byte Schnorr pubkey
+      Buffer.from([0xac]), // OP_CHECKSIG
+    ]);
 
-  const type = getType(versionByte);
+  case 0x01: // ECDSA P2PK
+    if (payload.length !== 33) {
+      throw new Error("Invalid ECDSA public key length");
+    }
+    return Buffer.concat([
+      Buffer.from([0x21]), // Push 33 bytes
+      payload, // 33-byte ECDSA pubkey
+      Buffer.from([0xab]), // OP_CHECKSIGECDSA
+    ]);
 
-  return {
-    payload: Buffer.from(hashOrPublicKey),
-    prefix,
-    type,
-  };
+  case 0x08: // Script Hash
+    if (payload.length !== 32) {
+      throw new Error("Invalid script hash length");
+    }
+    return Buffer.concat([
+      Buffer.from([0xaa]), // OP_BLAKE2B
+      Buffer.from([0x20]), // Push 32 bytes
+      payload, // 32-byte script hash
+      Buffer.from([0x87]), // OP_EQUAL
+    ]);
+
+  default:
+    throw new Error(`Unsupported address version: ${version}`);
 }
+};
 
 function hasSingleCase(string: string) {
   return string === string.toLowerCase() || string === string.toUpperCase();
@@ -86,16 +108,6 @@ function validChecksum(prefix: string, payload: Uint8Array) {
   return polymod(data) === 0;
 }
 
-function getType(versionByte: number) {
-  switch (versionByte & 120) {
-    case 0:
-      return 'pubkey';
-    case 8:
-      return 'scripthash';
-    default:
-      throw new Error('Invalid address type in version byte:' + versionByte);
-  }
-}
 
 const GENERATOR1 = [0x98, 0x79, 0xf3, 0xae, 0x1e];
 const GENERATOR2 = [0xf2bc8e61, 0xb76d99e2, 0x3e5fb3c4, 0x2eabe2a8, 0x4f43e470];

@@ -1,6 +1,6 @@
 import { base } from "@okxweb3/coin-base";
 import { signUtil } from "@okxweb3/crypto-lib";
-import { decodeAddress } from "./lib/address";
+import { payToAddrScript } from "./lib/address";
 
 type TransactionInput = {
     previousOutpoint: Outpoint
@@ -165,10 +165,6 @@ export class Transaction {
     }
 }
 
-function payToAddrScript(address: string) {
-    const { payload } = decodeAddress(address);
-    return Buffer.concat([Buffer.from([0x20]), payload, Buffer.from([0xac])], 34);
-}
 
 const SIGHASH_ALL = 0b00000001;
 const SIGHASH_NONE = 0b00000010;
