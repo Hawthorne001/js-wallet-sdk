@@ -13,14 +13,21 @@ import {
     SignTxError,
     SignTxParams,
     ValidAddressData,
-    ValidAddressParams
-} from "@okxweb3/coin-base";
-import {base} from "@okxweb3/coin-base";
-import {BtcWallet, convert2UtxoTx} from "./BtcWallet";
+    ValidAddressParams,
+} from '@okxweb3/coin-base';
+import { base } from '@okxweb3/coin-base';
+import { BtcWallet, convert2UtxoTx } from './BtcWallet';
 
-import * as bitcoin from "../index"
+import * as bitcoin from '../index';
 
 export class BchWallet extends BtcWallet {
+    network(): bitcoin.Network {
+        return {
+            ...super.network(),
+            bech32: '', // BCH does not support segwit addresses
+        };
+    }
+
     async getDerivedPath(param: GetDerivedPathParam): Promise<any> {
         return `m/44'/145'/0'/0/${param.index}`;
     }
@@ -31,12 +38,13 @@ export class BchWallet extends BtcWallet {
             let privateKey = param.privateKey;
             const publicKey = bitcoin.wif2Public(privateKey, network);
 
-            const address = bitcoin.GetBitcashP2PkHAddressByPublicKey(publicKey)
-            const addressWithoutPrefix = address.replace("bitcoincash:", "")
+            const address =
+                bitcoin.GetBitcashP2PkHAddressByPublicKey(publicKey);
+            const addressWithoutPrefix = address.replace('bitcoincash:', '');
 
             let data: NewAddressData = {
-                address: addressWithoutPrefix || "",
-                publicKey: base.toHex(publicKey)
+                address: addressWithoutPrefix || '',
+                publicKey: base.toHex(publicKey),
             };
             return Promise.resolve(data);
         } catch (e) {
@@ -48,20 +56,22 @@ export class BchWallet extends BtcWallet {
         let isValid = false;
         try {
             let network = this.network();
-            let outputScript = bitcoin.address.toOutputScript(param.address, network);
+            let outputScript = bitcoin.address.toOutputScript(
+                param.address,
+                network
+            );
             if (outputScript) {
                 isValid = true;
             }
-        } catch (e) {
-        }
+        } catch (e) {}
 
         if (!isValid) {
-            isValid = bitcoin.ValidateBitcashP2PkHAddress(param.address)
+            isValid = bitcoin.ValidateBitcashP2PkHAddress(param.address);
         }
 
         let data: ValidAddressData = {
             isValid: isValid,
-            address: param.address
+            address: param.address,
         };
         return Promise.resolve(data);
     }
@@ -75,14 +85,19 @@ export class BchWallet extends BtcWallet {
             // convert to legacy address for compatibility
             utxoTx.outputs.forEach((it: any) => {
                 if (bitcoin.isCashAddress(it.address)) {
-                    it.address = bitcoin.convert2LegacyAddress(it.address, this.network())
+                    it.address = bitcoin.convert2LegacyAddress(
+                        it.address,
+                        this.network()
+                    );
                 }
-            })
+            });
 
             if (bitcoin.isCashAddress(utxoTx.address)) {
-                utxoTx.address = bitcoin.convert2LegacyAddress(utxoTx.address, this.network())
+                utxoTx.address = bitcoin.convert2LegacyAddress(
+                    utxoTx.address,
+                    this.network()
+                );
             }
-
             txHex = bitcoin.signBch(utxoTx, privateKey, this.network());
             return Promise.resolve(txHex);
         } catch (e) {
@@ -96,12 +111,18 @@ export class BchWallet extends BtcWallet {
             // convert to legacy address for compatibility
             utxoTx.outputs.forEach((it: any) => {
                 if (bitcoin.isCashAddress(it.address)) {
-                    it.address = bitcoin.convert2LegacyAddress(it.address, this.network())
+                    it.address = bitcoin.convert2LegacyAddress(
+                        it.address,
+                        this.network()
+                    );
                 }
-            })
+            });
 
             if (bitcoin.isCashAddress(utxoTx.address)) {
-                utxoTx.address = bitcoin.convert2LegacyAddress(utxoTx.address, this.network())
+                utxoTx.address = bitcoin.convert2LegacyAddress(
+                    utxoTx.address,
+                    this.network()
+                );
             }
 
             const fee = bitcoin.estimateBchFee(utxoTx, this.network());
@@ -118,18 +139,24 @@ export class BchWallet extends BtcWallet {
             // convert to legacy address for compatibility
             utxoTx.outputs.forEach((it: any) => {
                 if (bitcoin.isCashAddress(it.address)) {
-                    it.address = bitcoin.convert2LegacyAddress(it.address, this.network())
+                    it.address = bitcoin.convert2LegacyAddress(
+                        it.address,
+                        this.network()
+                    );
                 }
-            })
+            });
 
             if (bitcoin.isCashAddress(utxoTx.address)) {
-                utxoTx.address = bitcoin.convert2LegacyAddress(utxoTx.address, this.network())
+                utxoTx.address = bitcoin.convert2LegacyAddress(
+                    utxoTx.address,
+                    this.network()
+                );
             }
-            const hash: string[] = []
-            const hex = bitcoin.signBch(utxoTx, "", this.network(), hash);
+            const hash: string[] = [];
+            const hex = bitcoin.signBch(utxoTx, '', this.network(), hash);
             const data: MpcRawTransactionData = {
                 raw: hex,
-                hash: hash
+                hash: hash,
             };
             return Promise.resolve(data);
         } catch (e) {
@@ -139,13 +166,17 @@ export class BchWallet extends BtcWallet {
 
     getAddressByPublicKey(param: GetAddressParams): Promise<string> {
         const publicKey = base.fromHex(param.publicKey);
-        const address = bitcoin.GetBitcashP2PkHAddressByPublicKey(publicKey)
-        return Promise.resolve(address.replace("bitcoincash:", ""));
+        const address = bitcoin.GetBitcashP2PkHAddressByPublicKey(publicKey);
+        return Promise.resolve(address.replace('bitcoincash:', ''));
     }
 
     getMPCTransaction(param: MpcTransactionParam): Promise<any> {
         try {
-            const hex = bitcoin.getMPCTransaction(param.raw, param.sigs as string[], true);
+            const hex = bitcoin.getMPCTransaction(
+                param.raw,
+                param.sigs as string[],
+                true
+            );
             return Promise.resolve(hex);
         } catch (e) {
             return Promise.reject(GetMpcTransactionError);
@@ -159,14 +190,26 @@ export class BchWallet extends BtcWallet {
             // convert to legacy address for compatibility
             utxoTx.outputs.forEach((it: any) => {
                 if (bitcoin.isCashAddress(it.address)) {
-                    it.address = bitcoin.convert2LegacyAddress(it.address, this.network())
+                    it.address = bitcoin.convert2LegacyAddress(
+                        it.address,
+                        this.network()
+                    );
                 }
-            })
+            });
 
             if (bitcoin.isCashAddress(utxoTx.address)) {
-                utxoTx.address = bitcoin.convert2LegacyAddress(utxoTx.address, this.network())
+                utxoTx.address = bitcoin.convert2LegacyAddress(
+                    utxoTx.address,
+                    this.network()
+                );
             }
-            const hex = bitcoin.signBch(utxoTx, "", this.network(), undefined, true);
+            const hex = bitcoin.signBch(
+                utxoTx,
+                '',
+                this.network(),
+                undefined,
+                true
+            );
             return Promise.resolve(hex);
         } catch (e) {
             return Promise.reject(GetHardwareRawTransactionError);

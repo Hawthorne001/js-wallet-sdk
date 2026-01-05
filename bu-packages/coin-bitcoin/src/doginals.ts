@@ -1,19 +1,18 @@
-import * as bitcoin from "./bitcoinjs-lib";
-import {base} from "@okxweb3/coin-base";
-import * as bcrypto from "./bitcoinjs-lib/crypto";
+import * as bitcoin from './bitcoinjs-lib';
+import { base } from '@okxweb3/coin-base';
+import * as bcrypto from './bitcoinjs-lib/crypto';
 import {
     getAddressType,
     private2public,
     privateKeyFromWIF,
     sign,
-    wif2Public
-} from "./txBuild";
-import {BufferWriter} from "./bitcoinjs-lib";
-import {OPS} from "./bitcoinjs-lib/ops";
-import * as payments from "./bitcoinjs-lib/payments";
-import {InscriptionData, PrevOutput, TxOut} from "./inscribe";
-import {varuint} from "./bitcoinjs-lib/bufferutils";
-
+    wif2Public,
+} from './txBuild';
+import { BufferWriter } from './bitcoinjs-lib';
+import { OPS } from './bitcoinjs-lib/ops';
+import * as payments from './bitcoinjs-lib/payments';
+import { InscriptionData, PrevOutput, TxOut } from './inscribe';
+import { varuint } from './bitcoinjs-lib/bufferutils';
 
 export const CHANGE_OUTPUT_MAX_SIZE = 20 + 4 + 34 + 4;
 
@@ -22,58 +21,63 @@ const defaultSequenceNum = 0xfffffffd;
 const defaultRevealOutValue = 100000;
 const defaultMinChangeValue = 100000;
 
-const MAX_CHUNK_LEN = 240
-const MAX_PAYLOAD_LEN = 1500
+const MAX_CHUNK_LEN = 240;
+const MAX_PAYLOAD_LEN = 1500;
 
 export type DogInscriptionRequest = {
-    commitTxPrevOutputList: PrevOutput[]
-    commitFeeRate: number
-    revealFeeRate: number
-    inscriptionData: InscriptionData
-    revealOutValue: number
-    changeAddress: string
-    minChangeValue?: number
-}
+    commitTxPrevOutputList: PrevOutput[];
+    commitFeeRate: number;
+    revealFeeRate: number;
+    inscriptionData: InscriptionData;
+    revealOutValue: number;
+    changeAddress: string;
+    minChangeValue?: number;
+};
 
 type DogInscriptionTxCtxData = {
-    privateKey: Buffer
-    inscriptionScript?: Buffer
-    redeemScript?: Buffer
-    commitTxAddress?: string
-    commitTxAddressPkScript?: Buffer
-    hash?: Buffer
-    revealTxPrevOutput?: TxOut
-    revealPkScript?: Buffer
-}
+    privateKey: Buffer;
+    inscriptionScript?: Buffer;
+    redeemScript?: Buffer;
+    commitTxAddress?: string;
+    commitTxAddressPkScript?: Buffer;
+    hash?: Buffer;
+    revealTxPrevOutput?: TxOut;
+    revealPkScript?: Buffer;
+};
 
-export type  Chunk = {
-    buf: Buffer
-    len: number
-    opcodenum: number
-}
+export type Chunk = {
+    buf: Buffer;
+    len: number;
+    opcodenum: number;
+};
 
 function numberToChunk(n: number): Chunk {
     return {
         // @ts-ignore
-        buf: n <= 16 ? undefined : n < 128 ? Buffer.from([n]) : Buffer.from([n % 256, n / 256]),
+        buf:
+            n <= 16
+                ? undefined
+                : n < 128
+                ? Buffer.from([n])
+                : Buffer.from([n % 256, n / 256]),
         len: n <= 16 ? 0 : n < 128 ? 1 : 2,
-        opcodenum: n == 0 ? 0 : n <= 16 ? 80 + n : n < 128 ? 1 : 2
-    }
+        opcodenum: n == 0 ? 0 : n <= 16 ? 80 + n : n < 128 ? 1 : 2,
+    };
 }
 
 export function bufferToBuffer(b: Buffer): Buffer {
-    let c = bufferToChunk(b)
-    let size = varuint.encodingLength(c.opcodenum)
+    let c = bufferToChunk(b);
+    let size = varuint.encodingLength(c.opcodenum);
     var opcodenum = c.opcodenum;
     if (c.buf) {
         if (opcodenum === OPS.OP_PUSHDATA1) {
-            size += varuint.encodingLength(c.len)
+            size += varuint.encodingLength(c.len);
         } else if (opcodenum === OPS.OP_PUSHDATA2) {
-            size += varuint.encodingLength(c.len)
+            size += varuint.encodingLength(c.len);
         } else if (opcodenum === OPS.OP_PUSHDATA4) {
-            size += varuint.encodingLength(c.len)
+            size += varuint.encodingLength(c.len);
         }
-        size += c.buf.length
+        size += c.buf.length;
     }
     let bw = BufferWriter.withCapacity(size);
     bw.writeUInt8(c.opcodenum);
@@ -99,45 +103,45 @@ export function bufferToChunk(b: Buffer): Chunk {
         // @ts-ignore
         buf: b.length ? b : undefined,
         len: b.length,
-        opcodenum: b.length <= 75 ? b.length : b.length <= 255 ? 76 : 77
-    }
+        opcodenum: b.length <= 75 ? b.length : b.length <= 255 ? 76 : 77,
+    };
 }
 
 function opcodeToChunk(op: number): Chunk {
     // @ts-ignore
-    return {opcodenum: op}
+    return { opcodenum: op };
 }
 
 export class DogScript {
-    chunks: Chunk[] = []
+    chunks: Chunk[] = [];
 
     total(): number {
         if (this.chunks.length == 0) {
-            return 0
+            return 0;
         }
         const size = this.chunks
-            .map(chunk => {
-                let size = varuint.encodingLength(chunk.opcodenum)
+            .map((chunk) => {
+                let size = varuint.encodingLength(chunk.opcodenum);
                 var opcodenum = chunk.opcodenum;
                 if (chunk.buf) {
                     if (opcodenum < OPS.OP_PUSHDATA1) {
                     } else if (opcodenum === OPS.OP_PUSHDATA1) {
-                        size += varuint.encodingLength(chunk.len)
+                        size += varuint.encodingLength(chunk.len);
                     } else if (opcodenum === OPS.OP_PUSHDATA2) {
-                        size += varuint.encodingLength(chunk.len)
+                        size += varuint.encodingLength(chunk.len);
                     } else if (opcodenum === OPS.OP_PUSHDATA4) {
-                        size += varuint.encodingLength(chunk.len)
+                        size += varuint.encodingLength(chunk.len);
                     }
-                    size += chunk.buf.length
+                    size += chunk.buf.length;
                 }
-                return size
+                return size;
             })
             .reduce((a, b) => a + b);
-        return size
+        return size;
     }
 
     toBuffer(): Buffer {
-        let total = this.total()
+        let total = this.total();
         let bw = BufferWriter.withCapacity(total);
         for (var i = 0; i < this.chunks.length; i++) {
             var chunk = this.chunks[i];
@@ -175,7 +179,10 @@ export class DogInscriptionTool {
     fromAddr: string = '';
     revealAddr: string = '';
 
-    static newDogInscriptionTool(network: bitcoin.Network, request: DogInscriptionRequest) {
+    static newDogInscriptionTool(
+        network: bitcoin.Network,
+        request: DogInscriptionRequest
+    ) {
         const tool = new DogInscriptionTool();
         tool.network = network;
         const revealOutValue = request.revealOutValue || defaultRevealOutValue;
@@ -183,13 +190,34 @@ export class DogInscriptionTool {
 
         // TODO: use commitTx first input privateKey
         const privateKey = request.commitTxPrevOutputList[0].privateKey;
-        tool.inscriptionTxCtxDataList = createInscriptionTxCtxData(network, request.inscriptionData, privateKey);
-        tool.revealAddr = request.inscriptionData.revealAddr
-        const privateKeyHex = base.toHex(base.fromHex(privateKeyFromWIF(privateKey, network)));
+        tool.inscriptionTxCtxDataList = createInscriptionTxCtxData(
+            network,
+            request.inscriptionData,
+            privateKey
+        );
+        tool.revealAddr = request.inscriptionData.revealAddr;
+        const privateKeyHex = base.toHex(
+            base.fromHex(privateKeyFromWIF(privateKey, network))
+        );
         const publicKey = private2public(privateKeyHex);
-        tool.fromAddr = bitcoin.payments.p2pkh({pubkey: publicKey, network: network}).address!
-        const totalRevealPrevOutputValue = tool.buildEmptyRevealTxs(network, revealOutValue, request.revealFeeRate);
-        const insufficient = tool.buildCommitTx(network, request.commitTxPrevOutputList, request.changeAddress, totalRevealPrevOutputValue, revealOutValue, request.commitFeeRate, minChangeValue);
+        tool.fromAddr = bitcoin.payments.p2pkh({
+            pubkey: publicKey,
+            network: network,
+        }).address!;
+        const totalRevealPrevOutputValue = tool.buildEmptyRevealTxs(
+            network,
+            revealOutValue,
+            request.revealFeeRate
+        );
+        const insufficient = tool.buildCommitTx(
+            network,
+            request.commitTxPrevOutputList,
+            request.changeAddress,
+            totalRevealPrevOutputValue,
+            revealOutValue,
+            request.commitFeeRate,
+            minChangeValue
+        );
         if (insufficient) {
             return tool;
         }
@@ -199,32 +227,50 @@ export class DogInscriptionTool {
         return tool;
     }
 
-    buildEmptyRevealTxs(network: bitcoin.Network, revealOutValue: number, revealFeeRate: number) {
+    buildEmptyRevealTxs(
+        network: bitcoin.Network,
+        revealOutValue: number,
+        revealFeeRate: number
+    ) {
         let totalPrevOutputValue = 0;
         const revealTxs: bitcoin.Transaction[] = [];
         const mustRevealTxFees: number[] = [];
         const commitAddrs: string[] = [];
         let left = 0;
         for (let i = this.inscriptionTxCtxDataList.length - 1; i > -1; i--) {
-            let inscriptionTxCtxData = this.inscriptionTxCtxDataList[i]
+            let inscriptionTxCtxData = this.inscriptionTxCtxDataList[i];
             const tx = new bitcoin.Transaction();
             tx.version = defaultTxVersion;
 
             tx.addInput(Buffer.alloc(32), 0, defaultSequenceNum);
             tx.addInput(Buffer.alloc(32), 1, defaultSequenceNum);
-            tx.addOutput(i != this.inscriptionTxCtxDataList.length - 1 ? inscriptionTxCtxData.commitTxAddressPkScript! : inscriptionTxCtxData.revealPkScript!, revealOutValue);
+            tx.addOutput(
+                i != this.inscriptionTxCtxDataList.length - 1
+                    ? inscriptionTxCtxData.commitTxAddressPkScript!
+                    : inscriptionTxCtxData.revealPkScript!,
+                revealOutValue
+            );
 
             const emptySignature = Buffer.alloc(72);
 
-            let unlock = Buffer.concat([inscriptionTxCtxData.inscriptionScript!, bufferToBuffer(emptySignature), bufferToBuffer(inscriptionTxCtxData.redeemScript!)])
+            let unlock = Buffer.concat([
+                inscriptionTxCtxData.inscriptionScript!,
+                bufferToBuffer(emptySignature),
+                bufferToBuffer(inscriptionTxCtxData.redeemScript!),
+            ]);
             // @ts-ignore
-            tx.ins[0].script = unlock
+            tx.ins[0].script = unlock;
             if (i != this.inscriptionTxCtxDataList.length - 1) {
-                tx.addOutput(bitcoin.address.toOutputScript(this.fromAddr, network), left)
+                tx.addOutput(
+                    bitcoin.address.toOutputScript(this.fromAddr, network),
+                    left
+                );
             }
-            tx.ins[1].script = Buffer.alloc(106)
-            const fee = Math.floor((tx.dogeByteLength() + CHANGE_OUTPUT_MAX_SIZE) * revealFeeRate);
-            left += fee
+            tx.ins[1].script = Buffer.alloc(106);
+            const fee = Math.floor(
+                (tx.dogeByteLength() + CHANGE_OUTPUT_MAX_SIZE) * revealFeeRate
+            );
+            left += fee;
             const prevOutputValue = fee;
             // @ts-ignore
             inscriptionTxCtxData.revealTxPrevOutput = {
@@ -238,46 +284,82 @@ export class DogInscriptionTool {
         }
         for (let i = 0, j = revealTxs.length - 1; i < j; i++, j--) {
             [revealTxs[i], revealTxs[j]] = [revealTxs[j], revealTxs[i]];
-            [mustRevealTxFees[i], mustRevealTxFees[j]] = [mustRevealTxFees[j], mustRevealTxFees[i]];
+            [mustRevealTxFees[i], mustRevealTxFees[j]] = [
+                mustRevealTxFees[j],
+                mustRevealTxFees[i],
+            ];
             [commitAddrs[i], commitAddrs[j]] = [commitAddrs[j], commitAddrs[i]];
         }
         this.revealTxs = revealTxs;
         this.mustRevealTxFees = mustRevealTxFees;
         this.commitAddrs = commitAddrs;
-        totalPrevOutputValue += revealOutValue
+        totalPrevOutputValue += revealOutValue;
         return totalPrevOutputValue;
     }
 
-    buildCommitTx(network: bitcoin.Network, commitTxPrevOutputList: PrevOutput[], changeAddress: string, totalRevealPrevOutputValue: number, revealOutValue: number, commitFeeRate: number, minChangeValue: number): boolean {
+    buildCommitTx(
+        network: bitcoin.Network,
+        commitTxPrevOutputList: PrevOutput[],
+        changeAddress: string,
+        totalRevealPrevOutputValue: number,
+        revealOutValue: number,
+        commitFeeRate: number,
+        minChangeValue: number
+    ): boolean {
         let totalSenderAmount = 0;
 
         const tx = new bitcoin.Transaction();
         tx.version = defaultTxVersion;
 
-        commitTxPrevOutputList.forEach(commitTxPrevOutput => {
-            const hash = base.reverseBuffer(base.fromHex(commitTxPrevOutput.txId));
+        commitTxPrevOutputList.forEach((commitTxPrevOutput) => {
+            const hash = base.reverseBuffer(
+                base.fromHex(commitTxPrevOutput.txId)
+            );
             tx.addInput(hash, commitTxPrevOutput.vOut, defaultSequenceNum);
             this.commitTxPrevOutputFetcher.push(commitTxPrevOutput.amount);
             totalSenderAmount += commitTxPrevOutput.amount;
         });
 
-        tx.addOutput(this.inscriptionTxCtxDataList[0].revealTxPrevOutput!.pkScript!, revealOutValue);
-        tx.addOutput(bitcoin.address.toOutputScript(this.fromAddr, network), totalRevealPrevOutputValue)
-        const changePkScript = bitcoin.address.toOutputScript(changeAddress, network);
+        tx.addOutput(
+            this.inscriptionTxCtxDataList[0].revealTxPrevOutput!.pkScript!,
+            revealOutValue
+        );
+        tx.addOutput(
+            bitcoin.address.toOutputScript(this.fromAddr, network),
+            totalRevealPrevOutputValue
+        );
+        const changePkScript = bitcoin.address.toOutputScript(
+            changeAddress,
+            network
+        );
         tx.addOutput(changePkScript, 0);
 
         const txForEstimate = tx.clone();
         signTx(txForEstimate, commitTxPrevOutputList, this.network);
 
-        const fee = Math.floor((txForEstimate.dogeByteLength() + CHANGE_OUTPUT_MAX_SIZE) * commitFeeRate);
-        const changeAmount = totalSenderAmount - totalRevealPrevOutputValue - fee;
+        const fee = Math.floor(
+            (txForEstimate.dogeByteLength() + CHANGE_OUTPUT_MAX_SIZE) *
+                commitFeeRate
+        );
+        const changeAmount =
+            totalSenderAmount - totalRevealPrevOutputValue - fee;
         if (changeAmount >= minChangeValue) {
             tx.outs[tx.outs.length - 1].value = changeAmount;
         } else {
             tx.outs = tx.outs.slice(0, tx.outs.length - 1);
-            txForEstimate.outs = txForEstimate.outs.slice(0, txForEstimate.outs.length - 1);
-            const feeWithoutChange = Math.floor(txForEstimate.dogeByteLength() * commitFeeRate);
-            if (totalSenderAmount - totalRevealPrevOutputValue - feeWithoutChange < 0) {
+            txForEstimate.outs = txForEstimate.outs.slice(
+                0,
+                txForEstimate.outs.length - 1
+            );
+            const feeWithoutChange = Math.floor(
+                txForEstimate.dogeByteLength() * commitFeeRate
+            );
+            if (
+                totalSenderAmount -
+                    totalRevealPrevOutputValue -
+                    feeWithoutChange <
+                0
+            ) {
                 this.mustCommitTxFee = fee;
                 return true;
             }
@@ -293,23 +375,55 @@ export class DogInscriptionTool {
 
     completeRevealTx() {
         for (let i = 0; i < this.revealTxs.length; i++) {
-            let revealTx = this.revealTxs[i]
-            revealTx.ins[0].hash = i == 0 ? this.commitTx.getHash() : this.revealTxs[i - 1].getHash();
-            revealTx.ins[1].hash = i == 0 ? this.commitTx.getHash() : this.revealTxs[i - 1].getHash();
+            let revealTx = this.revealTxs[i];
+            revealTx.ins[0].hash =
+                i == 0
+                    ? this.commitTx.getHash()
+                    : this.revealTxs[i - 1].getHash();
+            revealTx.ins[1].hash =
+                i == 0
+                    ? this.commitTx.getHash()
+                    : this.revealTxs[i - 1].getHash();
 
-            this.revealTxPrevOutputFetcher.push(this.inscriptionTxCtxDataList[i].revealTxPrevOutput!.value);
-            const prevOutScripts = this.inscriptionTxCtxDataList[i].redeemScript!;
-            const hash = revealTx.hashForSignature(0, prevOutScripts, bitcoin.Transaction.SIGHASH_ALL);
-            const privateKeyHex = base.toHex(this.inscriptionTxCtxDataList[i].privateKey);
+            this.revealTxPrevOutputFetcher.push(
+                this.inscriptionTxCtxDataList[i].revealTxPrevOutput!.value
+            );
+            const prevOutScripts =
+                this.inscriptionTxCtxDataList[i].redeemScript!;
+            const hash = revealTx.hashForSignature(
+                0,
+                prevOutScripts,
+                bitcoin.Transaction.SIGHASH_ALL
+            );
+            const privateKeyHex = base.toHex(
+                this.inscriptionTxCtxDataList[i].privateKey
+            );
             const signature = sign(hash, privateKeyHex);
-            let txsignature = bitcoin.script.signature.encode(signature, bitcoin.Transaction.SIGHASH_ALL)
-            revealTx.ins[0].script = Buffer.concat([this.inscriptionTxCtxDataList[i].inscriptionScript!, bufferToBuffer(txsignature), bufferToBuffer(this.inscriptionTxCtxDataList[i].redeemScript!)])
+            let txsignature = bitcoin.script.signature.encode(
+                signature,
+                bitcoin.Transaction.SIGHASH_ALL
+            );
+            revealTx.ins[0].script = Buffer.concat([
+                this.inscriptionTxCtxDataList[i].inscriptionScript!,
+                bufferToBuffer(txsignature),
+                bufferToBuffer(this.inscriptionTxCtxDataList[i].redeemScript!),
+            ]);
 
-            const prevScript = bitcoin.address.toOutputScript(this.fromAddr, this.network);
-            const hash2 = revealTx.hashForSignature(1, prevScript, bitcoin.Transaction.SIGHASH_ALL)!;
+            const prevScript = bitcoin.address.toOutputScript(
+                this.fromAddr,
+                this.network
+            );
+            const hash2 = revealTx.hashForSignature(
+                1,
+                prevScript,
+                bitcoin.Transaction.SIGHASH_ALL
+            )!;
             const signature2 = sign(hash2, privateKeyHex);
             const payment = bitcoin.payments.p2pkh({
-                signature: bitcoin.script.signature.encode(signature2, bitcoin.Transaction.SIGHASH_ALL),
+                signature: bitcoin.script.signature.encode(
+                    signature2,
+                    bitcoin.Transaction.SIGHASH_ALL
+                ),
                 pubkey: private2public(privateKeyHex),
             });
             revealTx.ins[1].script = payment.input!;
@@ -321,7 +435,7 @@ export class DogInscriptionTool {
         this.commitTx.ins.forEach((_, i) => {
             commitTxFee += this.commitTxPrevOutputFetcher[i];
         });
-        this.commitTx.outs.forEach(out => {
+        this.commitTx.outs.forEach((out) => {
             commitTxFee -= out.value;
         });
         let revealTxFees: number[] = [];
@@ -338,100 +452,146 @@ export class DogInscriptionTool {
     }
 }
 
-function signTx(tx: bitcoin.Transaction, commitTxPrevOutputList: PrevOutput[], network: bitcoin.Network,) {
+function signTx(
+    tx: bitcoin.Transaction,
+    commitTxPrevOutputList: PrevOutput[],
+    network: bitcoin.Network
+) {
     tx.ins.forEach((input, i) => {
-        const addressType = getAddressType(commitTxPrevOutputList[i].address, network);
-        const privateKey = base.fromHex(privateKeyFromWIF(commitTxPrevOutputList[i].privateKey, network));
+        const addressType = getAddressType(
+            commitTxPrevOutputList[i].address,
+            network
+        );
+        const privateKey = base.fromHex(
+            privateKeyFromWIF(commitTxPrevOutputList[i].privateKey, network)
+        );
         const privateKeyHex = base.toHex(privateKey);
         const publicKey = private2public(privateKeyHex);
 
         if (addressType === 'legacy') {
-            const prevScript = bitcoin.address.toOutputScript(commitTxPrevOutputList[i].address, network);
-            const hash = tx.hashForSignature(i, prevScript, bitcoin.Transaction.SIGHASH_ALL)!;
+            const prevScript = bitcoin.address.toOutputScript(
+                commitTxPrevOutputList[i].address,
+                network
+            );
+            const hash = tx.hashForSignature(
+                i,
+                prevScript,
+                bitcoin.Transaction.SIGHASH_ALL
+            )!;
             const signature = sign(hash, privateKeyHex);
             const payment = bitcoin.payments.p2pkh({
-                signature: bitcoin.script.signature.encode(signature, bitcoin.Transaction.SIGHASH_ALL),
+                signature: bitcoin.script.signature.encode(
+                    signature,
+                    bitcoin.Transaction.SIGHASH_ALL
+                ),
                 pubkey: publicKey,
             });
 
             input.script = payment.input!;
-
         } else {
             const pubKeyHash = bcrypto.hash160(publicKey);
-            const prevOutScript = Buffer.of(0x19, 0x76, 0xa9, 0x14, ...pubKeyHash, 0x88, 0xac);
+            const prevOutScript = Buffer.of(
+                0x19,
+                0x76,
+                0xa9,
+                0x14,
+                ...pubKeyHash,
+                0x88,
+                0xac
+            );
             const value = commitTxPrevOutputList[i].amount;
-            const hash = tx.hashForWitness(i, prevOutScript, value, bitcoin.Transaction.SIGHASH_ALL);
+            const hash = tx.hashForWitness(
+                i,
+                prevOutScript,
+                value,
+                bitcoin.Transaction.SIGHASH_ALL
+            );
             const signature = sign(hash, privateKeyHex);
 
             input.witness = [
-                bitcoin.script.signature.encode(signature, bitcoin.Transaction.SIGHASH_ALL),
+                bitcoin.script.signature.encode(
+                    signature,
+                    bitcoin.Transaction.SIGHASH_ALL
+                ),
                 publicKey,
             ];
 
             const redeemScript = Buffer.of(0x16, 0, 20, ...pubKeyHash);
-            if (addressType === "segwit_nested") {
+            if (addressType === 'segwit_nested') {
                 input.script = redeemScript;
             }
         }
     });
 }
 
-function createInscriptionTxCtxData(network: bitcoin.Network, inscriptionData: InscriptionData, privateKeyWif: string): DogInscriptionTxCtxData[] {
+function createInscriptionTxCtxData(
+    network: bitcoin.Network,
+    inscriptionData: InscriptionData,
+    privateKeyWif: string
+): DogInscriptionTxCtxData[] {
     const privateKey = base.fromHex(privateKeyFromWIF(privateKeyWif, network));
     const pubKey = wif2Public(privateKeyWif, network);
 
     const ops = bitcoin.script.OPS;
-    let data: Buffer
+    let data: Buffer;
     if (typeof inscriptionData.body == 'string') {
-        data = Buffer.from(inscriptionData.body)
+        data = Buffer.from(inscriptionData.body);
     } else {
-        data = inscriptionData.body as Buffer
+        data = inscriptionData.body as Buffer;
     }
-    let parts: Buffer[] = []
+    let parts: Buffer[] = [];
     while (data.length) {
-        let part = data.slice(0, Math.min(MAX_CHUNK_LEN, data.length))
-        data = data.slice(part.length)
+        let part = data.slice(0, Math.min(MAX_CHUNK_LEN, data.length));
+        data = data.slice(part.length);
         parts.push(part);
     }
 
     let inscription: DogScript = new DogScript();
-    inscription.chunks.push(bufferToChunk(Buffer.from('ord')))
-    inscription.chunks.push(numberToChunk(parts.length))
-    inscription.chunks.push(bufferToChunk(Buffer.from(inscriptionData.contentType)))
+    inscription.chunks.push(bufferToChunk(Buffer.from('ord')));
+    inscription.chunks.push(numberToChunk(parts.length));
+    inscription.chunks.push(
+        bufferToChunk(Buffer.from(inscriptionData.contentType))
+    );
     parts.forEach((part, n) => {
-        inscription.chunks.push(numberToChunk(parts.length - n - 1))
-        inscription.chunks.push(bufferToChunk(part))
-    })
+        inscription.chunks.push(numberToChunk(parts.length - n - 1));
+        inscription.chunks.push(bufferToChunk(part));
+    });
     let ctxDatas: DogInscriptionTxCtxData[] = [];
     while (inscription.chunks.length) {
-        let partial = new DogScript()
+        let partial = new DogScript();
         if (ctxDatas.length == 0) {
             // @ts-ignore
-            partial.chunks.push(inscription.chunks.shift())
+            partial.chunks.push(inscription.chunks.shift());
         }
-        while (partial.total() <= MAX_PAYLOAD_LEN && inscription.chunks.length) {
+        while (
+            partial.total() <= MAX_PAYLOAD_LEN &&
+            inscription.chunks.length
+        ) {
             // @ts-ignore
-            partial.chunks.push(inscription.chunks.shift())
+            partial.chunks.push(inscription.chunks.shift());
             // @ts-ignore
-            partial.chunks.push(inscription.chunks.shift())
+            partial.chunks.push(inscription.chunks.shift());
         }
 
         if (partial.total() > MAX_PAYLOAD_LEN) {
             // @ts-ignore
-            inscription.chunks.unshift(partial.chunks.pop())
+            inscription.chunks.unshift(partial.chunks.pop());
             // @ts-ignore
-            inscription.chunks.unshift(partial.chunks.pop())
+            inscription.chunks.unshift(partial.chunks.pop());
         }
 
-        let lock = new DogScript()
-        lock.chunks.push(bufferToChunk(pubKey))
-        lock.chunks.push(opcodeToChunk(ops.OP_CHECKSIGVERIFY))
+        let lock = new DogScript();
+        lock.chunks.push(bufferToChunk(pubKey));
+        lock.chunks.push(opcodeToChunk(ops.OP_CHECKSIGVERIFY));
         partial.chunks.forEach(() => {
-            lock.chunks.push(opcodeToChunk(ops.OP_DROP))
-        })
-        lock.chunks.push(opcodeToChunk(ops.OP_TRUE))
-        let lockhash = base.ripemd160(base.sha256(lock.toBuffer()))
-        let {output, address} = payments.p2sh({hash: Buffer.from(lockhash), network: network});
+            lock.chunks.push(opcodeToChunk(ops.OP_DROP));
+        });
+        lock.chunks.push(opcodeToChunk(ops.OP_TRUE));
+        let lockhash = base.ripemd160(base.sha256(lock.toBuffer()));
+        let { output, address } = payments.p2sh({
+            hash: Buffer.from(lockhash),
+            network: network,
+        });
         let ctx: DogInscriptionTxCtxData = {
             privateKey: privateKey,
             inscriptionScript: partial.toBuffer(),
@@ -442,18 +602,24 @@ function createInscriptionTxCtxData(network: bitcoin.Network, inscriptionData: I
                 pkScript: Buffer.alloc(0),
                 value: 100000,
             },
-            revealPkScript: bitcoin.address.toOutputScript(inscriptionData.revealAddr, network),
-        }
-        ctxDatas.push(ctx)
+            revealPkScript: bitcoin.address.toOutputScript(
+                inscriptionData.revealAddr,
+                network
+            ),
+        };
+        ctxDatas.push(ctx);
     }
-    return ctxDatas
+    return ctxDatas;
 }
 
-export function dogInscribe(network: bitcoin.Network, request: DogInscriptionRequest) {
+export function dogInscribe(
+    network: bitcoin.Network,
+    request: DogInscriptionRequest
+) {
     const tool = DogInscriptionTool.newDogInscriptionTool(network, request);
     if (tool.mustCommitTxFee > 0) {
         return {
-            commitTx: "",
+            commitTx: '',
             revealTxs: [],
             commitTxFee: tool.mustCommitTxFee,
             revealTxFees: tool.mustRevealTxFees,
@@ -463,7 +629,7 @@ export function dogInscribe(network: bitcoin.Network, request: DogInscriptionReq
 
     return {
         commitTx: tool.commitTx.toHex(),
-        revealTxs: tool.revealTxs.map(revealTx => revealTx.toHex()),
+        revealTxs: tool.revealTxs.map((revealTx) => revealTx.toHex()),
         ...tool.calculateFee(),
         commitAddrs: tool.commitAddrs,
     };

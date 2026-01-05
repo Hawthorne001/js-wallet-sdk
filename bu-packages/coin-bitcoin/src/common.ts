@@ -13,7 +13,7 @@ export enum BtcXrcTypes {
     SRC20 = 101,
     RUNE = 102,
     RUNEMAIN = 103,
-    PSBT_DEODE = 104,
+    PSBT_DECODE = 104,
     ARC20 = 114,
     CAT20 = 115,
 }

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.2.1](https://github.com/okx/js-wallet-sdk)(2024-01-15)
+
+### New Features
+
+- **coin-bitcoin:** fRepair Fee = 1, occasional average fee lower than 1 ([](https://github.com/okx/js-wallet-sdk))
+
 # [1.2.0](https://github.com/okx/js-wallet-sdk)(2024-01-15)
 
 ### New Features

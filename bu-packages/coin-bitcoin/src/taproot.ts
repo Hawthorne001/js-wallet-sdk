@@ -1,10 +1,10 @@
-import {signUtil} from "@okxweb3/crypto-lib";
-import {base} from "@okxweb3/coin-base";
-import {privateKeyFromWIF} from "./txBuild";
+import { signUtil } from '@okxweb3/crypto-lib';
+import { base } from '@okxweb3/coin-base';
+import { privateKeyFromWIF } from './txBuild';
 
-const secp256k1 = signUtil.schnorr.secp256k1
-const schnorr = secp256k1.schnorr
-const ProjPoint = secp256k1.secp256k1.ProjectivePoint
+const secp256k1 = signUtil.schnorr.secp256k1;
+const schnorr = secp256k1.schnorr;
+const ProjPoint = secp256k1.secp256k1.ProjectivePoint;
 const CURVE_ORDER = secp256k1.secp256k1.CURVE.n;
 
 function tapTweak(a: Uint8Array, b: Uint8Array): bigint {
@@ -15,8 +15,11 @@ function tapTweak(a: Uint8Array, b: Uint8Array): bigint {
     return tn;
 }
 
-export function taprootTweakPrivKey(privKey: Uint8Array, merkleRoot = new Uint8Array()) {
-    const u = schnorr.utils
+export function taprootTweakPrivKey(
+    privKey: Uint8Array,
+    merkleRoot = new Uint8Array()
+) {
+    const u = schnorr.utils;
     const seckey0 = u.bytesToNumberBE(privKey); // seckey0 = int_from_bytes(seckey0)
     const P = ProjPoint.fromPrivateKey(seckey0); // P = point_mul(G, seckey0)
     // seckey = seckey0 if has_even_y(P) else SECP256K1_ORDER - seckey0
@@ -28,7 +31,10 @@ export function taprootTweakPrivKey(privKey: Uint8Array, merkleRoot = new Uint8A
     return u.numberToBytesBE(u.mod(seckey + t, CURVE_ORDER), 32);
 }
 
-export function taprootTweakPubkey(pubKey: Uint8Array, h?: Uint8Array): [Uint8Array, number] {
+export function taprootTweakPubkey(
+    pubKey: Uint8Array,
+    h?: Uint8Array
+): [Uint8Array, number] {
     if (!h) h = new Uint8Array();
     const u = schnorr.utils;
     const t = tapTweak(pubKey, h); // t = int_from_bytes(tagged_hash("TapTweak", pubkey + h))
@@ -37,12 +43,20 @@ export function taprootTweakPubkey(pubKey: Uint8Array, h?: Uint8Array): [Uint8Ar
     const parity = Q.hasEvenY() ? 0 : 1; // 0 if has_even_y(Q) else 1
     return [u.pointToBytes(Q), parity]; // bytes_from_int(x(Q))
 }
-export function taprootSignSighash(privKey: string, sighashes: string[], aux?: string) {
-    const tweakedPrivKey = taprootTweakPrivKey(base.fromHex(privateKeyFromWIF(privKey)))
+export function taprootSignSighash(
+    privKey: string,
+    sighashes: string[],
+    aux?: string
+) {
+    const tweakedPrivKey = taprootTweakPrivKey(
+        base.fromHex(privateKeyFromWIF(privKey))
+    );
 
-    const signatures =  sighashes.map(sighash => {
-        const signature =Buffer.from(schnorr.sign(sighash, tweakedPrivKey, aux))
-        return base.toHex(signature)
-    })
-    return signatures
+    const signatures = sighashes.map((sighash) => {
+        const signature = Buffer.from(
+            schnorr.sign(sighash, tweakedPrivKey, aux)
+        );
+        return base.toHex(signature);
+    });
+    return signatures;
 }

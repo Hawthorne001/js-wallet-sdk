@@ -1,32 +1,36 @@
-import {cloneObject, SignTxParams} from "@okxweb3/coin-base";
-import {BtcWallet} from "./BtcWallet";
-import * as bitcoin from "../index"
-import {networks, signBtc, utxoTx} from "../index"
-import {buildRuneData} from "../rune";
-import {base} from "@okxweb3/coin-base";
+import {
+    cloneObject,
+    SignTxParams,
+    SignTxError,
+    EstimateFeeError,
+} from '@okxweb3/coin-base';
+import { BtcWallet } from './BtcWallet';
+import * as bitcoin from '../index';
+import { networks, signBtc, utxoTx } from '../index';
+import { buildRuneData } from '../rune';
+import { base } from '@okxweb3/coin-base';
 
 export class RuneWallet extends BtcWallet {
-
     convert2RuneTx(paramData: any): utxoTx {
-        const clonedParamData = cloneObject(paramData)
+        const clonedParamData = cloneObject(paramData);
         // Detects that the type of amount in data is converted to bigint
-        for(let input of clonedParamData.inputs) {
+        for (let input of clonedParamData.inputs) {
             let dataArray = input.data;
             if (dataArray != null && dataArray instanceof Array) {
                 for (let data of dataArray) {
-                    if(typeof data["amount"] === "string") {
-                        data["amount"] = BigInt(data["amount"]);
+                    if (typeof data['amount'] === 'string') {
+                        data['amount'] = BigInt(data['amount']);
                     }
                 }
             }
         }
 
-        for(let output of clonedParamData.outputs) {
+        for (let output of clonedParamData.outputs) {
             let dataArray = output.data;
             if (dataArray != null && dataArray instanceof Array) {
                 for (let data of dataArray) {
-                    if(typeof data["amount"] === "string") {
-                        data["amount"] = BigInt(data["amount"]);
+                    if (typeof data['amount'] === 'string') {
+                        data['amount'] = BigInt(data['amount']);
                     }
                 }
             }
@@ -39,16 +43,19 @@ export class RuneWallet extends BtcWallet {
             let dataArray = input.data;
             if (dataArray != null && dataArray instanceof Array) {
                 for (const data of dataArray) {
-                    let runeId: string = data["id"];
-                    let runeAmount: bigint = BigInt(data["amount"]);
+                    let runeId: string = data['id'];
+                    let runeAmount: bigint = BigInt(data['amount']);
                     if (runeId == null || runeAmount == null) {
-                        continue
+                        continue;
                     }
                     let beforeAmount = runeInputMap.get(runeId);
                     if (beforeAmount == null) {
                         runeInputMap.set(runeId, runeAmount);
                     } else {
-                        runeInputMap.set(runeId, (BigInt(beforeAmount) + BigInt(runeAmount)));
+                        runeInputMap.set(
+                            runeId,
+                            BigInt(beforeAmount) + BigInt(runeAmount)
+                        );
                     }
                 }
             }
@@ -60,16 +67,19 @@ export class RuneWallet extends BtcWallet {
         for (const output of outputs) {
             let data = output.data;
             if (data != null) {
-                let runeId: string = data["id"];
-                let runeAmount: bigint = BigInt(data["amount"]);
+                let runeId: string = data['id'];
+                let runeAmount: bigint = BigInt(data['amount']);
                 if (runeId == null || runeAmount == null) {
-                    continue
+                    continue;
                 }
                 let beforeAmount = runeSendMap.get(runeId);
                 if (beforeAmount == null) {
                     runeSendMap.set(runeId, runeAmount);
                 } else {
-                    runeSendMap.set(runeId, (BigInt(beforeAmount) + BigInt(runeAmount)));
+                    runeSendMap.set(
+                        runeId,
+                        BigInt(beforeAmount) + BigInt(runeAmount)
+                    );
                 }
             }
         }
@@ -79,41 +89,46 @@ export class RuneWallet extends BtcWallet {
         for (const id of runeInputMap.keys()) {
             let inputAmount = runeInputMap.get(id);
             let sendAmount = runeSendMap.get(id);
-            if ((inputAmount != null && sendAmount != null && inputAmount > sendAmount) || (inputAmount != null && sendAmount == null)) {
-                isRuneChange = true
+            if (
+                (inputAmount != null &&
+                    sendAmount != null &&
+                    inputAmount > sendAmount) ||
+                (inputAmount != null && sendAmount == null)
+            ) {
+                isRuneChange = true;
             }
-            isRuneChange = true //Phase I fix: always prepend rune change address to prevent unintended transfer
+            isRuneChange = true; //Phase I fix: always prepend rune change address to prevent unintended transfer
         }
 
         let outputIndex = 0;
-        let updateOutputs = []
+        let updateOutputs = [];
         if (isRuneChange) {
             // first output is rune change
             let runeChange = {
                 address: clonedParamData.address,
-                amount: 546
-            }
-            updateOutputs.push(runeChange)
+                amount: 546,
+            };
+            updateOutputs.push(runeChange);
             outputIndex++;
         }
-        const typedEdicts: bitcoin.Edict[] = []
+        const typedEdicts: bitcoin.Edict[] = [];
         for (const output of outputs) {
             let data = output.data;
             if (data != null) {
-                let runeId: string = data["id"];
-                let runeAmount: bigint = BigInt(data["amount"]);
+                let runeId: string = data['id'];
+                let runeAmount: bigint = BigInt(data['amount']);
                 if (runeId == null || runeAmount == null) {
-                    continue
+                    continue;
                 }
                 const typedEdict: bitcoin.Edict = {
                     id: parseInt('0x' + runeId),
                     amount: BigInt(runeAmount),
                     output: outputIndex,
-                }
-                typedEdicts.push(typedEdict)
+                };
+                typedEdicts.push(typedEdict);
             }
-            output.data = null
-            updateOutputs.push(output)
+            output.data = null;
+            updateOutputs.push(output);
             outputIndex++;
         }
 
@@ -126,57 +141,70 @@ export class RuneWallet extends BtcWallet {
             runeData: {
                 edicts: typedEdicts,
                 etching: clonedParamData.runeData!.etching,
-                burn: clonedParamData.runeData!.burn
+                burn: clonedParamData.runeData!.burn,
             },
-        }
+        };
     }
 
     async signTransaction(param: SignTxParams): Promise<any> {
-        const network = this.network()
+        const network = this.network();
         let txHex = null;
         try {
             const privateKey = param.privateKey;
             if (!param.data.runeData) {
-                return Promise.reject("missing runeData");
+                return Promise.reject('missing runeData');
             }
             const runeTx = this.convert2RuneTx(param.data);
 
-            const opReturnOutput = this.getOpReturnOutput(network, runeTx.runeData!);
-            runeTx.outputs.push(opReturnOutput as never)
+            const opReturnOutput = this.getOpReturnOutput(
+                network,
+                runeTx.runeData!
+            );
+            runeTx.outputs.push(opReturnOutput as never);
 
             txHex = signBtc(runeTx, privateKey, network);
             return Promise.resolve(txHex);
         } catch (e) {
-            return Promise.reject(e);
+            return Promise.reject(SignTxError);
         }
     }
 
-    private getOpReturnOutput(network: bitcoin.Network, runeData: bitcoin.RuneData) {
+    private getOpReturnOutput(
+        network: bitcoin.Network,
+        runeData: bitcoin.RuneData
+    ) {
         let isMainnet = false;
         if (networks.bitcoin === network) {
             isMainnet = true;
         }
-        if (runeData.edicts == undefined){
-            runeData.edicts = []
+        if (runeData.edicts == undefined) {
+            runeData.edicts = [];
         }
         const opReturnScript = buildRuneData(isMainnet, runeData.edicts);
-        const opReturnOutput = {address: '', amount: 0, omniScript: base.toHex(opReturnScript)};
+        const opReturnOutput = {
+            address: '',
+            amount: 0,
+            omniScript: base.toHex(opReturnScript),
+        };
         return opReturnOutput;
     }
 
     async estimateFee(param: SignTxParams): Promise<number> {
         try {
             if (!param.data.runeData) {
-                return Promise.reject("missing runeData");
+                return Promise.reject('missing runeData');
             }
             const runeTx = this.convert2RuneTx(param.data);
-            const opReturnOutput = this.getOpReturnOutput(this.network(), runeTx.runeData!);
-            runeTx.outputs.push(opReturnOutput as never)
+            const opReturnOutput = this.getOpReturnOutput(
+                this.network(),
+                runeTx.runeData!
+            );
+            runeTx.outputs.push(opReturnOutput as never);
 
             const fee = bitcoin.estimateBtcFee(runeTx, this.network());
             return Promise.resolve(fee);
         } catch (e) {
-            return Promise.reject(e);
+            return Promise.reject(EstimateFeeError);
         }
     }
 }

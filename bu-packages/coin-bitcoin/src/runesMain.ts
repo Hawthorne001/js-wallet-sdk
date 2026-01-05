@@ -1,64 +1,78 @@
-import * as bitcoin from "./bitcoinjs-lib";
-import {signUtil} from "@okxweb3/crypto-lib";
-import {base} from "@okxweb3/coin-base";
-import * as taproot from "./taproot";
-import * as bcrypto from "./bitcoinjs-lib/crypto";
-import {vectorSize} from "./bitcoinjs-lib/transaction";
-import {fakeSign, getAddressType, private2public, privateKeyFromWIF, sign, wif2Public} from "./txBuild";
+import * as bitcoin from './bitcoinjs-lib';
+import { signUtil } from '@okxweb3/crypto-lib';
+import { base } from '@okxweb3/coin-base';
+import * as taproot from './taproot';
+import * as bcrypto from './bitcoinjs-lib/crypto';
+import { vectorSize } from './bitcoinjs-lib/transaction';
+import {
+    fakeSign,
+    getAddressType,
+    private2public,
+    privateKeyFromWIF,
+    sign,
+    wif2Public,
+} from './txBuild';
 import * as bscript from './bitcoinjs-lib/script';
-import {countAdjustedVsize} from "./sigcost";
-import {base26Encode, commitment, encodeLEB128, Flag, getSpacersVal, removeSpacers, Tag} from "./runestones";
-import {Etching, RuneData} from "./type";
-import {BtcXrcTypes} from "./common";
-import {InscriptionData, TxOut} from "./inscribe";
+import { countAdjustedVsize } from './sigcost';
+import {
+    base26Encode,
+    commitment,
+    encodeLEB128,
+    Flag,
+    getSpacersVal,
+    removeSpacers,
+    Tag,
+} from './runestones';
+import { Etching, RuneData } from './type';
+import { BtcXrcTypes } from './common';
+import { InscriptionData, TxOut } from './inscribe';
 
-const schnorr = signUtil.schnorr.secp256k1.schnorr
+const schnorr = signUtil.schnorr.secp256k1.schnorr;
 
 export type PrevOutput = {
-    txId: string
-    vOut: number
-    amount: number
-    address: string
-    privateKey: string
-    publicKey?: string
-}
+    txId: string;
+    vOut: number;
+    amount: number;
+    address: string;
+    privateKey: string;
+    publicKey?: string;
+};
 
 export type RunesMainInscriptionRequest = {
-    type: BtcXrcTypes,
-    commitTxPrevOutputList: PrevOutput[]
-    commitFeeRate: number
-    revealFeeRate: number
-    runeData: RuneData,
-    revealOutValue: number
-    changeAddress: string
-    minChangeValue?: number
-    shareData?: string
-    masterPublicKey?: string
-    chainCode?: string
-    commitTx?: string
-    signatureList?: string[]
-}
+    type: BtcXrcTypes;
+    commitTxPrevOutputList: PrevOutput[];
+    commitFeeRate: number;
+    revealFeeRate: number;
+    runeData: RuneData;
+    revealOutValue: number;
+    changeAddress: string;
+    minChangeValue?: number;
+    shareData?: string;
+    masterPublicKey?: string;
+    chainCode?: string;
+    commitTx?: string;
+    signatureList?: string[];
+};
 
 export type RunesMainInscribeTxs = {
-    commitTx: string
-    revealTxs: string[]
-    commitTxFee: number
-    revealTxFees: number[]
-    commitAddrs: string[]
-}
+    commitTx: string;
+    revealTxs: string[];
+    commitTxFee: number;
+    revealTxFees: number[];
+    commitAddrs: string[];
+};
 
 type RunesMainInscriptionTxCtxData = {
-    privateKey: Buffer
-    inscriptionScript: Buffer
-    commitTxAddress: string
-    commitTxAddressPkScript: Buffer
-    witness: Buffer[]
-    hash: Buffer
-    revealTxPrevOutput: TxOut
-    revealPkScript: Buffer
-    runeOpReturnData?: Buffer,
-}
-
+    privateKey: Buffer;
+    inscriptionScript: Buffer;
+    commitTxAddress: string;
+    commitTxAddressPkScript: Buffer;
+    witness: Buffer[];
+    hash: Buffer;
+    revealTxPrevOutput: TxOut;
+    revealPkScript: Buffer;
+    runeOpReturnData?: Buffer;
+};
 
 const defaultTxVersion = 2;
 const defaultSequenceNum = 0xfffffffd;
@@ -78,7 +92,10 @@ export class RunesMainInscriptionTool {
     mustRevealTxFees: number[] = [];
     commitAddrs: string[] = [];
 
-    static newInscriptionTool(network: bitcoin.Network, request: RunesMainInscriptionRequest) {
+    static newInscriptionTool(
+        network: bitcoin.Network,
+        request: RunesMainInscriptionRequest
+    ) {
         const tool = new RunesMainInscriptionTool();
         tool.network = network;
 
@@ -91,27 +108,58 @@ export class RunesMainInscriptionTool {
         const privateKey = request.commitTxPrevOutputList[0].privateKey;
         //todo
         if (!request.runeData.etching || !request.runeData.revealAddr) {
-            throw new Error("etching is null")
+            throw new Error('etching is null');
         }
         if (!checkEtching(request.runeData.etching)) {
-            throw new Error("invalid etching parameter")
+            throw new Error('invalid etching parameter');
         }
         let etching: Etching = request.runeData.etching;
         let runeCommitment = commitment(etching.rune);
-        let runeOpReturnData = buildRuneMainDeployData(etching, useDefaultOutput, defaultOutput);
-        if (request.runeData.etching.contentType && request.runeData.etching.body) {
-            tool.inscriptionTxCtxDataList.push(createInscriptionTxCtxData(network,
-                {
-                    contentType: request.runeData.etching.contentType,
-                    body: request.runeData.etching.body,
-                    revealAddr: request.runeData.revealAddr
-                }, privateKey, runeCommitment));
+        let runeOpReturnData = buildRuneMainDeployData(
+            etching,
+            useDefaultOutput,
+            defaultOutput
+        );
+        if (
+            request.runeData.etching.contentType &&
+            request.runeData.etching.body
+        ) {
+            tool.inscriptionTxCtxDataList.push(
+                createInscriptionTxCtxData(
+                    network,
+                    {
+                        contentType: request.runeData.etching.contentType,
+                        body: request.runeData.etching.body,
+                        revealAddr: request.runeData.revealAddr,
+                    },
+                    privateKey,
+                    runeCommitment
+                )
+            );
         } else {
-            tool.inscriptionTxCtxDataList.push(createCommitmentScript(network, privateKey, request.runeData.revealAddr, runeCommitment));
+            tool.inscriptionTxCtxDataList.push(
+                createCommitmentScript(
+                    network,
+                    privateKey,
+                    request.runeData.revealAddr,
+                    runeCommitment
+                )
+            );
         }
-        const totalRevealPrevOutputValue = tool.buildEmptyRevealTx(network, revealOutValue, request.revealFeeRate, runeOpReturnData);
-        const insufficient = tool.buildCommitTx(network, request.commitTxPrevOutputList, request.changeAddress,
-            totalRevealPrevOutputValue, request.commitFeeRate, minChangeValue);
+        const totalRevealPrevOutputValue = tool.buildEmptyRevealTx(
+            network,
+            revealOutValue,
+            request.revealFeeRate,
+            runeOpReturnData
+        );
+        const insufficient = tool.buildCommitTx(
+            network,
+            request.commitTxPrevOutputList,
+            request.changeAddress,
+            totalRevealPrevOutputValue,
+            request.commitFeeRate,
+            minChangeValue
+        );
         if (insufficient) {
             return tool;
         }
@@ -121,7 +169,12 @@ export class RunesMainInscriptionTool {
         return tool;
     }
 
-    buildEmptyRevealTx(network: bitcoin.Network, revealOutValue: number, revealFeeRate: number, opReturnData?: Buffer) {
+    buildEmptyRevealTx(
+        network: bitcoin.Network,
+        revealOutValue: number,
+        revealFeeRate: number,
+        opReturnData?: Buffer
+    ) {
         let totalPrevOutputValue = 0;
         const revealTxs: bitcoin.Transaction[] = [];
         const mustRevealTxFees: number[] = [];
@@ -142,7 +195,11 @@ export class RunesMainInscriptionTool {
             txWitness.push(emptySignature);
             txWitness.push(inscriptionTxCtxData.inscriptionScript);
             txWitness.push(emptyControlBlockWitness);
-            const fee = Math.floor((tx.byteLength() + Math.floor((vectorSize(txWitness) + 2 + 3) / 4)) * revealFeeRate);
+            const fee = Math.floor(
+                (tx.byteLength() +
+                    Math.floor((vectorSize(txWitness) + 2 + 3) / 4)) *
+                    revealFeeRate
+            );
 
             const prevOutputValue = revealOutValue + fee;
             inscriptionTxCtxData.revealTxPrevOutput = {
@@ -163,40 +220,77 @@ export class RunesMainInscriptionTool {
         return totalPrevOutputValue;
     }
 
-    buildCommitTx(network: bitcoin.Network, commitTxPrevOutputList: PrevOutput[], changeAddress: string, totalRevealPrevOutputValue: number,
-                  commitFeeRate: number, minChangeValue: number): boolean {
+    buildCommitTx(
+        network: bitcoin.Network,
+        commitTxPrevOutputList: PrevOutput[],
+        changeAddress: string,
+        totalRevealPrevOutputValue: number,
+        commitFeeRate: number,
+        minChangeValue: number
+    ): boolean {
         let totalSenderAmount = 0;
 
         const tx = new bitcoin.Transaction();
         tx.version = defaultTxVersion;
 
-        commitTxPrevOutputList.forEach(commitTxPrevOutput => {
-            const hash = base.reverseBuffer(base.fromHex(commitTxPrevOutput.txId));
+        commitTxPrevOutputList.forEach((commitTxPrevOutput) => {
+            const hash = base.reverseBuffer(
+                base.fromHex(commitTxPrevOutput.txId)
+            );
             tx.addInput(hash, commitTxPrevOutput.vOut, defaultSequenceNum);
             this.commitTxPrevOutputFetcher.push(commitTxPrevOutput.amount);
             totalSenderAmount += commitTxPrevOutput.amount;
         });
-        this.inscriptionTxCtxDataList.forEach(inscriptionTxCtxData => {
-            tx.addOutput(inscriptionTxCtxData.revealTxPrevOutput.pkScript, inscriptionTxCtxData.revealTxPrevOutput.value);
+        this.inscriptionTxCtxDataList.forEach((inscriptionTxCtxData) => {
+            tx.addOutput(
+                inscriptionTxCtxData.revealTxPrevOutput.pkScript,
+                inscriptionTxCtxData.revealTxPrevOutput.value
+            );
         });
 
-        const changePkScript = bitcoin.address.toOutputScript(changeAddress, network);
+        const changePkScript = bitcoin.address.toOutputScript(
+            changeAddress,
+            network
+        );
         tx.addOutput(changePkScript, 0);
 
         const txForEstimate = tx.clone();
-        signTx(txForEstimate, commitTxPrevOutputList.map(i => ({...i, privateKey: ''})), this.network);
+        signTx(
+            txForEstimate,
+            commitTxPrevOutputList.map((i) => ({ ...i, privateKey: '' })),
+            this.network
+        );
 
-        const vsize = countAdjustedVsize(txForEstimate, commitTxPrevOutputList.map(a => a.address), network)
+        const vsize = countAdjustedVsize(
+            txForEstimate,
+            commitTxPrevOutputList.map((a) => a.address),
+            network
+        );
         const fee = Math.floor(vsize * commitFeeRate);
-        const changeAmount = totalSenderAmount - totalRevealPrevOutputValue - fee;
+        const changeAmount =
+            totalSenderAmount - totalRevealPrevOutputValue - fee;
         if (changeAmount >= minChangeValue) {
             tx.outs[tx.outs.length - 1].value = changeAmount;
         } else {
             tx.outs = tx.outs.slice(0, tx.outs.length - 1);
-            txForEstimate.outs = txForEstimate.outs.slice(0, txForEstimate.outs.length - 1);
-            const vsizeWithoutChange = countAdjustedVsize(txForEstimate, commitTxPrevOutputList.map(a => a.address), network)
-            const feeWithoutChange = Math.floor(vsizeWithoutChange * commitFeeRate);
-            if (totalSenderAmount - totalRevealPrevOutputValue - feeWithoutChange < 0) {
+            txForEstimate.outs = txForEstimate.outs.slice(
+                0,
+                txForEstimate.outs.length - 1
+            );
+            const vsizeWithoutChange = countAdjustedVsize(
+                txForEstimate,
+                commitTxPrevOutputList.map((a) => a.address),
+                network
+            );
+            const feeWithoutChange = Math.floor(
+                vsizeWithoutChange * commitFeeRate
+            );
+            if (
+                totalSenderAmount -
+                    totalRevealPrevOutputValue -
+                    feeWithoutChange <
+                0
+            ) {
                 this.mustCommitTxFee = fee;
                 return true;
             }
@@ -214,19 +308,42 @@ export class RunesMainInscriptionTool {
         this.revealTxs.forEach((revealTx, i) => {
             revealTx.ins[0].hash = this.commitTx.getHash();
 
-            const prevOutScripts = [this.inscriptionTxCtxDataList[i].revealTxPrevOutput.pkScript];
-            const values = [this.inscriptionTxCtxDataList[i].revealTxPrevOutput.value];
+            const prevOutScripts = [
+                this.inscriptionTxCtxDataList[i].revealTxPrevOutput.pkScript,
+            ];
+            const values = [
+                this.inscriptionTxCtxDataList[i].revealTxPrevOutput.value,
+            ];
 
-            this.revealTxPrevOutputFetcher.push(this.inscriptionTxCtxDataList[i].revealTxPrevOutput.value);
+            this.revealTxPrevOutputFetcher.push(
+                this.inscriptionTxCtxDataList[i].revealTxPrevOutput.value
+            );
 
-            const hash = revealTx.hashForWitnessV1(0, prevOutScripts, values, bitcoin.Transaction.SIGHASH_DEFAULT, this.inscriptionTxCtxDataList[i].hash);
-            const signature = Buffer.from(schnorr.sign(hash, this.inscriptionTxCtxDataList[i].privateKey, base.randomBytes(32)));
-            revealTx.ins[0].witness = [Buffer.from(signature), ...this.inscriptionTxCtxDataList[i].witness];
+            const hash = revealTx.hashForWitnessV1(
+                0,
+                prevOutScripts,
+                values,
+                bitcoin.Transaction.SIGHASH_DEFAULT,
+                this.inscriptionTxCtxDataList[i].hash
+            );
+            const signature = Buffer.from(
+                schnorr.sign(
+                    hash,
+                    this.inscriptionTxCtxDataList[i].privateKey,
+                    base.randomBytes(32)
+                )
+            );
+            revealTx.ins[0].witness = [
+                Buffer.from(signature),
+                ...this.inscriptionTxCtxDataList[i].witness,
+            ];
 
             // check tx max tx wight
-            const revealWeight = revealTx.weight()
+            const revealWeight = revealTx.weight();
             if (revealWeight > maxStandardTxWeight) {
-                throw new Error(`reveal(index ${i}) transaction weight greater than ${maxStandardTxWeight} (MAX_STANDARD_TX_WEIGHT): ${revealWeight}`);
+                throw new Error(
+                    `reveal(index ${i}) transaction weight greater than ${maxStandardTxWeight} (MAX_STANDARD_TX_WEIGHT): ${revealWeight}`
+                );
             }
         });
     }
@@ -236,7 +353,7 @@ export class RunesMainInscriptionTool {
         this.commitTx.ins.forEach((_, i) => {
             commitTxFee += this.commitTxPrevOutputFetcher[i];
         });
-        this.commitTx.outs.forEach(out => {
+        this.commitTx.outs.forEach((out) => {
             commitTxFee -= out.value;
         });
         let revealTxFees: number[] = [];
@@ -262,43 +379,46 @@ export const MAX_SPACERS = 0b00000111_11111111_11111111_11111111;
 export function checkEtching(e: Etching): boolean {
     let premine = e.premine ? BigInt(e.premine) : BigInt(0);
     if (premine > uint128Max || premine < 0) {
-        return false
+        return false;
     }
     if (e.terms) {
         let amount = e.terms.amount ? BigInt(e.terms.amount) : BigInt(0);
         let cap = e.terms.cap ? BigInt(e.terms.cap) : BigInt(0);
         if (amount < 0 || amount > uint128Max || cap < 0 || cap > uint128Max) {
-            return false
+            return false;
         }
         if (amount * cap > uint128Max) {
             return false;
         }
         let supply = premine + amount * cap;
         if (supply > uint128Max) {
-            return false
+            return false;
         }
         if (e.terms.height) {
             if (e.terms.height.start) {
-                if (e.terms.height.start < 0 || e.terms.height.start > uint64Max) {
-                    return false
+                if (
+                    e.terms.height.start < 0 ||
+                    e.terms.height.start > uint64Max
+                ) {
+                    return false;
                 }
             }
             if (e.terms.height.end) {
                 if (e.terms.height.end < 0 || e.terms.height.end > uint64Max) {
-                    return false
+                    return false;
                 }
             }
         }
     }
     if (e.divisibility) {
         if (e.divisibility < 0 || e.divisibility > MAX_DIVISIBILITY) {
-            return false
+            return false;
         }
     }
-    if (typeof e.rune.value === "string") {
+    if (typeof e.rune.value === 'string') {
         let spacers = getSpacersVal(e.rune.value);
         if (spacers > MAX_SPACERS) {
-            return false
+            return false;
         }
         let v = base26Encode(removeSpacers(e.rune.value));
         if (v > uint128Max) {
@@ -308,11 +428,14 @@ export function checkEtching(e: Etching): boolean {
     return true;
 }
 
-export function runesMainInscribe(network: bitcoin.Network, request: RunesMainInscriptionRequest) {
+export function runesMainInscribe(
+    network: bitcoin.Network,
+    request: RunesMainInscriptionRequest
+) {
     const tool = RunesMainInscriptionTool.newInscriptionTool(network, request);
     if (tool.mustCommitTxFee > 0) {
         return {
-            commitTx: "",
+            commitTx: '',
             revealTxs: [],
             commitTxFee: tool.mustCommitTxFee,
             revealTxFees: tool.mustRevealTxFees,
@@ -322,72 +445,119 @@ export function runesMainInscribe(network: bitcoin.Network, request: RunesMainIn
 
     return {
         commitTx: tool.commitTx.toHex(),
-        revealTxs: tool.revealTxs.map(revealTx => revealTx.toHex()),
+        revealTxs: tool.revealTxs.map((revealTx) => revealTx.toHex()),
         ...tool.calculateFee(),
         commitAddrs: tool.commitAddrs,
     };
 }
 
-function signTx(tx: bitcoin.Transaction, commitTxPrevOutputList: PrevOutput[], network: bitcoin.Network) {
+function signTx(
+    tx: bitcoin.Transaction,
+    commitTxPrevOutputList: PrevOutput[],
+    network: bitcoin.Network
+) {
     tx.ins.forEach((input, i) => {
-        const addressType = getAddressType(commitTxPrevOutputList[i].address, network);
+        const addressType = getAddressType(
+            commitTxPrevOutputList[i].address,
+            network
+        );
 
         if (commitTxPrevOutputList[i].privateKey == '') {
-            const {witness, script} = fakeSign(addressType);
+            const { witness, script } = fakeSign(addressType);
             if (witness !== undefined) {
-                input.witness = witness
+                input.witness = witness;
             }
             if (script !== undefined) {
-                input.script = script
+                input.script = script;
             }
-            return
+            return;
         }
 
-        const privateKey = base.fromHex(privateKeyFromWIF(commitTxPrevOutputList[i].privateKey, network));
+        const privateKey = base.fromHex(
+            privateKeyFromWIF(commitTxPrevOutputList[i].privateKey, network)
+        );
         const privateKeyHex = base.toHex(privateKey);
         const publicKey = private2public(privateKeyHex);
 
         if (addressType === 'segwit_taproot') {
-            const prevOutScripts = commitTxPrevOutputList.map(o => bitcoin.address.toOutputScript(o.address, network));
-            const values = commitTxPrevOutputList.map(o => o.amount);
-            const hash = tx.hashForWitnessV1(i, prevOutScripts, values, bitcoin.Transaction.SIGHASH_DEFAULT);
+            const prevOutScripts = commitTxPrevOutputList.map((o) =>
+                bitcoin.address.toOutputScript(o.address, network)
+            );
+            const values = commitTxPrevOutputList.map((o) => o.amount);
+            const hash = tx.hashForWitnessV1(
+                i,
+                prevOutScripts,
+                values,
+                bitcoin.Transaction.SIGHASH_DEFAULT
+            );
             const tweakedPrivKey = taproot.taprootTweakPrivKey(privateKey);
-            const signature = Buffer.from(schnorr.sign(hash, tweakedPrivKey, base.randomBytes(32)));
+            const signature = Buffer.from(
+                schnorr.sign(hash, tweakedPrivKey, base.randomBytes(32))
+            );
 
             input.witness = [Buffer.from(signature)];
-
         } else if (addressType === 'legacy') {
-            const prevScript = bitcoin.address.toOutputScript(commitTxPrevOutputList[i].address, network);
-            const hash = tx.hashForSignature(i, prevScript, bitcoin.Transaction.SIGHASH_ALL)!;
+            const prevScript = bitcoin.address.toOutputScript(
+                commitTxPrevOutputList[i].address,
+                network
+            );
+            const hash = tx.hashForSignature(
+                i,
+                prevScript,
+                bitcoin.Transaction.SIGHASH_ALL
+            )!;
             const signature = sign(hash, privateKeyHex);
             const payment = bitcoin.payments.p2pkh({
-                signature: bitcoin.script.signature.encode(signature, bitcoin.Transaction.SIGHASH_ALL),
+                signature: bitcoin.script.signature.encode(
+                    signature,
+                    bitcoin.Transaction.SIGHASH_ALL
+                ),
                 pubkey: publicKey,
             });
 
             input.script = payment.input!;
-
         } else {
             const pubKeyHash = bcrypto.hash160(publicKey);
-            const prevOutScript = Buffer.of(0x19, 0x76, 0xa9, 0x14, ...pubKeyHash, 0x88, 0xac);
+            const prevOutScript = Buffer.of(
+                0x19,
+                0x76,
+                0xa9,
+                0x14,
+                ...pubKeyHash,
+                0x88,
+                0xac
+            );
             const value = commitTxPrevOutputList[i].amount;
-            const hash = tx.hashForWitness(i, prevOutScript, value, bitcoin.Transaction.SIGHASH_ALL);
+            const hash = tx.hashForWitness(
+                i,
+                prevOutScript,
+                value,
+                bitcoin.Transaction.SIGHASH_ALL
+            );
             const signature = sign(hash, privateKeyHex);
 
             input.witness = [
-                bitcoin.script.signature.encode(signature, bitcoin.Transaction.SIGHASH_ALL),
+                bitcoin.script.signature.encode(
+                    signature,
+                    bitcoin.Transaction.SIGHASH_ALL
+                ),
                 publicKey,
             ];
 
             const redeemScript = Buffer.of(0x16, 0, 20, ...pubKeyHash);
-            if (addressType === "segwit_nested") {
+            if (addressType === 'segwit_nested') {
                 input.script = redeemScript;
             }
         }
     });
 }
 
-function createCommitmentScript(network: bitcoin.Network, privateKeyWif: string, revealAddr: string, commitment: Buffer): RunesMainInscriptionTxCtxData {
+function createCommitmentScript(
+    network: bitcoin.Network,
+    privateKeyWif: string,
+    revealAddr: string,
+    commitment: Buffer
+): RunesMainInscriptionTxCtxData {
     const privateKey = base.fromHex(privateKeyFromWIF(privateKeyWif, network));
     const internalPubKey = wif2Public(privateKeyWif, network).slice(1);
     const inscriptionBuilder: bitcoin.payments.StackElement[] = [];
@@ -408,7 +578,7 @@ function createCommitmentScript(network: bitcoin.Network, privateKeyWif: string,
         redeemVersion: 0xc0,
     };
 
-    const {output, witness, hash, address} = bitcoin.payments.p2tr({
+    const { output, witness, hash, address } = bitcoin.payments.p2tr({
         internalPubkey: internalPubKey,
         scriptTree,
         redeem,
@@ -417,8 +587,8 @@ function createCommitmentScript(network: bitcoin.Network, privateKeyWif: string,
     return {
         privateKey,
         inscriptionScript,
-        commitTxAddress: address!,//inscriptionAddress
-        commitTxAddressPkScript: output!,//inscriptionPkScript
+        commitTxAddress: address!, //inscriptionAddress
+        commitTxAddressPkScript: output!, //inscriptionPkScript
         witness: witness!,
         hash: hash!,
         revealTxPrevOutput: {
@@ -429,8 +599,12 @@ function createCommitmentScript(network: bitcoin.Network, privateKeyWif: string,
     };
 }
 
-function createInscriptionTxCtxData(network: bitcoin.Network, inscriptionData: InscriptionData, privateKeyWif: string,
-                                    inscriptionAddData?: Buffer): RunesMainInscriptionTxCtxData {
+function createInscriptionTxCtxData(
+    network: bitcoin.Network,
+    inscriptionData: InscriptionData,
+    privateKeyWif: string,
+    inscriptionAddData?: Buffer
+): RunesMainInscriptionTxCtxData {
     const privateKey = base.fromHex(privateKeyFromWIF(privateKeyWif, network));
     const internalPubKey = wif2Public(privateKeyWif, network).slice(1);
 
@@ -446,7 +620,7 @@ function createInscriptionTxCtxData(network: bitcoin.Network, inscriptionData: I
     }
     inscriptionBuilder.push(ops.OP_FALSE);
     inscriptionBuilder.push(ops.OP_IF);
-    inscriptionBuilder.push(Buffer.from("ord"));
+    inscriptionBuilder.push(Buffer.from('ord'));
     inscriptionBuilder.push(ops.OP_DATA_1);
     inscriptionBuilder.push(ops.OP_DATA_1);
     inscriptionBuilder.push(Buffer.from(inscriptionData.contentType));
@@ -471,7 +645,7 @@ function createInscriptionTxCtxData(network: bitcoin.Network, inscriptionData: I
         redeemVersion: 0xc0,
     };
 
-    const {output, witness, hash, address} = bitcoin.payments.p2tr({
+    const { output, witness, hash, address } = bitcoin.payments.p2tr({
         internalPubkey: internalPubKey,
         scriptTree,
         redeem,
@@ -488,15 +662,21 @@ function createInscriptionTxCtxData(network: bitcoin.Network, inscriptionData: I
             pkScript: Buffer.alloc(0),
             value: 0,
         },
-        revealPkScript: bitcoin.address.toOutputScript(inscriptionData.revealAddr, network),
+        revealPkScript: bitcoin.address.toOutputScript(
+            inscriptionData.revealAddr,
+            network
+        ),
     };
 }
 
-export function inscribe(network: bitcoin.Network, request: RunesMainInscriptionRequest) {
+export function inscribe(
+    network: bitcoin.Network,
+    request: RunesMainInscriptionRequest
+) {
     const tool = RunesMainInscriptionTool.newInscriptionTool(network, request);
     if (tool.mustCommitTxFee > 0) {
         return {
-            commitTx: "",
+            commitTx: '',
             revealTxs: [],
             commitTxFee: tool.mustCommitTxFee,
             revealTxFees: tool.mustRevealTxFees,
@@ -506,131 +686,139 @@ export function inscribe(network: bitcoin.Network, request: RunesMainInscription
 
     return {
         commitTx: tool.commitTx.toHex(),
-        revealTxs: tool.revealTxs.map(revealTx => revealTx.toHex()),
+        revealTxs: tool.revealTxs.map((revealTx) => revealTx.toHex()),
         ...tool.calculateFee(),
         commitAddrs: tool.commitAddrs,
     };
 }
 
 // TODO: Encoding validation and comparison with Rust implementation
-export function buildRuneMainDeployData(etching: Etching, useDefaultOutput: boolean, defaultOutput: number): Buffer {
+export function buildRuneMainDeployData(
+    etching: Etching,
+    useDefaultOutput: boolean,
+    defaultOutput: number
+): Buffer {
     let msg = buildMessage(etching, useDefaultOutput, defaultOutput);
     let msgBuff = toBuffer(msg);
-    const prefix = Buffer.from('6a5d', 'hex')  // OP_RETURN OP_13
+    const prefix = Buffer.from('6a5d', 'hex'); // OP_RETURN OP_13
     let pushNum;
     if (msgBuff.length < 0x4c) {
-        pushNum = Buffer.alloc(1)
-        pushNum.writeUint8(msgBuff.length)
+        pushNum = Buffer.alloc(1);
+        pushNum.writeUint8(msgBuff.length);
     } else if (msgBuff.length < 0x100) {
-        pushNum = Buffer.alloc(2)
-        pushNum.writeUint8(0x4c)
-        pushNum.writeUint8(msgBuff.length, 1)
+        pushNum = Buffer.alloc(2);
+        pushNum.writeUint8(0x4c);
+        pushNum.writeUint8(msgBuff.length, 1);
     } else if (msgBuff.length < 0x10000) {
-        pushNum = Buffer.alloc(3)
-        pushNum.writeUint8(0x4d)
-        pushNum.writeUint16LE(msgBuff.length, 1)
+        pushNum = Buffer.alloc(3);
+        pushNum.writeUint8(0x4d);
+        pushNum.writeUint16LE(msgBuff.length, 1);
     } else if (msgBuff.length < 0x100000000) {
-        pushNum = Buffer.alloc(5)
-        pushNum.writeUint8(0x4e)
-        pushNum.writeUint32LE(msgBuff.length, 1)
+        pushNum = Buffer.alloc(5);
+        pushNum.writeUint8(0x4e);
+        pushNum.writeUint32LE(msgBuff.length, 1);
     } else {
-        throw new Error("runestone too big!")
+        throw new Error('runestone too big!');
     }
-    return bscript.compile(Buffer.concat([prefix, pushNum, msgBuff]))
+    return bscript.compile(Buffer.concat([prefix, pushNum, msgBuff]));
 }
 
 function toBuffer(msg: Map<number, bigint[]>): Buffer {
-    let buffArr: Buffer[] = []
+    let buffArr: Buffer[] = [];
     // Serialize fields.
     for (const [tag, vals] of msg) {
         for (const val of vals) {
-            const tagBuff = Buffer.alloc(1)
-            tagBuff.writeUInt8(tag)
-            buffArr.push(tagBuff)
-            buffArr.push(Buffer.from(encodeLEB128(val)))
+            const tagBuff = Buffer.alloc(1);
+            tagBuff.writeUInt8(tag);
+            buffArr.push(tagBuff);
+            buffArr.push(Buffer.from(encodeLEB128(val)));
         }
     }
-    return Buffer.concat(buffArr)
+    return Buffer.concat(buffArr);
 }
 
-function buildMessage(etching: Etching, useDefaultOutput: boolean, defaultOutput: number): Map<number, bigint[]> {
+function buildMessage(
+    etching: Etching,
+    useDefaultOutput: boolean,
+    defaultOutput: number
+): Map<number, bigint[]> {
     let fields: Map<number, bigint[]> = new Map();
     let flags = 1;
     if (etching.terms) {
         let mask = 1 << Flag.Terms;
-        flags |= mask
+        flags |= mask;
     }
 
     if (etching.turbo) {
         let mask = 1 << Flag.Turbo;
-        flags |= mask
+        flags |= mask;
     }
 
-    fields.set(Tag.Flags, [BigInt(flags)])
+    fields.set(Tag.Flags, [BigInt(flags)]);
 
     let runeValue: bigint;
     if (typeof etching.rune.value === 'string') {
-        runeValue = base26Encode(removeSpacers(etching.rune.value))
+        runeValue = base26Encode(removeSpacers(etching.rune.value));
     } else {
-        runeValue = etching.rune.value
+        runeValue = etching.rune.value;
     }
-    fields.set(Tag.Rune, [BigInt(runeValue)])
+    fields.set(Tag.Rune, [BigInt(runeValue)]);
 
     if (etching.divisibility) {
-        fields.set(Tag.Divisibility, [BigInt(etching.divisibility)])
+        fields.set(Tag.Divisibility, [BigInt(etching.divisibility)]);
     }
     if (etching.spacers) {
-        fields.set(Tag.Spacers, [BigInt(etching.spacers)])
+        fields.set(Tag.Spacers, [BigInt(etching.spacers)]);
     } else {
         let spacers;
-        if (typeof etching.rune.value === "bigint") {
-            spacers = 0
+        if (typeof etching.rune.value === 'bigint') {
+            spacers = 0;
         } else {
-            spacers = getSpacersVal(etching.rune.value)
+            spacers = getSpacersVal(etching.rune.value);
         }
         if (spacers !== 0) {
-            fields.set(Tag.Spacers, [BigInt(spacers)])
+            fields.set(Tag.Spacers, [BigInt(spacers)]);
         }
     }
 
     if (etching.symbol) {
-        fields.set(Tag.Symbol, [BigInt(etching.symbol.charCodeAt(0))])
+        fields.set(Tag.Symbol, [BigInt(etching.symbol.charCodeAt(0))]);
     }
 
     if (etching.premine) {
-        fields.set(Tag.Premine, [BigInt(etching.premine)])
+        fields.set(Tag.Premine, [BigInt(etching.premine)]);
     }
     if (etching.terms) {
         if (etching.terms.amount) {
-            fields.set(Tag.Amount, [BigInt(etching.terms.amount)])
+            fields.set(Tag.Amount, [BigInt(etching.terms.amount)]);
         }
         if (etching.terms.cap) {
-            fields.set(Tag.Cap, [BigInt(etching.terms.cap)])
+            fields.set(Tag.Cap, [BigInt(etching.terms.cap)]);
         }
         if (etching.terms.height) {
             const heightStart = etching.terms.height.start;
             if (heightStart) {
-                fields.set(Tag.HeightStart, [BigInt(heightStart)])
+                fields.set(Tag.HeightStart, [BigInt(heightStart)]);
             }
             const heightEnd = etching.terms.height.end;
             if (heightEnd) {
-                fields.set(Tag.HeightEnd, [BigInt(heightEnd)])
+                fields.set(Tag.HeightEnd, [BigInt(heightEnd)]);
             }
         }
         if (etching.terms.offset) {
             const offsetStart = etching.terms.offset.start;
 
             if (offsetStart) {
-                fields.set(Tag.OffsetStart, [BigInt(offsetStart)])
+                fields.set(Tag.OffsetStart, [BigInt(offsetStart)]);
             }
             const offsetEnd = etching.terms.offset.end;
             if (offsetEnd) {
-                fields.set(Tag.OffsetEnd, [BigInt(offsetEnd)])
+                fields.set(Tag.OffsetEnd, [BigInt(offsetEnd)]);
             }
         }
     }
     if (useDefaultOutput && defaultOutput) {
-        fields.set(Tag.Pointer, [BigInt(defaultOutput)])
+        fields.set(Tag.Pointer, [BigInt(defaultOutput)]);
     }
-    return fields
+    return fields;
 }
