@@ -1,7 +1,7 @@
 import {
     parseTypeTag,
     TypeTagParserError,
-    TypeTagParserErrorType
+    TypeTagParserErrorType,
 } from '../src/v2/transactions/typeTag/parser';
 import {
     TypeTagAddress,
@@ -59,14 +59,18 @@ describe('Parser Tests', () => {
 
             const vectorBool = parseTypeTag('vector<bool>');
             expect(vectorBool).toBeInstanceOf(TypeTagVector);
-            expect((vectorBool as TypeTagVector).value).toBeInstanceOf(TypeTagBool);
+            expect((vectorBool as TypeTagVector).value).toBeInstanceOf(
+                TypeTagBool
+            );
         });
 
         // Test struct types
         test('parseTypeTag with struct types', () => {
-            const structType = parseTypeTag('0x1::coin::Coin<0x1::aptos_coin::AptosCoin>');
+            const structType = parseTypeTag(
+                '0x1::coin::Coin<0x1::aptos_coin::AptosCoin>'
+            );
             expect(structType).toBeInstanceOf(TypeTagStruct);
-            
+
             const struct = (structType as TypeTagStruct).value;
             expect(struct.address.toString()).toBe('0x1');
             expect(struct.moduleName.identifier).toBe('coin');
@@ -84,7 +88,9 @@ describe('Parser Tests', () => {
             expect(genericType1).toBeInstanceOf(TypeTagGeneric);
             expect((genericType1 as TypeTagGeneric).value).toBe(1);
 
-            const genericType123 = parseTypeTag('T123', { allowGenerics: true });
+            const genericType123 = parseTypeTag('T123', {
+                allowGenerics: true,
+            });
             expect(genericType123).toBeInstanceOf(TypeTagGeneric);
             expect((genericType123 as TypeTagGeneric).value).toBe(123);
         });
@@ -93,11 +99,15 @@ describe('Parser Tests', () => {
         test('parseTypeTag with reference types', () => {
             const refType = parseTypeTag('&u8');
             expect(refType).toBeInstanceOf(TypeTagReference);
-            expect((refType as TypeTagReference).value).toBeInstanceOf(TypeTagU8);
+            expect((refType as TypeTagReference).value).toBeInstanceOf(
+                TypeTagU8
+            );
 
             const refStructType = parseTypeTag('&0x1::coin::Coin<u8>');
             expect(refStructType).toBeInstanceOf(TypeTagReference);
-            expect((refStructType as TypeTagReference).value).toBeInstanceOf(TypeTagStruct);
+            expect((refStructType as TypeTagReference).value).toBeInstanceOf(
+                TypeTagStruct
+            );
         });
 
         // Test whitespace handling
@@ -105,7 +115,7 @@ describe('Parser Tests', () => {
             // Test multiple generics with spaces (no spaces around commas)
             const multiGeneric = parseTypeTag('0x1::pair::Pair<u8, u16>');
             expect(multiGeneric).toBeInstanceOf(TypeTagStruct);
-            
+
             const struct = (multiGeneric as TypeTagStruct).value;
             expect(struct.typeArgs).toHaveLength(2);
             expect(struct.typeArgs[0]).toBeInstanceOf(TypeTagU8);
@@ -118,9 +128,11 @@ describe('Parser Tests', () => {
 
         // Test nested generics
         test('parseTypeTag with nested generics', () => {
-            const nestedType = parseTypeTag('0x1::pair::Pair<0x1::coin::Coin<u8>, u16>');
+            const nestedType = parseTypeTag(
+                '0x1::pair::Pair<0x1::coin::Coin<u8>, u16>'
+            );
             expect(nestedType).toBeInstanceOf(TypeTagStruct);
-            
+
             const struct = (nestedType as TypeTagStruct).value;
             expect(struct.typeArgs).toHaveLength(2);
             expect(struct.typeArgs[0]).toBeInstanceOf(TypeTagStruct);
@@ -130,7 +142,9 @@ describe('Parser Tests', () => {
         // Test error cases
         test('parseTypeTag error cases', () => {
             // Invalid type tag
-            expect(() => parseTypeTag('invalid_type')).toThrow(TypeTagParserError);
+            expect(() => parseTypeTag('invalid_type')).toThrow(
+                TypeTagParserError
+            );
             expect(() => parseTypeTag('invalid_type')).toThrow('unknown type');
 
             // Generic when not allowed
@@ -143,39 +157,69 @@ describe('Parser Tests', () => {
 
             // Missing type argument close
             expect(() => parseTypeTag('vector<u8')).toThrow(TypeTagParserError);
-            expect(() => parseTypeTag('vector<u8')).toThrow("no matching '>' for '<'");
+            expect(() => parseTypeTag('vector<u8')).toThrow(
+                "no matching '>' for '<'"
+            );
 
             // Type argument count mismatch for vector (multiple args)
-            expect(() => parseTypeTag('vector<u8, u16>')).toThrow(TypeTagParserError);
-            expect(() => parseTypeTag('vector<u8, u16>')).toThrow('vector type expected to have exactly one type argument');
+            expect(() => parseTypeTag('vector<u8, u16>')).toThrow(
+                TypeTagParserError
+            );
+            expect(() => parseTypeTag('vector<u8, u16>')).toThrow(
+                'vector type expected to have exactly one type argument'
+            );
 
             // Unexpected primitive type arguments
             expect(() => parseTypeTag('u8<u16>')).toThrow(TypeTagParserError);
-            expect(() => parseTypeTag('u8<u16>')).toThrow('primitive types not expected to have type arguments');
+            expect(() => parseTypeTag('u8<u16>')).toThrow(
+                'primitive types not expected to have type arguments'
+            );
 
             // Unexpected vector type argument count (empty args)
             expect(() => parseTypeTag('vector<>')).toThrow(TypeTagParserError);
-            expect(() => parseTypeTag('vector<>')).toThrow("type argument count doesn't match expected amount");
+            expect(() => parseTypeTag('vector<>')).toThrow(
+                "type argument count doesn't match expected amount"
+            );
 
             // Missing type argument
-            expect(() => parseTypeTag('vector<,u8>')).toThrow(TypeTagParserError);
-            expect(() => parseTypeTag('vector<,u8>')).toThrow("no type argument before ','");
+            expect(() => parseTypeTag('vector<,u8>')).toThrow(
+                TypeTagParserError
+            );
+            expect(() => parseTypeTag('vector<,u8>')).toThrow(
+                "no type argument before ','"
+            );
 
             // Unexpected struct format
-            expect(() => parseTypeTag('0x1::invalid')).toThrow(TypeTagParserError);
-            expect(() => parseTypeTag('0x1::invalid')).toThrow('unexpected struct format');
+            expect(() => parseTypeTag('0x1::invalid')).toThrow(
+                TypeTagParserError
+            );
+            expect(() => parseTypeTag('0x1::invalid')).toThrow(
+                'unexpected struct format'
+            );
 
             // Invalid address
-            expect(() => parseTypeTag('invalid_address::module::struct')).toThrow(TypeTagParserError);
-            expect(() => parseTypeTag('invalid_address::module::struct')).toThrow('struct address must be valid');
+            expect(() =>
+                parseTypeTag('invalid_address::module::struct')
+            ).toThrow(TypeTagParserError);
+            expect(() =>
+                parseTypeTag('invalid_address::module::struct')
+            ).toThrow('struct address must be valid');
 
             // Invalid module name character
-            expect(() => parseTypeTag('0x1::invalid-module::struct')).toThrow(TypeTagParserError);
-            expect(() => parseTypeTag('0x1::invalid-module::struct')).toThrow('module name must only contain alphanumeric');
+            expect(() => parseTypeTag('0x1::invalid-module::struct')).toThrow(
+                TypeTagParserError
+            );
+            expect(() => parseTypeTag('0x1::invalid-module::struct')).toThrow(
+                'module name must only contain alphanumeric'
+            );
 
             // Invalid struct name character
-            expect(() => parseTypeTag('0x1::module::invalid-struct')).toThrow(TypeTagParserError);
-            expect(() => parseTypeTag('0x1::module::invalid-struct')).toThrow('struct name must only contain alphanumeric');
+            expect(() => parseTypeTag('0x1::module::invalid-struct')).toThrow(
+                TypeTagParserError
+            );
+            expect(() => parseTypeTag('0x1::module::invalid-struct')).toThrow(
+                'struct name must only contain alphanumeric'
+            );
         });
 
         // Test top-level comma error (line 234)
@@ -187,8 +231,12 @@ describe('Parser Tests', () => {
         // Test whitespace error cases (lines 254, 258)
         test('parseTypeTag with invalid whitespace sequences', () => {
             // Test case where whitespace is followed by invalid character (not comma or >)
-            expect(() => parseTypeTag('vector<u8 u16>')).toThrow(TypeTagParserError);
-            expect(() => parseTypeTag('vector<u8 u16>')).toThrow('unexpected whitespace character');
+            expect(() => parseTypeTag('vector<u8 u16>')).toThrow(
+                TypeTagParserError
+            );
+            expect(() => parseTypeTag('vector<u8 u16>')).toThrow(
+                'unexpected whitespace character'
+            );
         });
 
         // Test edge case with empty currentStr and whitespace (line 258)
@@ -202,7 +250,7 @@ describe('Parser Tests', () => {
         test('parseTypeTag final switch statement coverage', () => {
             // Case where curTypes.length is 1 but currentStr is not empty (line 304)
             // This is hard to trigger directly, but we can test similar scenarios
-            
+
             // This should work fine (case 0 with currentStr and innerTypes)
             const simpleType = parseTypeTag('u8');
             expect(simpleType).toBeInstanceOf(TypeTagU8);
@@ -215,25 +263,31 @@ describe('Parser Tests', () => {
         // Test complex edge cases to hit remaining uncovered lines
         test('parseTypeTag complex edge cases', () => {
             // Test with maximum nesting and whitespace
-            const complexType = parseTypeTag('0x1::option::Option< 0x1::vector::Vector< 0x1::coin::Coin< u8 > > >');
+            const complexType = parseTypeTag(
+                '0x1::option::Option< 0x1::vector::Vector< 0x1::coin::Coin< u8 > > >'
+            );
             expect(complexType).toBeInstanceOf(TypeTagStruct);
 
             // Test reference to generic (when allowed)
             const refGeneric = parseTypeTag('&T0', { allowGenerics: true });
             expect(refGeneric).toBeInstanceOf(TypeTagReference);
-            expect((refGeneric as TypeTagReference).value).toBeInstanceOf(TypeTagGeneric);
+            expect((refGeneric as TypeTagReference).value).toBeInstanceOf(
+                TypeTagGeneric
+            );
 
             // Test vector of vector
             const vectorVector = parseTypeTag('vector<vector<u8>>');
             expect(vectorVector).toBeInstanceOf(TypeTagVector);
-            expect((vectorVector as TypeTagVector).value).toBeInstanceOf(TypeTagVector);
+            expect((vectorVector as TypeTagVector).value).toBeInstanceOf(
+                TypeTagVector
+            );
         });
 
         // Test struct with valid identifiers containing numbers and underscores
         test('parseTypeTag with valid identifier patterns', () => {
             const structWithNumbers = parseTypeTag('0x1::coin_12::Coin_34<u8>');
             expect(structWithNumbers).toBeInstanceOf(TypeTagStruct);
-            
+
             const struct = (structWithNumbers as TypeTagStruct).value;
             expect(struct.moduleName.identifier).toBe('coin_12');
             expect(struct.name.identifier).toBe('Coin_34');
@@ -242,13 +296,19 @@ describe('Parser Tests', () => {
         // Test empty vector type arguments error
         test('parseTypeTag with empty vector type arguments', () => {
             expect(() => parseTypeTag('vector<>')).toThrow(TypeTagParserError);
-            expect(() => parseTypeTag('vector<>')).toThrow("type argument count doesn't match expected amount");
+            expect(() => parseTypeTag('vector<>')).toThrow(
+                "type argument count doesn't match expected amount"
+            );
         });
 
         // Test multiple type arguments for vector (should fail)
         test('parseTypeTag with multiple vector type arguments', () => {
-            expect(() => parseTypeTag('vector<u8, u16>')).toThrow(TypeTagParserError);
-            expect(() => parseTypeTag('vector<u8, u16>')).toThrow('vector type expected to have exactly one type argument');
+            expect(() => parseTypeTag('vector<u8, u16>')).toThrow(
+                TypeTagParserError
+            );
+            expect(() => parseTypeTag('vector<u8, u16>')).toThrow(
+                'vector type expected to have exactly one type argument'
+            );
         });
     });
 
@@ -269,7 +329,8 @@ describe('Parser Tests', () => {
 
         // Test isValidWhitespaceCharacter
         test('isValidWhitespaceCharacter function', () => {
-            const isValidWhitespaceCharacter = (parserModule as any).isValidWhitespaceCharacter;
+            const isValidWhitespaceCharacter = (parserModule as any)
+                .isValidWhitespaceCharacter;
             if (isValidWhitespaceCharacter) {
                 expect(isValidWhitespaceCharacter(' ')).toBe(true);
                 expect(isValidWhitespaceCharacter('\t')).toBe(true);
@@ -347,10 +408,15 @@ describe('Parser Tests', () => {
 
     describe('TypeTagParserError', () => {
         test('TypeTagParserError creation and message', () => {
-            const error = new TypeTagParserError('invalid_type', TypeTagParserErrorType.InvalidTypeTag);
+            const error = new TypeTagParserError(
+                'invalid_type',
+                TypeTagParserErrorType.InvalidTypeTag
+            );
             expect(error).toBeInstanceOf(Error);
             expect(error).toBeInstanceOf(TypeTagParserError);
-            expect(error.message).toBe("Failed to parse typeTag 'invalid_type', unknown type");
+            expect(error.message).toBe(
+                "Failed to parse typeTag 'invalid_type', unknown type"
+            );
         });
 
         test('TypeTagParserError with different error types', () => {
@@ -371,7 +437,7 @@ describe('Parser Tests', () => {
                 TypeTagParserErrorType.InvalidAddress,
             ];
 
-            errorTypes.forEach(errorType => {
+            errorTypes.forEach((errorType) => {
                 const error = new TypeTagParserError('test_type', errorType);
                 expect(error.message).toContain('test_type');
                 expect(error.message).toContain(errorType);
@@ -385,7 +451,7 @@ describe('Parser Tests', () => {
             // Test reference to struct
             const refStruct = parseTypeTag('&0x1::coin::Coin<u8>');
             expect(refStruct).toBeInstanceOf(TypeTagReference);
-            
+
             const innerStruct = (refStruct as TypeTagReference).value;
             expect(innerStruct).toBeInstanceOf(TypeTagStruct);
         });
@@ -394,7 +460,7 @@ describe('Parser Tests', () => {
         test('signer type case coverage', () => {
             const signerType = parseTypeTag('signer');
             expect(signerType).toBeInstanceOf(TypeTagSigner);
-            
+
             // Test case insensitive
             const signerTypeUpper = parseTypeTag('SIGNER');
             expect(signerTypeUpper).toBeInstanceOf(TypeTagSigner);
@@ -403,47 +469,75 @@ describe('Parser Tests', () => {
         // Test extreme edge cases
         test('extreme edge cases', () => {
             // Very long generic number
-            const longGeneric = parseTypeTag('T999999', { allowGenerics: true });
+            const longGeneric = parseTypeTag('T999999', {
+                allowGenerics: true,
+            });
             expect(longGeneric).toBeInstanceOf(TypeTagGeneric);
             expect((longGeneric as TypeTagGeneric).value).toBe(999999);
 
             // Deep nesting
-            const deepNesting = parseTypeTag('vector<vector<vector<vector<u8>>>>');
+            const deepNesting = parseTypeTag(
+                'vector<vector<vector<vector<u8>>>>'
+            );
             expect(deepNesting).toBeInstanceOf(TypeTagVector);
 
             // Complex struct with many type args
-            const complexStruct = parseTypeTag('0x1::test::Test<u8, u16, u32, u64, bool, address>');
+            const complexStruct = parseTypeTag(
+                '0x1::test::Test<u8, u16, u32, u64, bool, address>'
+            );
             expect(complexStruct).toBeInstanceOf(TypeTagStruct);
-            expect((complexStruct as TypeTagStruct).value.typeArgs).toHaveLength(6);
+            expect(
+                (complexStruct as TypeTagStruct).value.typeArgs
+            ).toHaveLength(6);
         });
 
         // Test to hit specific uncovered lines
         test('additional edge cases for uncovered lines', () => {
             // Test case to hit line 315-317 (default case in final switch)
             // This is difficult to trigger directly, but let's try some complex parsing scenarios
-            
+
             // Test struct with 4 parts (should fail with unexpected struct format)
-            expect(() => parseTypeTag('0x1::module::struct::extra')).toThrow(TypeTagParserError);
-            expect(() => parseTypeTag('0x1::module::struct::extra')).toThrow('unexpected struct format');
+            expect(() => parseTypeTag('0x1::module::struct::extra')).toThrow(
+                TypeTagParserError
+            );
+            expect(() => parseTypeTag('0x1::module::struct::extra')).toThrow(
+                'unexpected struct format'
+            );
 
             // Test struct with 2 parts (should fail with unexpected struct format)
-            expect(() => parseTypeTag('0x1::module')).toThrow(TypeTagParserError);
-            expect(() => parseTypeTag('0x1::module')).toThrow('unexpected struct format');
+            expect(() => parseTypeTag('0x1::module')).toThrow(
+                TypeTagParserError
+            );
+            expect(() => parseTypeTag('0x1::module')).toThrow(
+                'unexpected struct format'
+            );
 
             // Test struct with 1 part (should fail with invalid type tag)
             expect(() => parseTypeTag('0x1')).toThrow(TypeTagParserError);
             expect(() => parseTypeTag('0x1')).toThrow('unknown type');
 
             // Test invalid address format in struct
-            expect(() => parseTypeTag('invalid_hex::module::struct')).toThrow(TypeTagParserError);
-            expect(() => parseTypeTag('invalid_hex::module::struct')).toThrow('struct address must be valid');
+            expect(() => parseTypeTag('invalid_hex::module::struct')).toThrow(
+                TypeTagParserError
+            );
+            expect(() => parseTypeTag('invalid_hex::module::struct')).toThrow(
+                'struct address must be valid'
+            );
 
             // Test struct with empty parts
-            expect(() => parseTypeTag('0x1::::struct')).toThrow(TypeTagParserError);
-            expect(() => parseTypeTag('0x1::::struct')).toThrow('module name must only contain alphanumeric');
+            expect(() => parseTypeTag('0x1::::struct')).toThrow(
+                TypeTagParserError
+            );
+            expect(() => parseTypeTag('0x1::::struct')).toThrow(
+                'module name must only contain alphanumeric'
+            );
 
-            expect(() => parseTypeTag('0x1::module::')).toThrow(TypeTagParserError);
-            expect(() => parseTypeTag('0x1::module::')).toThrow('struct name must only contain alphanumeric');
+            expect(() => parseTypeTag('0x1::module::')).toThrow(
+                TypeTagParserError
+            );
+            expect(() => parseTypeTag('0x1::module::')).toThrow(
+                'struct name must only contain alphanumeric'
+            );
         });
 
         // Test mixed case struct parsing
@@ -451,7 +545,7 @@ describe('Parser Tests', () => {
             // Test that struct parts are case sensitive while primitives are not
             const result = parseTypeTag('0x1::MyModule::MyStruct<U8>');
             expect(result).toBeInstanceOf(TypeTagStruct);
-            
+
             const struct = (result as TypeTagStruct).value;
             expect(struct.moduleName.identifier).toBe('MyModule');
             expect(struct.name.identifier).toBe('MyStruct');
@@ -462,10 +556,10 @@ describe('Parser Tests', () => {
         test('reference to reference type', () => {
             const refRef = parseTypeTag('&&u8');
             expect(refRef).toBeInstanceOf(TypeTagReference);
-            
+
             const innerRef = (refRef as TypeTagReference).value;
             expect(innerRef).toBeInstanceOf(TypeTagReference);
-            
+
             const innerType = (innerRef as TypeTagReference).value;
             expect(innerType).toBeInstanceOf(TypeTagU8);
         });
@@ -474,25 +568,27 @@ describe('Parser Tests', () => {
         test('final edge cases for 100% coverage', () => {
             // Try to hit line 258 (whitespace edge case) - this is tricky
             // Line 258 is in the whitespace handling where there's no parsed type before
-            
+
             // Try to hit lines 315-317 (case 1 with non-empty currentStr and default case)
             // These are very specific parser state conditions that are hard to trigger
-            
+
             // Let's try some complex scenarios that might trigger these edge cases
-            
+
             // Test various malformed inputs that might trigger different parser states
             expect(() => parseTypeTag('')).toThrow(TypeTagParserError);
-            
+
             // Test with just whitespace
             expect(() => parseTypeTag('   ')).toThrow(TypeTagParserError);
-            
+
             // Test various edge cases to try to hit remaining branches
             expect(() => parseTypeTag('0x')).toThrow(TypeTagParserError);
             expect(() => parseTypeTag('::')).toThrow(TypeTagParserError);
-            
+
             // Complex nesting that might trigger parser edge cases
-            const complexNested = parseTypeTag('vector<0x1::option::Option<vector<0x1::string::String>>>');
+            const complexNested = parseTypeTag(
+                'vector<0x1::option::Option<vector<0x1::string::String>>>'
+            );
             expect(complexNested).toBeInstanceOf(TypeTagVector);
         });
     });
-}); 
+});

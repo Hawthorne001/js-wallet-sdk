@@ -113,7 +113,7 @@ let wallet = new AptosWallet()
   let tx = await wallet.signTransaction(signParams);
 ```
 
-### transfer token-transferring
+### transfer token-transfering
 ```typescript
 import {AptosWallet} from "@okxweb3/coin-aptos";
 
@@ -303,6 +303,111 @@ let signParams: SignTxParams = {
   data: param
 };
 let tx = await wallet.signTransaction(signParams);
+```
+
+### feepayer transaction
+
+```typescript
+const wallet = new AptosWallet();
+        const param: AptosParam = {
+            type: "transfer",
+            base: {
+                sequenceNumber: "40",
+                chainId: 2,
+                maxGasAmount: "10000",
+                gasUnitPrice: "100",
+                expirationTimestampSecs: "1860131587",
+                withFeePayer:true,
+            },
+            data: {
+                recipientAddress: "0x0163f9f9f773f3b0e788559d9efcbe547889500d0891fe024e782c7224defd01",
+                amount: 1000,
+            }
+        }
+        let signParams: SignTxParams = {
+            privateKey: "",
+            data: param
+        };
+```
+
+### script payload transaction
+
+```typescript
+// sign transaction
+let res = await wallet.signTransaction({
+    privateKey: "",
+    data: {
+        "type": "dapp",
+        "base": {
+            "expirationTimestampSecs": 1841258177,
+            "sequenceNumber": "42",
+            "chainId": 2,
+            "gasUnitPrice": "100",
+            "maxGasAmount": "8000",
+            "reserveFeeRatio": "1.1",
+            "sender": "0x986d10e6ffde60518ab0664f70339196f914f96255f31a1c6b226670c73d3f92"
+        },
+        "data": {
+            data: {
+                "bytecode": singleSignerScriptBytecode,
+                "functionArguments": funcParam,
+            },
+            "type": 3
+        }
+    },
+});
+
+// build simulate tx
+ let res2 = await wallet.buildSimulateTx({
+            publicKey: "",
+            data: {
+                "type": "simulate_dapp",
+                "base": {
+                    "expirationTimestampSecs": 1841258177,
+                    "sequenceNumber": "42",
+                    "chainId": 2,
+                    "gasUnitPrice": "100",
+                    "maxGasAmount": "8000",
+                    "reserveFeeRatio": "1.1",
+                    "sender": "0x986d10e6ffde60518ab0664f70339196f914f96255f31a1c6b226670c73d3f92"
+                },
+                "data": {
+                    data: {
+                        "bytecode": singleSignerScriptBytecode,
+                        "functionArguments": funcParam,
+                    },
+                    "type": 3
+                }
+            },
+        });
+```
+
+### multi-agent transaction
+
+```typescript
+let res = await wallet.signTransaction({
+    privateKey: "",
+    data: {
+        "type": "dapp",
+        "base": {
+            "expirationTimestampSecs": 1841258177,
+            "sequenceNumber": "42",
+            "chainId": 2,
+            "gasUnitPrice": "100",
+            "maxGasAmount": "8000",
+            "reserveFeeRatio": "1.1",
+            "sender": "0x986d10e6ffde60518ab0664f70339196f914f96255f31a1c6b226670c73d3f92",
+            "secondarySignerAddresses": ["0x79b2d1f85c5d644b2f1c24e435ea80d72ae8c800a4ed5e0b01a7f40445c37b2d", "0x318717be403fefbed1e1cd2567a215514c524d0f315b743d664abb137d9ed8ae"]
+        },
+        "data": {
+            data:{
+                bytecode: multiSignerScriptBytecode,
+                functionArguments: funcParam,
+            },
+            type:"3",
+        }
+    },
+});
 ```
 
 ## License

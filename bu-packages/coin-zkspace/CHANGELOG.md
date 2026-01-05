@@ -3,6 +3,14 @@
 
 All notable changes to this project will be documented in this file.
 
+
+# [1.1.1](https://github.com/okx/js-wallet-sdk)(2024-06-12)
+
+### Fix
+
+- **coin-zkspace:** upgrading dependencies ([](https://github.com/okx/js-wallet-sdk))
+
+
 # [1.1.0](https://github.com/okx/js-wallet-sdk)(2024-01-15)
 
 ### New Features

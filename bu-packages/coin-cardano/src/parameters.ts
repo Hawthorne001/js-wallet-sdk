@@ -1,4 +1,4 @@
-import { Cardano } from '@cardano-sdk/core'
+import { Cardano } from '@cardano-sdk/core';
 
 // blockfrostParams is obtained from blockfrost endpoint, use the following code block to query latest parameters
 // Get blockfrost API secret token (project_id) from https://blockfrost.dev/overview/getting-started
@@ -203,7 +203,7 @@ export const blockfrostParams = {
             'unMapData-memory-arguments': 32,
             'verifyEd25519Signature-cpu-arguments-intercept': 53384111,
             'verifyEd25519Signature-cpu-arguments-slope': 14333,
-            'verifyEd25519Signature-memory-arguments': 10
+            'verifyEd25519Signature-memory-arguments': 10,
         },
         PlutusV2: {
             'addInteger-cpu-arguments-intercept': 100788,
@@ -380,7 +380,7 @@ export const blockfrostParams = {
             'verifyEd25519Signature-memory-arguments': 10,
             'verifySchnorrSecp256k1Signature-cpu-arguments-intercept': 43574283,
             'verifySchnorrSecp256k1Signature-cpu-arguments-slope': 26308,
-            'verifySchnorrSecp256k1Signature-memory-arguments': 10
+            'verifySchnorrSecp256k1Signature-memory-arguments': 10,
         },
         PlutusV3: {
             'addInteger-cpu-arguments-intercept': 100788,
@@ -679,115 +679,68 @@ export const blockfrostParams = {
             'findFirstSetBit-memory-arguments': 1,
             'ripemd_160-cpu-arguments-intercept': 1964219,
             'ripemd_160-cpu-arguments-slope': 24520,
-            'ripemd_160-memory-arguments': 3
-        }
+            'ripemd_160-memory-arguments': 3,
+        },
     },
     cost_models_raw: {
         PlutusV1: [
-            100788,    420,        1,       1,  1000,    173,     0,
-            1,   1000,    59957,       4,     1,  11183,    32,
-            201305,   8356,        4,   16000,   100,  16000,   100,
-            16000,    100,    16000,     100, 16000,    100, 16000,
-            100,    100,      100,   16000,   100,  94375,    32,
-            132994,     32,    61462,       4, 72010,    178,     0,
-            1,  22151,       32,   91189,   769,      4,     2,
-            85848, 228465,      122,       0,     1,      1,  1000,
-            42921,      4,        2,   24548, 29498,     38,     1,
-            898148,  27279,        1,   51775,   558,      1, 39184,
-            1000,  60594,        1,  141895,    32,  83150,    32,
-            15299,     32,    76049,       1, 13169,      4, 22100,
-            10,  28999,       74,       1, 28999,     74,     1,
-            43285,    552,        1,   44749,   541,      1, 33852,
-            32,  68246,       32,   72362,    32,   7243,    32,
-            7391,     32,    11546,      32, 85848, 228465,   122,
-            0,      1,        1,   90434,   519,      0,     1,
-            74433,     32,    85848,  228465,   122,      0,     1,
-            1,  85848,   228465,     122,     0,      1,     1,
-            270652,  22588,        4, 1457325, 64566,      4, 20467,
-            1,      4,        0,  141992,    32, 100788,   420,
-            1,      1,    81663,      32, 59498,     32, 20142,
-            32,  24588,       32,   20744,    32,  25933,    32,
-            24623,     32, 53384111,   14333,    10
+            100788, 420, 1, 1, 1000, 173, 0, 1, 1000, 59957, 4, 1, 11183, 32,
+            201305, 8356, 4, 16000, 100, 16000, 100, 16000, 100, 16000, 100,
+            16000, 100, 16000, 100, 100, 100, 16000, 100, 94375, 32, 132994, 32,
+            61462, 4, 72010, 178, 0, 1, 22151, 32, 91189, 769, 4, 2, 85848,
+            228465, 122, 0, 1, 1, 1000, 42921, 4, 2, 24548, 29498, 38, 1,
+            898148, 27279, 1, 51775, 558, 1, 39184, 1000, 60594, 1, 141895, 32,
+            83150, 32, 15299, 32, 76049, 1, 13169, 4, 22100, 10, 28999, 74, 1,
+            28999, 74, 1, 43285, 552, 1, 44749, 541, 1, 33852, 32, 68246, 32,
+            72362, 32, 7243, 32, 7391, 32, 11546, 32, 85848, 228465, 122, 0, 1,
+            1, 90434, 519, 0, 1, 74433, 32, 85848, 228465, 122, 0, 1, 1, 85848,
+            228465, 122, 0, 1, 1, 270652, 22588, 4, 1457325, 64566, 4, 20467, 1,
+            4, 0, 141992, 32, 100788, 420, 1, 1, 81663, 32, 59498, 32, 20142,
+            32, 24588, 32, 20744, 32, 25933, 32, 24623, 32, 53384111, 14333, 10,
         ],
         PlutusV2: [
-            100788,      420,      1,      1,     1000,    173,        0,
-            1,     1000,  59957,      4,        1,  11183,       32,
-            201305,     8356,      4,  16000,      100,  16000,      100,
-            16000,      100,  16000,    100,    16000,    100,    16000,
-            100,      100,    100,  16000,      100,  94375,       32,
-            132994,       32,  61462,      4,    72010,    178,        0,
-            1,    22151,     32,  91189,      769,      4,        2,
-            85848,   228465,    122,      0,        1,      1,     1000,
-            42921,        4,      2,  24548,    29498,     38,        1,
-            898148,    27279,      1,  51775,      558,      1,    39184,
-            1000,    60594,      1, 141895,       32,  83150,       32,
-            15299,       32,  76049,      1,    13169,      4,    22100,
-            10,    28999,     74,      1,    28999,     74,        1,
-            43285,      552,      1,  44749,      541,      1,    33852,
-            32,    68246,     32,  72362,       32,   7243,       32,
-            7391,       32,  11546,     32,    85848, 228465,      122,
-            0,        1,      1,  90434,      519,      0,        1,
-            74433,       32,  85848, 228465,      122,      0,        1,
-            1,    85848, 228465,    122,        0,      1,        1,
-            955506,   213312,      0,      2,   270652,  22588,        4,
-            1457325,    64566,      4,  20467,        1,      4,        0,
-            141992,       32, 100788,    420,        1,      1,    81663,
-            32,    59498,     32,  20142,       32,  24588,       32,
-            20744,       32,  25933,     32,    24623,     32, 43053543,
-            10, 53384111,  14333,     10, 43574283,  26308,       10
+            100788, 420, 1, 1, 1000, 173, 0, 1, 1000, 59957, 4, 1, 11183, 32,
+            201305, 8356, 4, 16000, 100, 16000, 100, 16000, 100, 16000, 100,
+            16000, 100, 16000, 100, 100, 100, 16000, 100, 94375, 32, 132994, 32,
+            61462, 4, 72010, 178, 0, 1, 22151, 32, 91189, 769, 4, 2, 85848,
+            228465, 122, 0, 1, 1, 1000, 42921, 4, 2, 24548, 29498, 38, 1,
+            898148, 27279, 1, 51775, 558, 1, 39184, 1000, 60594, 1, 141895, 32,
+            83150, 32, 15299, 32, 76049, 1, 13169, 4, 22100, 10, 28999, 74, 1,
+            28999, 74, 1, 43285, 552, 1, 44749, 541, 1, 33852, 32, 68246, 32,
+            72362, 32, 7243, 32, 7391, 32, 11546, 32, 85848, 228465, 122, 0, 1,
+            1, 90434, 519, 0, 1, 74433, 32, 85848, 228465, 122, 0, 1, 1, 85848,
+            228465, 122, 0, 1, 1, 955506, 213312, 0, 2, 270652, 22588, 4,
+            1457325, 64566, 4, 20467, 1, 4, 0, 141992, 32, 100788, 420, 1, 1,
+            81663, 32, 59498, 32, 20142, 32, 24588, 32, 20744, 32, 25933, 32,
+            24623, 32, 43053543, 10, 53384111, 14333, 10, 43574283, 26308, 10,
         ],
         PlutusV3: [
-            100788,       420,         1,         1,     1000,      173,
-            0,         1,      1000,     59957,        4,        1,
-            11183,        32,    201305,      8356,        4,    16000,
-            100,     16000,       100,     16000,      100,    16000,
-            100,     16000,       100,     16000,      100,      100,
-            100,     16000,       100,     94375,       32,   132994,
-            32,     61462,         4,     72010,      178,        0,
-            1,     22151,        32,     91189,      769,        4,
-            2,     85848,    123203,      7305,     -900,     1716,
-            549,        57,     85848,         0,        1,        1,
-            1000,     42921,         4,         2,    24548,    29498,
-            38,         1,    898148,     27279,        1,    51775,
-            558,         1,     39184,      1000,    60594,        1,
-            141895,        32,     83150,        32,    15299,       32,
-            76049,         1,     13169,         4,    22100,       10,
-            28999,        74,         1,     28999,       74,        1,
-            43285,       552,         1,     44749,      541,        1,
-            33852,        32,     68246,        32,    72362,       32,
-            7243,        32,      7391,        32,    11546,       32,
-            85848,    123203,      7305,      -900,     1716,      549,
-            57,     85848,         0,         1,    90434,      519,
-            0,         1,     74433,        32,    85848,   123203,
-            7305,      -900,      1716,       549,       57,    85848,
-            0,         1,         1,     85848,   123203,     7305,
-            -900,      1716,       549,        57,    85848,        0,
-            1,    955506,    213312,         0,        2,   270652,
-            22588,         4,   1457325,     64566,        4,    20467,
-            1,         4,         0,    141992,       32,   100788,
-            420,         1,         1,     81663,       32,    59498,
-            32,     20142,        32,     24588,       32,    20744,
-            32,     25933,        32,     24623,       32, 43053543,
-            10,  53384111,     14333,        10, 43574283,    26308,
-            10,     16000,       100,     16000,      100,   962335,
-            18,   2780678,         6,    442008,        1, 52538055,
-            3756,        18,    267929,        18, 76433006,     8868,
-            18,  52948122,        18,   1995836,       36,  3227919,
-            12,    901022,         1, 166917843,     4307,       36,
-            284546,        36, 158221314,     26549,       36, 74698472,
-            36, 333849714,         1, 254006273,       72,  2174038,
-            72,   2261318,     64571,         4,   207616,     8310,
-            4,   1293828,     28716,        63,        0,        1,
-            1006041,     43623,       251,         0,        1,   100181,
-            726,       719,         0,         1,   100181,      726,
-            719,         0,         1,    100181,      726,      719,
-            0,         1,    107878,       680,        0,        1,
-            95336,         1,    281145,     18848,        0,        1,
-            180194,       159,         1,         1,   158519,     8942,
-            0,         1,    159378,      8813,        0,        1,
-            107490,      3298,         1,    106057,      655,        1,
-            1964219,     24520,         3
-        ]
+            100788, 420, 1, 1, 1000, 173, 0, 1, 1000, 59957, 4, 1, 11183, 32,
+            201305, 8356, 4, 16000, 100, 16000, 100, 16000, 100, 16000, 100,
+            16000, 100, 16000, 100, 100, 100, 16000, 100, 94375, 32, 132994, 32,
+            61462, 4, 72010, 178, 0, 1, 22151, 32, 91189, 769, 4, 2, 85848,
+            123203, 7305, -900, 1716, 549, 57, 85848, 0, 1, 1, 1000, 42921, 4,
+            2, 24548, 29498, 38, 1, 898148, 27279, 1, 51775, 558, 1, 39184,
+            1000, 60594, 1, 141895, 32, 83150, 32, 15299, 32, 76049, 1, 13169,
+            4, 22100, 10, 28999, 74, 1, 28999, 74, 1, 43285, 552, 1, 44749, 541,
+            1, 33852, 32, 68246, 32, 72362, 32, 7243, 32, 7391, 32, 11546, 32,
+            85848, 123203, 7305, -900, 1716, 549, 57, 85848, 0, 1, 90434, 519,
+            0, 1, 74433, 32, 85848, 123203, 7305, -900, 1716, 549, 57, 85848, 0,
+            1, 1, 85848, 123203, 7305, -900, 1716, 549, 57, 85848, 0, 1, 955506,
+            213312, 0, 2, 270652, 22588, 4, 1457325, 64566, 4, 20467, 1, 4, 0,
+            141992, 32, 100788, 420, 1, 1, 81663, 32, 59498, 32, 20142, 32,
+            24588, 32, 20744, 32, 25933, 32, 24623, 32, 43053543, 10, 53384111,
+            14333, 10, 43574283, 26308, 10, 16000, 100, 16000, 100, 962335, 18,
+            2780678, 6, 442008, 1, 52538055, 3756, 18, 267929, 18, 76433006,
+            8868, 18, 52948122, 18, 1995836, 36, 3227919, 12, 901022, 1,
+            166917843, 4307, 36, 284546, 36, 158221314, 26549, 36, 74698472, 36,
+            333849714, 1, 254006273, 72, 2174038, 72, 2261318, 64571, 4, 207616,
+            8310, 4, 1293828, 28716, 63, 0, 1, 1006041, 43623, 251, 0, 1,
+            100181, 726, 719, 0, 1, 100181, 726, 719, 0, 1, 100181, 726, 719, 0,
+            1, 107878, 680, 0, 1, 95336, 1, 281145, 18848, 0, 1, 180194, 159, 1,
+            1, 158519, 8942, 0, 1, 159378, 8813, 0, 1, 107490, 3298, 1, 106057,
+            655, 1, 1964219, 24520, 3,
+        ],
     },
     price_mem: 0.0577,
     price_step: 0.0000721,
@@ -822,33 +775,46 @@ export const blockfrostParams = {
     drep_activity: '20',
     pvtpp_security_group: 0.51,
     pvt_p_p_security_group: 0.51,
-    min_fee_ref_script_cost_per_byte: 15
-}
+    min_fee_ref_script_cost_per_byte: 15,
+};
 
 export const getProtocolParams = (params: any): Cardano.ProtocolParameters => ({
     coinsPerUtxoByte: Number(params.coins_per_utxo_word),
     collateralPercentage: params.collateral_percent!,
     committeeTermLimit: Cardano.EpochNo(0),
     costModels: new Map<Cardano.PlutusLanguageVersion, Cardano.CostModel>([
-        [Cardano.PlutusLanguageVersion.V1, Object.values(params.cost_models!.PlutusV1 as { [key: string]: number })],
-        [Cardano.PlutusLanguageVersion.V2, Object.values(params.cost_models!.PlutusV2 as { [key: string]: number })]
+        [
+            Cardano.PlutusLanguageVersion.V1,
+            Object.values(
+                params.cost_models!.PlutusV1 as { [key: string]: number }
+            ),
+        ],
+        [
+            Cardano.PlutusLanguageVersion.V2,
+            Object.values(
+                params.cost_models!.PlutusV2 as { [key: string]: number }
+            ),
+        ],
     ]),
     dRepDeposit: params.drep_deposit ? Number(params.drep_deposit) : undefined,
     dRepInactivityPeriod: Cardano.EpochNo(0),
-    dRepVotingThresholds: null as unknown as Cardano.DelegateRepresentativeThresholds,
+    dRepVotingThresholds:
+        null as unknown as Cardano.DelegateRepresentativeThresholds,
     desiredNumberOfPools: params.n_opt,
-    governanceActionDeposit: params.gov_action_deposit ? Number(params.gov_action_deposit) : undefined,
+    governanceActionDeposit: params.gov_action_deposit
+        ? Number(params.gov_action_deposit)
+        : undefined,
     governanceActionValidityPeriod: Cardano.EpochNo(0),
     maxBlockBodySize: params.max_block_size,
     maxBlockHeaderSize: params.max_block_header_size,
     maxCollateralInputs: Number(params.max_collateral_inputs),
     maxExecutionUnitsPerBlock: {
         memory: Number.parseInt(params.max_block_ex_mem!),
-        steps: Number.parseInt(params.max_block_ex_steps!)
+        steps: Number.parseInt(params.max_block_ex_steps!),
     },
     maxExecutionUnitsPerTransaction: {
         memory: Number.parseInt(params.max_tx_ex_mem!),
-        steps: Number.parseInt(params.max_tx_ex_steps!)
+        steps: Number.parseInt(params.max_tx_ex_steps!),
     },
     maxTxSize: Number(params.max_tx_size),
     maxValueSize: Number(params.max_val_size),
@@ -863,11 +829,15 @@ export const getProtocolParams = (params: any): Cardano.ProtocolParameters => ({
     poolVotingThresholds: null as unknown as Cardano.PoolVotingThresholds,
     prices: {
         memory: params.price_mem!,
-        steps: params.price_step!
+        steps: params.price_step!,
     },
-    protocolVersion: { major: params.protocol_major_ver, minor: params.protocol_minor_ver },
+    protocolVersion: {
+        major: params.protocol_major_ver,
+        minor: params.protocol_minor_ver,
+    },
     stakeKeyDeposit: Number(params.key_deposit),
-    treasuryExpansion: params.tau.toString()
-})
+    treasuryExpansion: params.tau.toString(),
+});
 
-export const DefaultMainnetProtocolParameters = getProtocolParams(blockfrostParams);
+export const DefaultMainnetProtocolParameters =
+    getProtocolParams(blockfrostParams);
