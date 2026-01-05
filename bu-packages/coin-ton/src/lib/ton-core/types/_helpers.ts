@@ -21,6 +21,7 @@ export function internal(src: {
     bounce?: Maybe<boolean>,
     init?: Maybe<StateInit>,
     body?: Maybe<Cell | string>
+    extraFlags?: Maybe<string | bigint>,
 }): MessageRelaxed {
 
     // Resolve bounce
@@ -55,6 +56,18 @@ export function internal(src: {
         body = src.body;
     }
 
+    // Resolve extraFlags
+    let extraFlags: bigint;
+    if (src.extraFlags === undefined || src.extraFlags === null) {
+        extraFlags = 0n;
+    } else {
+        if (typeof src.extraFlags === 'string') {
+            extraFlags = BigInt(src.extraFlags);
+        } else {
+            extraFlags = src.extraFlags;
+        }
+    }
+
     // Create message
     return {
         info: {
@@ -64,7 +77,7 @@ export function internal(src: {
             bounce,
             ihrDisabled: true,
             bounced: false,
-            ihrFee: 0n,
+            ihrFee: extraFlags,
             forwardFee: 0n,
             createdAt: 0,
             createdLt: 0n

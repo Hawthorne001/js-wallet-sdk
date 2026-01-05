@@ -1,2 +1,1 @@
-
-export * from "./XrpWallet"
+export * from './XrpWallet';
