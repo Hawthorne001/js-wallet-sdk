@@ -6,14 +6,22 @@ import {
     SignTxParams,
     SignTxError,
     CalcTxHashParams,
-    CalcTxHashError, ValidPrivateKeyParams, ValidPrivateKeyData, SignCommonMsgParams, buildCommonSignMsg, SignType
-} from "@okxweb3/coin-base";
+    CalcTxHashError,
+    ValidPrivateKeyParams,
+    ValidPrivateKeyData,
+    SignCommonMsgParams,
+    buildCommonSignMsg,
+    SignType,
+    InvalidPrivateKeyError,
+    ValidAddressError,
+} from '@okxweb3/coin-base';
 import {
-    addressFromPrvKey, checkPrvKey,
+    addressFromPrvKey,
+    checkPrvKey,
     pubKeyFromPrvKey,
-    validateAddress
-} from "./address";
-import {transfer, signMessage, calcTxHash} from "./transaction";
+    validateAddress,
+} from './address';
+import { transfer, signMessage, calcTxHash } from './transaction';
 
 export class KaspaWallet extends BaseWallet {
     async getDerivedPath(param: GetDerivedPathParam): Promise<any> {
@@ -31,7 +39,7 @@ export class KaspaWallet extends BaseWallet {
         let isValid = checkPrvKey(param.privateKey);
         const data: ValidPrivateKeyData = {
             isValid: isValid,
-            privateKey: param.privateKey
+            privateKey: param.privateKey,
         };
         return Promise.resolve(data);
     }
@@ -43,12 +51,34 @@ export class KaspaWallet extends BaseWallet {
         });
     }
 
-
     // async signCommonMsg(params: SignCommonMsgParams): Promise<any> {
     //     return super.signCommonMsg({privateKey:params.privateKey, message:params.message, signType:SignType.Secp256k1})
     // }
     async signTransaction(param: SignTxParams): Promise<any> {
         try {
+            if (!param.privateKey) {
+                return Promise.reject(InvalidPrivateKeyError);
+            }
+            const txData = param.data;
+
+            // Validate all output addresses
+            for (const output of txData.outputs) {
+                const outputValidation = await this.validAddress({
+                    address: output.address,
+                });
+                if (!outputValidation.isValid) {
+                    return Promise.reject(ValidAddressError);
+                }
+            }
+
+            // Validate change address
+            const changeValidation = await this.validAddress({
+                address: txData.address,
+            });
+            if (!changeValidation.isValid) {
+                return Promise.reject(ValidAddressError);
+            }
+
             return Promise.resolve(transfer(param.data, param.privateKey));
         } catch (e) {
             return Promise.reject(SignTxError);
@@ -57,8 +87,10 @@ export class KaspaWallet extends BaseWallet {
 
     async calcTxHash(param: CalcTxHashParams): Promise<any> {
         try {
-            if (typeof param.data === "string") {
-                return Promise.resolve(calcTxHash(JSON.parse(param.data).transaction));
+            if (typeof param.data === 'string') {
+                return Promise.resolve(
+                    calcTxHash(JSON.parse(param.data).transaction)
+                );
             }
             return Promise.resolve(calcTxHash(param.data.transaction));
         } catch (e) {
@@ -67,8 +99,21 @@ export class KaspaWallet extends BaseWallet {
     }
 
     async signMessage(param: SignTxParams): Promise<any> {
+        if (!param.privateKey) {
+            return Promise.reject(`${InvalidPrivateKeyError}: cannot be empty`);
+        }
+        const { isValid } = await this.validPrivateKey({
+            privateKey: param.privateKey,
+        });
+        if (!isValid) {
+            return Promise.reject(
+                `${InvalidPrivateKeyError}: not valid private key`
+            );
+        }
         try {
-            return Promise.resolve(signMessage(param.data.message, param.privateKey));
+            return Promise.resolve(
+                signMessage(param.data.message, param.privateKey)
+            );
         } catch (e) {
             return Promise.reject(SignTxError);
         }

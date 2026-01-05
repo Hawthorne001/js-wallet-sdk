@@ -1,55 +1,55 @@
-import { base } from "@okxweb3/coin-base";
-import { signUtil } from "@okxweb3/crypto-lib";
-import { payToAddrScript } from "./lib/address";
+import { base } from '@okxweb3/coin-base';
+import { signUtil } from '@okxweb3/crypto-lib';
+import { payToAddrScript } from './lib/address';
 
 type TransactionInput = {
-    previousOutpoint: Outpoint
-    signatureScript: string
-    sequence: string | number
-    sigOpCount: number
+    previousOutpoint: Outpoint;
+    signatureScript: string;
+    sequence: string | number;
+    sigOpCount: number;
 };
 
 type Outpoint = {
-    transactionId: string
-    index: number
+    transactionId: string;
+    index: number;
 };
 
 type TransactionOutput = {
-    amount: string | number
-    scriptPublicKey: ScriptPublicKey
+    amount: string | number;
+    scriptPublicKey: ScriptPublicKey;
 };
 
 type ScriptPublicKey = {
-    version: number
-    scriptPublicKey: string
+    version: number;
+    scriptPublicKey: string;
 };
 
 export type Input = {
-    txId: string
-    vOut: number
-    address: string
-    amount: string | number
+    txId: string;
+    vOut: number;
+    address: string;
+    amount: string | number;
 };
 
 export type Output = {
-    address: string
-    amount: string
+    address: string;
+    amount: string;
 };
 
 export type TxData = {
-    inputs: Input[]
-    outputs: Output[]
-    address: string // change address
-    fee: string // input count * 10000
-    dustSize?: string // min output amount
+    inputs: Input[];
+    outputs: Output[];
+    address: string; // change address
+    fee: string; // input count * 10000
+    dustSize?: string; // min output amount
 };
 
-const TransactionSigningHashKey = Buffer.from("TransactionSigningHash");
-const TransactionIDKey = Buffer.from("TransactionID");
-const PersonalMessageSigningHashKey = Buffer.from("PersonalMessageSigningHash");
+const TransactionSigningHashKey = Buffer.from('TransactionSigningHash');
+const TransactionIDKey = Buffer.from('TransactionID');
+const PersonalMessageSigningHashKey = Buffer.from('PersonalMessageSigningHash');
 
 export function transfer(txData: TxData, privateKey: string) {
-    const transaction = Transaction.fromTxData(txData).sign(privateKey)
+    const transaction = Transaction.fromTxData(txData).sign(privateKey);
     return transaction.getMessage();
 }
 
@@ -57,29 +57,42 @@ export function calcTxHash(tx: Transaction) {
     const hashWriter = new HashWriter();
     hashWriter.writeUInt16LE(tx.version);
     hashWriter.writeUInt64LE(BigInt(tx.inputs.length));
-    tx.inputs.forEach(input => {
-        hashWriter.writeHash(base.fromHex(input.previousOutpoint.transactionId));
+    tx.inputs.forEach((input) => {
+        hashWriter.writeHash(
+            base.fromHex(input.previousOutpoint.transactionId)
+        );
         hashWriter.writeUInt32LE(input.previousOutpoint.index);
         hashWriter.writeVarBytes(Buffer.alloc(0));
         hashWriter.writeUInt64LE(BigInt(input.sequence));
     });
     hashWriter.writeUInt64LE(BigInt(tx.outputs.length));
-    tx.outputs.forEach(output => {
+    tx.outputs.forEach((output) => {
         hashWriter.writeUInt64LE(BigInt(output.amount));
         hashWriter.writeUInt16LE(output.scriptPublicKey.version);
-        hashWriter.writeVarBytes(base.fromHex(output.scriptPublicKey.scriptPublicKey));
+        hashWriter.writeVarBytes(
+            base.fromHex(output.scriptPublicKey.scriptPublicKey)
+        );
     });
     hashWriter.writeUInt64LE(BigInt(tx.lockTime));
     hashWriter.writeHash(base.fromHex(tx.subnetworkId));
     hashWriter.writeUInt64LE(0n);
     hashWriter.writeVarBytes(Buffer.alloc(0));
 
-    return base.toHex(base.blake2(hashWriter.toBuffer(),256, TransactionIDKey));
+    return base.toHex(
+        base.blake2(hashWriter.toBuffer(), 256, TransactionIDKey)
+    );
 }
 
 export function signMessage(message: string, privateKey: string) {
-    const hash = base.blake2(Buffer.from(message),256, PersonalMessageSigningHashKey);
-    const signature = signUtil.schnorr.secp256k1.schnorr.sign(hash, base.toHex(base.fromHex(privateKey)));
+    const hash = base.blake2(
+        Buffer.from(message),
+        256,
+        PersonalMessageSigningHashKey
+    );
+    const signature = signUtil.schnorr.secp256k1.schnorr.sign(
+        hash,
+        base.toHex(base.fromHex(privateKey))
+    );
     return base.toHex(signature);
 }
 
@@ -87,10 +100,10 @@ export class Transaction {
     version: number = 0;
     inputs: TransactionInput[] = [];
     outputs: TransactionOutput[] = [];
-    lockTime: string = "0";
-    subnetworkId: string = "0000000000000000000000000000000000000000";
+    lockTime: string = '0';
+    subnetworkId: string = '0000000000000000000000000000000000000000';
 
-    utxos: { pkScript: Buffer, amount: string | number }[] = [];
+    utxos: { pkScript: Buffer; amount: string | number }[] = [];
 
     static fromTxData(txData: TxData) {
         return new Transaction(txData);
@@ -98,14 +111,14 @@ export class Transaction {
 
     constructor(txData: TxData) {
         let totalInput = 0n;
-        txData.inputs.forEach(input => {
+        txData.inputs.forEach((input) => {
             this.inputs.push({
                 previousOutpoint: {
                     transactionId: input.txId,
                     index: input.vOut,
                 },
-                signatureScript: "",
-                sequence: "0",
+                signatureScript: '',
+                sequence: '0',
                 sigOpCount: 1,
             });
 
@@ -118,11 +131,13 @@ export class Transaction {
         });
 
         let totalOutput = 0n;
-        txData.outputs.forEach(output => {
+        txData.outputs.forEach((output) => {
             this.outputs.push({
                 scriptPublicKey: {
                     version: 0,
-                    scriptPublicKey: base.toHex(payToAddrScript(output.address)),
+                    scriptPublicKey: base.toHex(
+                        payToAddrScript(output.address)
+                    ),
                 },
                 amount: output.amount,
             });
@@ -135,7 +150,9 @@ export class Transaction {
             this.outputs.push({
                 scriptPublicKey: {
                     version: 0,
-                    scriptPublicKey: base.toHex(payToAddrScript(txData.address)),
+                    scriptPublicKey: base.toHex(
+                        payToAddrScript(txData.address)
+                    ),
                 },
                 amount: changeAmount.toString(),
             });
@@ -145,8 +162,17 @@ export class Transaction {
     sign(privateKey: string) {
         this.inputs.forEach((input, i) => {
             const sigHash = calculateSigHash(this, SIGHASH_ALL, i, {});
-            const signature = signUtil.schnorr.secp256k1.schnorr.sign(sigHash, base.toHex(base.fromHex(privateKey)));
-            input.signatureScript = base.toHex(Buffer.concat([Buffer.from([0x41]), signature, Buffer.from([SIGHASH_ALL])]));
+            const signature = signUtil.schnorr.secp256k1.schnorr.sign(
+                sigHash,
+                base.toHex(base.fromHex(privateKey))
+            );
+            input.signatureScript = base.toHex(
+                Buffer.concat([
+                    Buffer.from([0x41]),
+                    signature,
+                    Buffer.from([SIGHASH_ALL]),
+                ])
+            );
         });
         return this;
     }
@@ -164,7 +190,6 @@ export class Transaction {
         });
     }
 }
-
 
 const SIGHASH_ALL = 0b00000001;
 const SIGHASH_NONE = 0b00000010;
@@ -184,13 +209,22 @@ function isSigHashAnyoneCanPay(hashType: number) {
     return (hashType & SIGHASH_ANYONECANPAY) === SIGHASH_ANYONECANPAY;
 }
 
-function calculateSigHash(transaction: Transaction, hashType: number, inputIndex: number, reusedValues = {}) {
+function calculateSigHash(
+    transaction: Transaction,
+    hashType: number,
+    inputIndex: number,
+    reusedValues = {}
+) {
     const hashWriter = new HashWriter();
 
-    hashWriter.writeUInt16LE(transaction.version)
-    hashWriter.writeHash(getPreviousOutputsHash(transaction, hashType, reusedValues));
+    hashWriter.writeUInt16LE(transaction.version);
+    hashWriter.writeHash(
+        getPreviousOutputsHash(transaction, hashType, reusedValues)
+    );
     hashWriter.writeHash(getSequencesHash(transaction, hashType, reusedValues));
-    hashWriter.writeHash(getSigOpCountsHash(transaction, hashType, reusedValues));
+    hashWriter.writeHash(
+        getSigOpCountsHash(transaction, hashType, reusedValues)
+    );
 
     const input = transaction.inputs[inputIndex];
     const utxo = transaction.utxos[inputIndex];
@@ -200,7 +234,9 @@ function calculateSigHash(transaction: Transaction, hashType: number, inputIndex
     hashWriter.writeUInt64LE(BigInt(utxo.amount));
     hashWriter.writeUInt64LE(BigInt(input.sequence));
     hashWriter.writeUInt8(1); // sigOpCount
-    hashWriter.writeHash(getOutputsHash(transaction, inputIndex, hashType, reusedValues));
+    hashWriter.writeHash(
+        getOutputsHash(transaction, inputIndex, hashType, reusedValues)
+    );
     hashWriter.writeUInt64LE(BigInt(transaction.lockTime));
     hashWriter.writeHash(zeroSubnetworkID()); // TODO: USE REAL SUBNETWORK ID
     hashWriter.writeUInt64LE(0n); // TODO: USE REAL GAS
@@ -218,49 +254,72 @@ function zeroSubnetworkID() {
     return Buffer.alloc(20);
 }
 
-function getPreviousOutputsHash(transaction: Transaction, hashType: number, reusedValues: any) {
+function getPreviousOutputsHash(
+    transaction: Transaction,
+    hashType: number,
+    reusedValues: any
+) {
     if (isSigHashAnyoneCanPay(hashType)) {
         return zeroHash();
     }
 
     if (!reusedValues.previousOutputsHash) {
         const hashWriter = new HashWriter();
-        transaction.inputs.forEach(input => hashOutpoint(hashWriter, input));
+        transaction.inputs.forEach((input) => hashOutpoint(hashWriter, input));
         reusedValues.previousOutputsHash = hashWriter.finalize();
     }
 
     return reusedValues.previousOutputsHash;
 }
 
-function getSequencesHash(transaction: Transaction, hashType: number, reusedValues: any) {
-    if (isSigHashSingle(hashType) || isSigHashAnyoneCanPay(hashType) || isSigHashNone(hashType)) {
+function getSequencesHash(
+    transaction: Transaction,
+    hashType: number,
+    reusedValues: any
+) {
+    if (
+        isSigHashSingle(hashType) ||
+        isSigHashAnyoneCanPay(hashType) ||
+        isSigHashNone(hashType)
+    ) {
         return zeroHash();
     }
 
     if (!reusedValues.sequencesHash) {
         const hashWriter = new HashWriter();
-        transaction.inputs.forEach(input => hashWriter.writeUInt64LE(BigInt(input.sequence)));
+        transaction.inputs.forEach((input) =>
+            hashWriter.writeUInt64LE(BigInt(input.sequence))
+        );
         reusedValues.sequencesHash = hashWriter.finalize();
     }
 
     return reusedValues.sequencesHash;
 }
 
-function getSigOpCountsHash(transaction: Transaction, hashType: number, reusedValues: any) {
+function getSigOpCountsHash(
+    transaction: Transaction,
+    hashType: number,
+    reusedValues: any
+) {
     if (isSigHashAnyoneCanPay(hashType)) {
         return zeroHash();
     }
 
     if (!reusedValues.sigOpCountsHash) {
         const hashWriter = new HashWriter();
-        transaction.inputs.forEach(_ => hashWriter.writeUInt8(1));
+        transaction.inputs.forEach((_) => hashWriter.writeUInt8(1));
         reusedValues.sigOpCountsHash = hashWriter.finalize();
     }
 
     return reusedValues.sigOpCountsHash;
 }
 
-function getOutputsHash(transaction: Transaction, inputIndex: number, hashType: number, reusedValues: any) {
+function getOutputsHash(
+    transaction: Transaction,
+    inputIndex: number,
+    hashType: number,
+    reusedValues: any
+) {
     if (isSigHashNone(hashType)) {
         return zeroHash();
     }
@@ -277,7 +336,7 @@ function getOutputsHash(transaction: Transaction, inputIndex: number, hashType: 
 
     if (!reusedValues.outputsHash) {
         const hashWriter = new HashWriter();
-        transaction.outputs.forEach(output => hashTxOut(hashWriter, output));
+        transaction.outputs.forEach((output) => hashTxOut(hashWriter, output));
         reusedValues.outputsHash = hashWriter.finalize();
     }
 
@@ -292,7 +351,9 @@ function hashOutpoint(hashWriter: HashWriter, input: TransactionInput) {
 function hashTxOut(hashWriter: HashWriter, output: TransactionOutput) {
     hashWriter.writeUInt64LE(BigInt(output.amount));
     hashWriter.writeUInt16LE(0); // TODO: USE REAL SCRIPT VERSION
-    hashWriter.writeVarBytes(base.fromHex(output.scriptPublicKey.scriptPublicKey));
+    hashWriter.writeVarBytes(
+        base.fromHex(output.scriptPublicKey.scriptPublicKey)
+    );
 }
 
 class HashWriter {
@@ -356,9 +417,9 @@ class HashWriter {
         buf.writeBigUInt64LE(bn);
         this.write(buf);
         return this;
-    };
+    }
 
     finalize() {
-        return base.blake2(this.toBuffer(),256, TransactionSigningHashKey);
+        return base.blake2(this.toBuffer(), 256, TransactionSigningHashKey);
     }
 }
