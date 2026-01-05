@@ -1,6 +1,6 @@
-import {BigNumber} from '../index';
+import { BigNumber } from '../index';
 
-import {check} from './precondtion';
+import { check } from './precondtion';
 
 const toBigIntHex = (value: BigNumber): string => {
     let hexStr = value.integerValue().toString(16);
@@ -10,7 +10,10 @@ const toBigIntHex = (value: BigNumber): string => {
 };
 
 const fromBigIntHex = (value: string): BigNumber => {
-    check(value && value.startsWith('0x'), `Invalid hex string. value: ${value}`);
+    check(
+        value && value.startsWith('0x'),
+        `Invalid hex string. value: ${value}`
+    );
     return new BigNumber(value).integerValue();
 };
 
@@ -22,4 +25,4 @@ const string2BigNumber = (n: string | number, base?: number): BigNumber => {
     return new BigNumber(n, base);
 };
 
-export {toBigIntHex, fromBigIntHex, bigNumber2String, string2BigNumber};
+export { toBigIntHex, fromBigIntHex, bigNumber2String, string2BigNumber };

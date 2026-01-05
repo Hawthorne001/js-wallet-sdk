@@ -37,11 +37,13 @@ THE SOFTWARE
  * @throws if the str input is not a string
  */
 export function isHexPrefixed(str: string): boolean {
-  if (typeof str !== 'string') {
-    throw new Error(`[isHexPrefixed] input must be type 'string', received type ${typeof str}`)
-  }
+    if (typeof str !== 'string') {
+        throw new Error(
+            `[isHexPrefixed] input must be type 'string', received type ${typeof str}`
+        );
+    }
 
-  return str[0] === '0' && str[1] === 'x'
+    return str[0] === '0' && str[1] === 'x';
 }
 
 /**
@@ -50,11 +52,13 @@ export function isHexPrefixed(str: string): boolean {
  * @returns the string without 0x prefix
  */
 export const stripHexPrefix = (str: string): string => {
-  if (typeof str !== 'string')
-    throw new Error(`[stripHexPrefix] input must be type 'string', received ${typeof str}`)
+    if (typeof str !== 'string')
+        throw new Error(
+            `[stripHexPrefix] input must be type 'string', received ${typeof str}`
+        );
 
-  return isHexPrefixed(str) ? str.slice(2) : str
-}
+    return isHexPrefixed(str) ? str.slice(2) : str;
+};
 
 /**
  * Pads a `String` to have an even length
@@ -62,15 +66,17 @@ export const stripHexPrefix = (str: string): string => {
  * @return output
  */
 export function padToEven(value: string): string {
-  let a = value
+    let a = value;
 
-  if (typeof a !== 'string') {
-    throw new Error(`[padToEven] value must be type 'string', received ${typeof a}`)
-  }
+    if (typeof a !== 'string') {
+        throw new Error(
+            `[padToEven] value must be type 'string', received ${typeof a}`
+        );
+    }
 
-  if (a.length % 2) a = `0${a}`
+    if (a.length % 2) a = `0${a}`;
 
-  return a
+    return a;
 }
 
 /**
@@ -79,11 +85,13 @@ export function padToEven(value: string): string {
  * @returns the number of bytes contained within the string
  */
 export function getBinarySize(str: string) {
-  if (typeof str !== 'string') {
-    throw new Error(`[getBinarySize] method requires input type 'string', received ${typeof str}`)
-  }
+    if (typeof str !== 'string') {
+        throw new Error(
+            `[getBinarySize] method requires input type 'string', received ${typeof str}`
+        );
+    }
 
-  return Buffer.byteLength(str, 'utf8')
+    return Buffer.byteLength(str, 'utf8');
 }
 
 /**
@@ -95,22 +103,24 @@ export function getBinarySize(str: string) {
  *
  */
 export function arrayContainsArray(
-  superset: unknown[],
-  subset: unknown[],
-  some?: boolean
+    superset: unknown[],
+    subset: unknown[],
+    some?: boolean
 ): boolean {
-  if (Array.isArray(superset) !== true) {
-    throw new Error(
-      `[arrayContainsArray] method requires input 'superset' to be an array, got type '${typeof superset}'`
-    )
-  }
-  if (Array.isArray(subset) !== true) {
-    throw new Error(
-      `[arrayContainsArray] method requires input 'subset' to be an array, got type '${typeof subset}'`
-    )
-  }
+    if (Array.isArray(superset) !== true) {
+        throw new Error(
+            `[arrayContainsArray] method requires input 'superset' to be an array, got type '${typeof superset}'`
+        );
+    }
+    if (Array.isArray(subset) !== true) {
+        throw new Error(
+            `[arrayContainsArray] method requires input 'subset' to be an array, got type '${typeof subset}'`
+        );
+    }
 
-  return subset[some === true ? 'some' : 'every']((value) => superset.indexOf(value) >= 0)
+    return subset[some === true ? 'some' : 'every'](
+        (value) => superset.indexOf(value) >= 0
+    );
 }
 
 /**
@@ -120,18 +130,18 @@ export function arrayContainsArray(
  * @returns ascii string representation of hex value
  */
 export function toAscii(hex: string): string {
-  let str = ''
-  let i = 0
-  const l = hex.length
+    let str = '';
+    let i = 0;
+    const l = hex.length;
 
-  if (hex.substring(0, 2) === '0x') i = 2
+    if (hex.substring(0, 2) === '0x') i = 2;
 
-  for (; i < l; i += 2) {
-    const code = parseInt(hex.substr(i, 2), 16)
-    str += String.fromCharCode(code)
-  }
+    for (; i < l; i += 2) {
+        const code = parseInt(hex.substr(i, 2), 16);
+        str += String.fromCharCode(code);
+    }
 
-  return str
+    return str;
 }
 
 /**
@@ -142,9 +152,9 @@ export function toAscii(hex: string): string {
  * @returns hex representation of input string
  */
 export function fromUtf8(stringValue: string) {
-  const str = Buffer.from(stringValue, 'utf8')
+    const str = Buffer.from(stringValue, 'utf8');
 
-  return `0x${padToEven(str.toString('hex')).replace(/(^0+)|(0+$)/g, '')}`
+    return `0x${padToEven(str.toString('hex')).replace(/(^0+)|(0+$)/g, '')}`;
 }
 
 /**
@@ -155,14 +165,14 @@ export function fromUtf8(stringValue: string) {
  * @returns  hex representation of input string
  */
 export function fromAscii(stringValue: string) {
-  let hex = ''
-  for (let i = 0; i < stringValue.length; i++) {
-    const code = stringValue.charCodeAt(i)
-    const n = code.toString(16)
-    hex += n.length < 2 ? `0${n}` : n
-  }
+    let hex = '';
+    for (let i = 0; i < stringValue.length; i++) {
+        const code = stringValue.charCodeAt(i);
+        const n = code.toString(16);
+        hex += n.length < 2 ? `0${n}` : n;
+    }
 
-  return `0x${hex}`
+    return `0x${hex}`;
 }
 
 /**
@@ -176,29 +186,37 @@ export function fromAscii(stringValue: string) {
  * @param  allowEmpty
  * @returns output just a simple array of output keys
  */
-export function getKeys(params: Record<string, string>[], key: string, allowEmpty?: boolean) {
-  if (!Array.isArray(params)) {
-    throw new Error(`[getKeys] method expects input 'params' to be an array, got ${typeof params}`)
-  }
-  if (typeof key !== 'string') {
-    throw new Error(
-      `[getKeys] method expects input 'key' to be type 'string', got ${typeof params}`
-    )
-  }
-
-  const result = []
-
-  for (let i = 0; i < params.length; i++) {
-    let value = params[i][key]
-    if (allowEmpty === true && !value) {
-      value = ''
-    } else if (typeof value !== 'string') {
-      throw new Error(`invalid abi - expected type 'string', received ${typeof value}`)
+export function getKeys(
+    params: Record<string, string>[],
+    key: string,
+    allowEmpty?: boolean
+) {
+    if (!Array.isArray(params)) {
+        throw new Error(
+            `[getKeys] method expects input 'params' to be an array, got ${typeof params}`
+        );
     }
-    result.push(value)
-  }
+    if (typeof key !== 'string') {
+        throw new Error(
+            `[getKeys] method expects input 'key' to be type 'string', got ${typeof params}`
+        );
+    }
 
-  return result
+    const result = [];
+
+    for (let i = 0; i < params.length; i++) {
+        let value = params[i][key];
+        if (allowEmpty === true && !value) {
+            value = '';
+        } else if (typeof value !== 'string') {
+            throw new Error(
+                `invalid abi - expected type 'string', received ${typeof value}`
+            );
+        }
+        result.push(value);
+    }
+
+    return result;
 }
 
 /**
@@ -209,9 +227,15 @@ export function getKeys(params: Record<string, string>[], key: string, allowEmpt
  * @returns  output the string is a hex string
  */
 export function isHexString(value: string, length?: number): boolean {
-  if (typeof value !== 'string' || !value.match(/^0x[0-9A-Fa-f]*$/)) return false
+    if (typeof value !== 'string' || !value.match(/^0x[0-9A-Fa-f]*$/))
+        return false;
 
-  if (typeof length !== 'undefined' && length > 0 && value.length !== 2 + 2 * length) return false
+    if (
+        typeof length !== 'undefined' &&
+        length > 0 &&
+        value.length !== 2 + 2 * length
+    )
+        return false;
 
-  return true
+    return true;
 }

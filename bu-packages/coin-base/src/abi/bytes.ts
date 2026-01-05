@@ -5,17 +5,21 @@
  *
  * */
 
-
-import { assertIsArray, assertIsBuffer, assertIsHexString } from './helpers'
-import { isHexPrefixed, isHexString, padToEven, stripHexPrefix } from './internal'
+import { assertIsArray, assertIsBuffer, assertIsHexString } from './helpers';
+import {
+    isHexPrefixed,
+    isHexString,
+    padToEven,
+    stripHexPrefix,
+} from './internal';
 
 import type {
-  NestedBufferArray,
-  NestedUint8Array,
-  PrefixedHexString,
-  TransformableToArray,
-  TransformableToBuffer,
-} from './types'
+    NestedBufferArray,
+    NestedUint8Array,
+    PrefixedHexString,
+    TransformableToArray,
+    TransformableToBuffer,
+} from './types';
 
 /**
  * Converts a `Number` into a hex `String`
@@ -23,11 +27,11 @@ import type {
  * @return {String}
  */
 export const intToHex = function (i: number) {
-  if (!Number.isSafeInteger(i) || i < 0) {
-    throw new Error(`Received an invalid integer type: ${i}`)
-  }
-  return `0x${i.toString(16)}`
-}
+    if (!Number.isSafeInteger(i) || i < 0) {
+        throw new Error(`Received an invalid integer type: ${i}`);
+    }
+    return `0x${i.toString(16)}`;
+};
 
 /**
  * Converts an `Number` to a `Buffer`
@@ -35,17 +39,17 @@ export const intToHex = function (i: number) {
  * @return {Buffer}
  */
 export const intToBuffer = function (i: number) {
-  const hex = intToHex(i)
-  return Buffer.from(padToEven(hex.slice(2)), 'hex')
-}
+    const hex = intToHex(i);
+    return Buffer.from(padToEven(hex.slice(2)), 'hex');
+};
 
 /**
  * Returns a buffer filled with 0s.
  * @param bytes the number of bytes the buffer should be
  */
 export const zeros = function (bytes: number): Buffer {
-  return Buffer.allocUnsafe(bytes).fill(0)
-}
+    return Buffer.allocUnsafe(bytes).fill(0);
+};
 
 /**
  * Pads a `Buffer` with zeros till it has `length` bytes.
@@ -56,21 +60,21 @@ export const zeros = function (bytes: number): Buffer {
  * @return (Buffer)
  */
 const setLength = function (msg: Buffer, length: number, right: boolean) {
-  const buf = zeros(length)
-  if (right) {
-    if (msg.length < length) {
-      msg.copy(buf)
-      return buf
+    const buf = zeros(length);
+    if (right) {
+        if (msg.length < length) {
+            msg.copy(buf);
+            return buf;
+        }
+        return msg.slice(0, length);
+    } else {
+        if (msg.length < length) {
+            msg.copy(buf, length - msg.length);
+            return buf;
+        }
+        return msg.slice(-length);
     }
-    return msg.slice(0, length)
-  } else {
-    if (msg.length < length) {
-      msg.copy(buf, length - msg.length)
-      return buf
-    }
-    return msg.slice(-length)
-  }
-}
+};
 
 /**
  * Left Pads a `Buffer` with leading zeros till it has `length` bytes.
@@ -80,9 +84,9 @@ const setLength = function (msg: Buffer, length: number, right: boolean) {
  * @return (Buffer)
  */
 export const setLengthLeft = function (msg: Buffer, length: number) {
-  assertIsBuffer(msg)
-  return setLength(msg, length, false)
-}
+    assertIsBuffer(msg);
+    return setLength(msg, length, false);
+};
 
 /**
  * Right Pads a `Buffer` with trailing zeros till it has `length` bytes.
@@ -92,9 +96,9 @@ export const setLengthLeft = function (msg: Buffer, length: number) {
  * @return (Buffer)
  */
 export const setLengthRight = function (msg: Buffer, length: number) {
-  assertIsBuffer(msg)
-  return setLength(msg, length, true)
-}
+    assertIsBuffer(msg);
+    return setLength(msg, length, true);
+};
 
 /**
  * Trims leading zeros from a `Buffer`, `String` or `Number[]`.
@@ -102,13 +106,13 @@ export const setLengthRight = function (msg: Buffer, length: number) {
  * @return (Buffer|Array|String)
  */
 const stripZeros = function (a: any): Buffer | number[] | string {
-  let first = a[0]
-  while (a.length > 0 && first.toString() === '0') {
-    a = a.slice(1)
-    first = a[0]
-  }
-  return a
-}
+    let first = a[0];
+    while (a.length > 0 && first.toString() === '0') {
+        a = a.slice(1);
+        first = a[0];
+    }
+    return a;
+};
 
 /**
  * Trims leading zeros from a `Buffer`.
@@ -116,9 +120,9 @@ const stripZeros = function (a: any): Buffer | number[] | string {
  * @return (Buffer)
  */
 export const unpadBuffer = function (a: Buffer): Buffer {
-  assertIsBuffer(a)
-  return stripZeros(a) as Buffer
-}
+    assertIsBuffer(a);
+    return stripZeros(a) as Buffer;
+};
 
 /**
  * Trims leading zeros from an `Array` (of numbers).
@@ -126,9 +130,9 @@ export const unpadBuffer = function (a: Buffer): Buffer {
  * @return (number[])
  */
 export const unpadArray = function (a: number[]): number[] {
-  assertIsArray(a)
-  return stripZeros(a) as number[]
-}
+    assertIsArray(a);
+    return stripZeros(a) as number[];
+};
 
 /**
  * Trims leading zeros from a hex-prefixed `String`.
@@ -136,22 +140,22 @@ export const unpadArray = function (a: number[]): number[] {
  * @return (String)
  */
 export const unpadHexString = function (a: string): string {
-  assertIsHexString(a)
-  a = stripHexPrefix(a)
-  return ('0x' + stripZeros(a)) as string
-}
+    assertIsHexString(a);
+    a = stripHexPrefix(a);
+    return ('0x' + stripZeros(a)) as string;
+};
 
 export type ToBufferInputTypes =
-  | PrefixedHexString
-  | number
-  | bigint
-  | Buffer
-  | Uint8Array
-  | number[]
-  | TransformableToArray
-  | TransformableToBuffer
-  | null
-  | undefined
+    | PrefixedHexString
+    | number
+    | bigint
+    | Buffer
+    | Uint8Array
+    | number[]
+    | TransformableToArray
+    | TransformableToBuffer
+    | null
+    | undefined;
 
 /**
  * Attempts to turn a value into a `Buffer`.
@@ -160,77 +164,79 @@ export type ToBufferInputTypes =
  * @param v the value
  */
 export const toBuffer = function (v: ToBufferInputTypes): Buffer {
-  if (v === null || v === undefined) {
-    return Buffer.allocUnsafe(0)
-  }
-
-  if (Buffer.isBuffer(v)) {
-    return Buffer.from(v)
-  }
-
-  if (Array.isArray(v) || v instanceof Uint8Array) {
-    return Buffer.from(v as Uint8Array)
-  }
-
-  if (typeof v === 'string') {
-    if (!isHexString(v)) {
-      throw new Error(
-        `Cannot convert string to buffer. toBuffer only supports 0x-prefixed hex strings and this string was given: ${v}`
-      )
+    if (v === null || v === undefined) {
+        return Buffer.allocUnsafe(0);
     }
-    return Buffer.from(padToEven(stripHexPrefix(v)), 'hex')
-  }
 
-  if (typeof v === 'number') {
-    return intToBuffer(v)
-  }
-
-  if (typeof v === 'bigint') {
-    if (v < BigInt(0)) {
-      throw new Error(`Cannot convert negative bigint to buffer. Given: ${v}`)
+    if (Buffer.isBuffer(v)) {
+        return Buffer.from(v);
     }
-    let n = v.toString(16)
-    if (n.length % 2) n = '0' + n
-    return Buffer.from(n, 'hex')
-  }
 
-  if (v.toArray) {
-    // converts a BN to a Buffer
-    return Buffer.from(v.toArray())
-  }
+    if (Array.isArray(v) || v instanceof Uint8Array) {
+        return Buffer.from(v as Uint8Array);
+    }
 
-  if (v.toBuffer) {
-    return Buffer.from(v.toBuffer())
-  }
+    if (typeof v === 'string') {
+        if (!isHexString(v)) {
+            throw new Error(
+                `Cannot convert string to buffer. toBuffer only supports 0x-prefixed hex strings and this string was given: ${v}`
+            );
+        }
+        return Buffer.from(padToEven(stripHexPrefix(v)), 'hex');
+    }
 
-  throw new Error('invalid type')
-}
+    if (typeof v === 'number') {
+        return intToBuffer(v);
+    }
+
+    if (typeof v === 'bigint') {
+        if (v < BigInt(0)) {
+            throw new Error(
+                `Cannot convert negative bigint to buffer. Given: ${v}`
+            );
+        }
+        let n = v.toString(16);
+        if (n.length % 2) n = '0' + n;
+        return Buffer.from(n, 'hex');
+    }
+
+    if (v.toArray) {
+        // converts a BN to a Buffer
+        return Buffer.from(v.toArray());
+    }
+
+    if (v.toBuffer) {
+        return Buffer.from(v.toBuffer());
+    }
+
+    throw new Error('invalid type');
+};
 
 /**
  * Converts a `Buffer` into a `0x`-prefixed hex `String`.
  * @param buf `Buffer` object to convert
  */
 export const bufferToHex = function (buf: Buffer): string {
-  buf = toBuffer(buf)
-  return '0x' + buf.toString('hex')
-}
+    buf = toBuffer(buf);
+    return '0x' + buf.toString('hex');
+};
 
 /**
  * Converts a {@link Buffer} to a {@link bigint}
  */
 export function bufferToBigInt(buf: Buffer) {
-  const hex = bufferToHex(buf)
-  if (hex === '0x') {
-    return BigInt(0)
-  }
-  return BigInt(hex)
+    const hex = bufferToHex(buf);
+    if (hex === '0x') {
+        return BigInt(0);
+    }
+    return BigInt(hex);
 }
 
 /**
  * Converts a {@link bigint} to a {@link Buffer}
  */
 export function bigIntToBuffer(num: bigint) {
-  return toBuffer('0x' + num.toString(16))
+    return toBuffer('0x' + num.toString(16));
 }
 
 /**
@@ -239,37 +245,37 @@ export function bigIntToBuffer(num: bigint) {
  * @throws If the input number exceeds 53 bits.
  */
 export const bufferToInt = function (buf: Buffer): number {
-  const res = Number(bufferToBigInt(buf))
-  if (!Number.isSafeInteger(res)) throw new Error('Number exceeds 53 bits')
-  return res
-}
+    const res = Number(bufferToBigInt(buf));
+    if (!Number.isSafeInteger(res)) throw new Error('Number exceeds 53 bits');
+    return res;
+};
 
 /**
  * Interprets a `Buffer` as a signed integer and returns a `BigInt`. Assumes 256-bit numbers.
  * @param num Signed integer value
  */
 export const fromSigned = function (num: Buffer): bigint {
-  return BigInt.asIntN(256, bufferToBigInt(num))
-}
+    return BigInt.asIntN(256, bufferToBigInt(num));
+};
 
 /**
  * Converts a `BigInt` to an unsigned integer and returns it as a `Buffer`. Assumes 256-bit numbers.
  * @param num
  */
 export const toUnsigned = function (num: bigint): Buffer {
-  return bigIntToBuffer(BigInt.asUintN(256, num))
-}
+    return bigIntToBuffer(BigInt.asUintN(256, num));
+};
 
 /**
  * Adds "0x" to a given `String` if it does not already start with "0x".
  */
 export const addHexPrefix = function (str: string): string {
-  if (typeof str !== 'string') {
-    return str
-  }
+    if (typeof str !== 'string') {
+        return str;
+    }
 
-  return isHexPrefixed(str) ? str : '0x' + str
-}
+    return isHexPrefixed(str) ? str : '0x' + str;
+};
 
 /**
  * Shortens a string  or buffer's hex string representation to maxLength (default 50).
@@ -280,11 +286,11 @@ export const addHexPrefix = function (str: string): string {
  * Output: '657468657265756d0000000000000000000000000000000000…'
  */
 export function short(buffer: Buffer | string, maxLength: number = 50): string {
-  const bufferStr = Buffer.isBuffer(buffer) ? buffer.toString('hex') : buffer
-  if (bufferStr.length <= maxLength) {
-    return bufferStr
-  }
-  return bufferStr.slice(0, maxLength) + '…'
+    const bufferStr = Buffer.isBuffer(buffer) ? buffer.toString('hex') : buffer;
+    if (bufferStr.length <= maxLength) {
+        return bufferStr;
+    }
+    return bufferStr.slice(0, maxLength) + '…';
 }
 
 /**
@@ -305,15 +311,17 @@ export function short(buffer: Buffer | string, maxLength: number = 50): string {
  * @return Utf8 string
  */
 export const toUtf8 = function (hex: string): string {
-  const zerosRegexp = /(^(00)+)|((00)+$)/g
-  hex = stripHexPrefix(hex)
-  if (hex.length % 2 !== 0) {
-    throw new Error('Invalid non-even hex string input for toUtf8() provided')
-  }
-  const bufferVal = Buffer.from(hex.replace(zerosRegexp, ''), 'hex')
+    const zerosRegexp = /(^(00)+)|((00)+$)/g;
+    hex = stripHexPrefix(hex);
+    if (hex.length % 2 !== 0) {
+        throw new Error(
+            'Invalid non-even hex string input for toUtf8() provided'
+        );
+    }
+    const bufferVal = Buffer.from(hex.replace(zerosRegexp, ''), 'hex');
 
-  return bufferVal.toString('utf8')
-}
+    return bufferVal.toString('utf8');
+};
 
 /**
  * Converts a `Buffer` or `Array` to JSON.
@@ -321,16 +329,16 @@ export const toUtf8 = function (hex: string): string {
  * @return (Array|String|null)
  */
 export const baToJSON = function (ba: any): any {
-  if (Buffer.isBuffer(ba)) {
-    return `0x${ba.toString('hex')}`
-  } else if (ba instanceof Array) {
-    const array = []
-    for (let i = 0; i < ba.length; i++) {
-      array.push(baToJSON(ba[i]))
+    if (Buffer.isBuffer(ba)) {
+        return `0x${ba.toString('hex')}`;
+    } else if (ba instanceof Array) {
+        const array = [];
+        for (let i = 0; i < ba.length; i++) {
+            array.push(baToJSON(ba[i]));
+        }
+        return array;
     }
-    return array
-  }
-}
+};
 
 /**
  * Checks provided Buffers for leading zeroes and throws if found.
@@ -345,46 +353,60 @@ export const baToJSON = function (ba: any): any {
  * @param values An object containing string keys and Buffer values
  * @throws if any provided value is found to have leading zero bytes
  */
-export const validateNoLeadingZeroes = function (values: { [key: string]: Buffer | undefined }) {
-  for (const [k, v] of Object.entries(values)) {
-    if (v !== undefined && v.length > 0 && v[0] === 0) {
-      throw new Error(`${k} cannot have leading zeroes, received: ${v.toString('hex')}`)
+export const validateNoLeadingZeroes = function (values: {
+    [key: string]: Buffer | undefined;
+}) {
+    for (const [k, v] of Object.entries(values)) {
+        if (v !== undefined && v.length > 0 && v[0] === 0) {
+            throw new Error(
+                `${k} cannot have leading zeroes, received: ${v.toString(
+                    'hex'
+                )}`
+            );
+        }
     }
-  }
-}
+};
 
 /**
  * Converts a {@link Uint8Array} or {@link NestedUint8Array} to {@link Buffer} or {@link NestedBufferArray}
  */
-export function arrToBufArr(arr: Uint8Array): Buffer
-export function arrToBufArr(arr: NestedUint8Array): NestedBufferArray
-export function arrToBufArr(arr: Uint8Array | NestedUint8Array): Buffer | NestedBufferArray
-export function arrToBufArr(arr: Uint8Array | NestedUint8Array): Buffer | NestedBufferArray {
-  if (!Array.isArray(arr)) {
-    return Buffer.from(arr)
-  }
-  return arr.map((a) => arrToBufArr(a))
+export function arrToBufArr(arr: Uint8Array): Buffer;
+export function arrToBufArr(arr: NestedUint8Array): NestedBufferArray;
+export function arrToBufArr(
+    arr: Uint8Array | NestedUint8Array
+): Buffer | NestedBufferArray;
+export function arrToBufArr(
+    arr: Uint8Array | NestedUint8Array
+): Buffer | NestedBufferArray {
+    if (!Array.isArray(arr)) {
+        return Buffer.from(arr);
+    }
+    return arr.map((a) => arrToBufArr(a));
 }
 
 /**
  * Converts a {@link Buffer} or {@link NestedBufferArray} to {@link Uint8Array} or {@link NestedUint8Array}
  */
-export function bufArrToArr(arr: Buffer): Uint8Array
-export function bufArrToArr(arr: NestedBufferArray): NestedUint8Array
-export function bufArrToArr(arr: Buffer | NestedBufferArray): Uint8Array | NestedUint8Array
-export function bufArrToArr(arr: Buffer | NestedBufferArray): Uint8Array | NestedUint8Array {
-  if (!Array.isArray(arr)) {
-    return Uint8Array.from(arr ?? [])
-  }
-  return arr.map((a) => bufArrToArr(a))
+export function bufArrToArr(arr: Buffer): Uint8Array;
+export function bufArrToArr(arr: NestedBufferArray): NestedUint8Array;
+export function bufArrToArr(
+    arr: Buffer | NestedBufferArray
+): Uint8Array | NestedUint8Array;
+export function bufArrToArr(
+    arr: Buffer | NestedBufferArray
+): Uint8Array | NestedUint8Array {
+    if (!Array.isArray(arr)) {
+        return Uint8Array.from(arr ?? []);
+    }
+    return arr.map((a) => bufArrToArr(a));
 }
 
 /**
  * Converts a {@link bigint} to a `0x` prefixed hex string
  */
 export const bigIntToHex = (num: bigint) => {
-  return '0x' + num.toString(16)
-}
+    return '0x' + num.toString(16);
+};
 
 /**
  * Convert value from bigint to an unpadded Buffer
@@ -392,9 +414,9 @@ export const bigIntToHex = (num: bigint) => {
  * @param value value to convert
  */
 export function bigIntToUnpaddedBuffer(value: bigint): Buffer {
-  return unpadBuffer(bigIntToBuffer(value))
+    return unpadBuffer(bigIntToBuffer(value));
 }
 
 export function intToUnpaddedBuffer(value: number): Buffer {
-  return unpadBuffer(intToBuffer(value))
+    return unpadBuffer(intToBuffer(value));
 }

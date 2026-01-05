@@ -1,7 +1,7 @@
 // https://github.com/satoshilabs/slips/blob/master/slip-0044.md
 
 export enum Currency {
-    NULL = -1,  // unknown coin type
+    NULL = -1, // unknown coin type
     BTC = 0,
     TBTC = 1,
     ETH = 60,
@@ -15,6 +15,7 @@ export enum Currency {
     OMNI_USDT = 20001,
     OMNI_USDT_TEST = 20002,
     SUI = 784,
+    ZEC = 133,
 
     // cosmos
     Initia = 3178,
@@ -57,11 +58,17 @@ export enum segwitType {
 }
 
 export const MultiAddressCoins: Currency[] = [
-    Currency.BTC, Currency.TBTC, Currency.LTC, Currency.DOGE, Currency.BSV, Currency.OMNI_USDT, Currency.OMNI_USDT_TEST
-]
+    Currency.BTC,
+    Currency.TBTC,
+    Currency.LTC,
+    Currency.DOGE,
+    Currency.BSV,
+    Currency.OMNI_USDT,
+    Currency.OMNI_USDT_TEST,
+];
 
-const secp256k1 = "secp256k1";
-const ed25519 = "ed25519";
+const secp256k1 = 'secp256k1';
+const ed25519 = 'ed25519';
 export const CoinCurveMap = new Map<Currency, string>([
     // secp256k1
     [Currency.BTC, secp256k1],
@@ -74,6 +81,8 @@ export const CoinCurveMap = new Map<Currency, string>([
     [Currency.TRX, secp256k1],
     [Currency.OMNI_USDT, secp256k1],
     [Currency.OMNI_USDT_TEST, secp256k1],
+    [Currency.ZEC, secp256k1],
+
     // cosmos: secp256k1
     [Currency.ATOM, secp256k1],
     [Currency.OSMO, secp256k1],
@@ -91,7 +100,6 @@ export const CoinCurveMap = new Map<Currency, string>([
     [Currency.Celestia, secp256k1],
     [Currency.DYDX, secp256k1],
     [Currency.Kaia, secp256k1],
-
 
     // [Currency.ZKSPACE, secp256k1],
     // [Currency.ZKSYNC, secp256k1],
