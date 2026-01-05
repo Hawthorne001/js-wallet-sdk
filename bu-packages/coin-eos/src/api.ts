@@ -1,7 +1,7 @@
-import {TxBuilder} from './txBuilder';
-import {Action, KeyType, PackedTransaction} from './types';
-import {signUtil} from "@okxweb3/crypto-lib"
-import {base} from "@okxweb3/coin-base"
+import { TxBuilder } from './txBuilder';
+import { Action, KeyType, PackedTransaction } from './types';
+import { signUtil } from '@okxweb3/crypto-lib';
+import { base } from '@okxweb3/coin-base';
 import {
     buyRamAction,
     CommonParam,
@@ -11,33 +11,41 @@ import {
     eosioAbi,
     NewAccountAction,
     transferAction,
-    TransferParam, toAssetString,
+    TransferParam,
+    toAssetString,
 } from './action';
 import {
-    digestFromSerializedData, publicKeyToLegacyString,
+    digestFromSerializedData,
+    publicKeyToLegacyString,
     publicKeyToString,
     signatureToElliptic,
     stringToPrivateKey,
     stringToSignature,
 } from './numeric';
-import {hexToUint8Array} from "./serialize";
-import {inflate} from "pako";
+import { hexToUint8Array } from './serialize';
+import { inflate } from 'pako';
 
 export function checkName(name: string): boolean {
+    // Handle null/undefined explicitly
+    if (name === null || name === undefined) {
+        return false;
+    }
     const regex = new RegExp(/^[.1-5a-z]{0,12}[.1-5a-j]?$/);
-    return regex.test(name)
+    return regex.test(name);
 }
 
-export function getNewAddress(creator: string,
-                              newAccount: string,
-                              newAccountActivePrivateKeyBase58: string,
-                              ram: number,
-                              net: number,
-                              cpu: number,
-                              transfer: boolean,
-                              precision: number,
-                              symbol: string,
-                              common: CommonParam): string {
+export function getNewAddress(
+    creator: string,
+    newAccount: string,
+    newAccountActivePrivateKeyBase58: string,
+    ram: number,
+    net: number,
+    cpu: number,
+    transfer: boolean,
+    precision: number,
+    symbol: string,
+    common: CommonParam
+): string {
     if (!checkName(creator)) {
         throw new Error('invalid creator name');
     }
@@ -46,8 +54,8 @@ export function getNewAddress(creator: string,
         throw new Error('invalid newAccount name');
     }
 
-    const privateKey = stringToPrivateKey(newAccountActivePrivateKeyBase58)
-    const publicKey = signUtil.secp256k1.publicKeyCreate(privateKey.data, true)
+    const privateKey = stringToPrivateKey(newAccountActivePrivateKeyBase58);
+    const publicKey = signUtil.secp256k1.publicKeyCreate(privateKey.data, true);
 
     return createAccount({
         creator: creator,
@@ -66,10 +74,10 @@ export function getNewAddress(creator: string,
             receiver: newAccount,
             stakeNet: toAssetString(net, precision, symbol),
             stakeCPU: toAssetString(cpu, precision, symbol),
-            transfer: transfer
+            transfer: transfer,
         },
-        common: common
-    })
+        common: common,
+    });
 }
 
 /*
@@ -95,9 +103,8 @@ export function createAccount(param: CreateAccountParam) {
     ];
     const abiMap = new Map<string, string>();
     abiMap.set('eosio', eosioAbi);
-    return buildTransaction(param.common, actions, abiMap)
+    return buildTransaction(param.common, actions, abiMap);
 }
-
 
 export function transfer(param: TransferParam) {
     if (!checkName(param.from)) {
@@ -108,19 +115,21 @@ export function transfer(param: TransferParam) {
         throw new Error('invalid to name');
     }
 
-    const actions: Action[] = [
-        transferAction(param),
-    ];
+    const actions: Action[] = [transferAction(param)];
     const abiMap = new Map<string, string>();
     if (param.contract) {
         abiMap.set(param.contract, eosioTokenAbi);
     } else {
         abiMap.set('eosio.token', eosioTokenAbi);
     }
-    return buildTransaction(param.common, actions, abiMap)
+    return buildTransaction(param.common, actions, abiMap);
 }
 
-function buildTransaction(param: CommonParam, actions: Action[], abiMap: Map<string, string>) {
+function buildTransaction(
+    param: CommonParam,
+    actions: Action[],
+    abiMap: Map<string, string>
+) {
     const builder = new TxBuilder(param.chainId!);
     const config = {
         privateKeys: param.privateKey!,
@@ -134,31 +143,68 @@ function buildTransaction(param: CommonParam, actions: Action[], abiMap: Map<str
         actions: actions,
     };
     const t = builder.build(transaction, config, abiMap);
-    return JSON.stringify(t)
+    return JSON.stringify(t);
 }
 
-export function signSerializedTransaction(chainId: string, privateKeys: string[], serializedTransaction: string, serializedContextFreeData?: string) {
+export function signSerializedTransaction(
+    chainId: string,
+    privateKeys: string[],
+    serializedTransaction: string,
+    serializedContextFreeData?: string
+) {
     const builder = new TxBuilder(chainId);
-    const serializedTransactionRaw = base.fromHex(serializedTransaction)
-    const serializedContextFreeDataRaw = serializedContextFreeData ? base.fromHex(serializedContextFreeData) : undefined
-    return builder.sign(privateKeys, serializedTransactionRaw, serializedContextFreeDataRaw)
+    const serializedTransactionRaw = base.fromHex(serializedTransaction);
+    const serializedContextFreeDataRaw = serializedContextFreeData
+        ? base.fromHex(serializedContextFreeData)
+        : undefined;
+    return builder.sign(
+        privateKeys,
+        serializedTransactionRaw,
+        serializedContextFreeDataRaw
+    );
 }
 
-export function signMessage(chainId: string, privateKey: string, serializedTransaction: string, serializedContextFreeData?: string) {
-    return signSerializedTransaction(chainId, [privateKey], serializedTransaction, serializedContextFreeData)[0]
+export function signMessage(
+    chainId: string,
+    privateKey: string,
+    serializedTransaction: string,
+    serializedContextFreeData?: string
+) {
+    return signSerializedTransaction(
+        chainId,
+        [privateKey],
+        serializedTransaction,
+        serializedContextFreeData
+    )[0];
 }
 
-export function verifySignature(chainId: string, signature: string, serializedTransaction: string, serializedContextFreeData?: string): string {
-    const key = stringToSignature(signature)
-    const serializedTransactionRaw = base.fromHex(serializedTransaction)
-    const serializedContextFreeDataRaw = serializedContextFreeData ? base.fromHex(serializedContextFreeData) : undefined
-    const digest = digestFromSerializedData(chainId, serializedTransactionRaw, serializedContextFreeDataRaw);
-    const e = signatureToElliptic(key.data)
-    const publicKey = signUtil.secp256k1.recover(e.signatureBytes, e.recoveryParam, digest, true);
+export function verifySignature(
+    chainId: string,
+    signature: string,
+    serializedTransaction: string,
+    serializedContextFreeData?: string
+): string {
+    const key = stringToSignature(signature);
+    const serializedTransactionRaw = base.fromHex(serializedTransaction);
+    const serializedContextFreeDataRaw = serializedContextFreeData
+        ? base.fromHex(serializedContextFreeData)
+        : undefined;
+    const digest = digestFromSerializedData(
+        chainId,
+        serializedTransactionRaw,
+        serializedContextFreeDataRaw
+    );
+    const e = signatureToElliptic(key.data);
+    const publicKey = signUtil.secp256k1.recover(
+        e.signatureBytes,
+        e.recoveryParam,
+        digest,
+        true
+    );
     if (!publicKey) {
-        throw new Error("recover publicKey error")
+        throw new Error('recover publicKey error');
     }
-    return publicKeyToLegacyString({type: KeyType.k1, data: publicKey})
+    return publicKeyToLegacyString({ type: KeyType.k1, data: publicKey });
 }
 
 export function getTxId(tx: PackedTransaction): string {

@@ -10,9 +10,16 @@ import {
     SignTxError,
     BaseWallet,
     base,
-    assertBufferLength, ValidPrivateKeyParams, ValidPrivateKeyData, SignCommonMsgParams, buildCommonSignMsg, SignType
+    assertBufferLength,
+    ValidPrivateKeyParams,
+    ValidPrivateKeyData,
+    SignCommonMsgParams,
+    buildCommonSignMsg,
+    SignType,
+    ValidAddressError,
+    InvalidPrivateKeyError,
 } from '@okxweb3/coin-base';
-import { signUtil} from '@okxweb3/crypto-lib';
+import { signUtil } from '@okxweb3/crypto-lib';
 import {
     KeyType,
     TransferParam,
@@ -24,32 +31,46 @@ import {
     stringToPrivateKey,
     publicKeyToLegacyString,
     privateKeyToLegacyString,
-    transfer, signSerializedTransaction,
-} from "./index";
+    transfer,
+    signSerializedTransaction,
+    checkName,
+} from './index';
 
 export class EosWallet extends BaseWallet {
-    getAmountString(amount: string | number, precision?: number, symbol?: string) {
-        precision = precision == null || undefined ? 4 : precision
-        symbol = symbol == null || undefined ? 'EOS' : symbol
+    getAmountString(
+        amount: string | number,
+        precision?: number,
+        symbol?: string
+    ) {
+        precision = precision == null || undefined ? 4 : precision;
+        symbol = symbol == null || undefined ? 'EOS' : symbol;
         return toAssetString(Number(amount), precision, symbol);
     }
 
-    getTokenAmountString(amount: string | number, precision: number, symbol: string) {
+    getTokenAmountString(
+        amount: string | number,
+        precision: number,
+        symbol: string
+    ) {
         return toAssetString(Number(amount), precision, symbol);
     }
 
     async getRandomPrivateKey(): Promise<any> {
-        return Promise.resolve(privateKeyToLegacyString({
-            type: KeyType.k1,
-            data: base.fromHex(await super.getRandomPrivateKey()),
-        }));
+        return Promise.resolve(
+            privateKeyToLegacyString({
+                type: KeyType.k1,
+                data: base.fromHex(await super.getRandomPrivateKey()),
+            })
+        );
     }
 
     async getDerivedPrivateKey(param: DerivePriKeyParams): Promise<any> {
-        return Promise.resolve(privateKeyToLegacyString({
-            type: KeyType.k1,
-            data: base.fromHex(await super.getDerivedPrivateKey(param)),
-        }));
+        return Promise.resolve(
+            privateKeyToLegacyString({
+                type: KeyType.k1,
+                data: base.fromHex(await super.getDerivedPrivateKey(param)),
+            })
+        );
     }
 
     async getDerivedPath(param: GetDerivedPathParam): Promise<any> {
@@ -60,64 +81,108 @@ export class EosWallet extends BaseWallet {
         try {
             const privateKey = stringToPrivateKey(param.privateKey);
             assertBufferLength(privateKey.data, privateKeyDataSize);
-            const publicKey = signUtil.secp256k1.publicKeyCreate(privateKey.data, true);
+            const publicKey = signUtil.secp256k1.publicKeyCreate(
+                privateKey.data,
+                true
+            );
             return Promise.resolve({
-                address: "",
+                address: '',
                 publicKey: publicKeyToLegacyString({
                     type: KeyType.k1,
                     data: publicKey,
                 }),
             });
-        } catch (e) {
-        }
+        } catch (e) {}
         return Promise.reject(NewAddressError);
     }
 
     async validPrivateKey(param: ValidPrivateKeyParams): Promise<any> {
         let isValid;
         try {
-           const privateKey = stringToPrivateKey(param.privateKey);
-            isValid = privateKey.data.length == privateKeyDataSize && !privateKey.data.every(byte=>byte===0);
+            const privateKey = stringToPrivateKey(param.privateKey);
+            isValid =
+                privateKey.data.length == privateKeyDataSize &&
+                !privateKey.data.every((byte) => byte === 0);
         } catch (e) {
-            isValid = false
+            isValid = false;
         }
         const data: ValidPrivateKeyData = {
             isValid: isValid,
-            privateKey: param.privateKey
+            privateKey: param.privateKey,
         };
         return Promise.resolve(data);
     }
 
-
     validAddress(param: ValidAddressParams): Promise<any> {
-        throw new Error('Method not implemented.');
+        try {
+            const isValid = checkName(param.address);
+            return Promise.resolve({
+                isValid: isValid,
+                address: param.address,
+            });
+        } catch (e) {
+            return Promise.resolve({
+                isValid: false,
+            });
+        }
     }
 
     async signCommonMsg(params: SignCommonMsgParams): Promise<any> {
         let data;
         const privateKey = stringToPrivateKey(params.privateKey);
-        const publicKey = signUtil.secp256k1.publicKeyCreate(privateKey.data, true);
+        const publicKey = signUtil.secp256k1.publicKeyCreate(
+            privateKey.data,
+            true
+        );
         let publicKeyHex = base.toHex(publicKey);
-        let sig = await super.signCommonMsg({privateKey:base.toHex(privateKey.data),publicKey:publicKeyHex, message:params.message, signType:SignType.Secp256k1});
-        return Promise.resolve(`${sig},${publicKeyHex}`)
+        let sig = await super.signCommonMsg({
+            privateKey: base.toHex(privateKey.data),
+            publicKey: publicKeyHex,
+            message: params.message,
+            signType: SignType.Secp256k1,
+        });
+        return Promise.resolve(`${sig},${publicKeyHex}`);
     }
 
     async signTransaction(param: SignTxParams): Promise<any> {
+        if (!param.privateKey) {
+            return Promise.reject(InvalidPrivateKeyError);
+        }
         try {
             const type = param.data.type;
-            if (type === 1) { // create account
+            if (type === 1) {
+                // create account
+                const creatorValidation = await this.validAddress({
+                    address: param.data.creator,
+                });
+                const newAccountValidation = await this.validAddress({
+                    address: param.data.newAccount,
+                });
+                if (
+                    !creatorValidation.isValid ||
+                    !newAccountValidation.isValid
+                ) {
+                    return Promise.reject(ValidAddressError);
+                }
+
                 const createAccountParam: CreateAccountParam = {
                     creator: param.data.creator,
                     newAccount: param.data.newAccount,
                     pubKey: param.data.pubKey,
                     buyRam: {
                         ...param.data.buyRam,
-                        quantity: this.getAmountString(param.data.buyRam.quantity),
+                        quantity: this.getAmountString(
+                            param.data.buyRam.quantity
+                        ),
                     },
                     delegate: {
                         ...param.data.delegate,
-                        stakeNet: this.getAmountString(param.data.delegate.stakeNet),
-                        stakeCPU: this.getAmountString(param.data.delegate.stakeCPU),
+                        stakeNet: this.getAmountString(
+                            param.data.delegate.stakeNet
+                        ),
+                        stakeCPU: this.getAmountString(
+                            param.data.delegate.stakeCPU
+                        ),
                     },
                     common: {
                         ...param.data.common,
@@ -135,16 +200,33 @@ export class EosWallet extends BaseWallet {
                 if (privateKeys.length == 0) {
                     privateKeys.push(param.privateKey);
                 }
-                const signatures = signSerializedTransaction(param.data.chainId, privateKeys, param.data.serializedTransaction);
+                const signatures = signSerializedTransaction(
+                    param.data.chainId,
+                    privateKeys,
+                    param.data.serializedTransaction
+                );
                 return Promise.resolve({
                     signatures: signatures,
-                    serializedTransaction: param.data.serializedTransaction
+                    serializedTransaction: param.data.serializedTransaction,
                 });
-            } else { // transfer
+            } else {
+                // transfer
+                // Validate to address
+                const toValidation = await this.validAddress({
+                    address: param.data.to,
+                });
+                if (!toValidation.isValid) {
+                    return Promise.reject(ValidAddressError);
+                }
+
                 const transferParam: TransferParam = {
                     from: param.data.from,
                     to: param.data.to,
-                    amount: this.getAmountString(param.data.amount, param.data.precision, param.data.symbol),
+                    amount: this.getAmountString(
+                        param.data.amount,
+                        param.data.precision,
+                        param.data.symbol
+                    ),
                     memo: param.data.memo,
                     contract: param.data.contract,
                     common: {
@@ -161,7 +243,10 @@ export class EosWallet extends BaseWallet {
 
     calcTxHash(param: CalcTxHashParams): Promise<string> {
         try {
-            const tx = typeof param.data === "string" ? JSON.parse(param.data) : param.data;
+            const tx =
+                typeof param.data === 'string'
+                    ? JSON.parse(param.data)
+                    : param.data;
             return Promise.resolve(getTxId(tx));
         } catch (e) {
             return Promise.reject(CalcTxHashError);
@@ -170,9 +255,13 @@ export class EosWallet extends BaseWallet {
 }
 
 export class WaxWallet extends EosWallet {
-    getAmountString(amount: string | number, precision?: number, symbol?: string) {
-        precision = precision == null || undefined ? 8 : precision
-        symbol = symbol == null || undefined ? 'WAX' : symbol
+    getAmountString(
+        amount: string | number,
+        precision?: number,
+        symbol?: string
+    ) {
+        precision = precision == null || undefined ? 8 : precision;
+        symbol = symbol == null || undefined ? 'WAX' : symbol;
         return toAssetString(Number(amount), precision, symbol);
     }
 

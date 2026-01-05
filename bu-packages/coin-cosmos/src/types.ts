@@ -1,7 +1,7 @@
-import { Any } from "./lib/typesV2/google/protobuf/any"
-import { IBinaryReader, IBinaryWriter } from "./lib/binary"
+import { Any } from './lib/typesV2/google/protobuf/any';
+import { IBinaryReader, IBinaryWriter } from './lib/binary';
 
-export type ProtoMsg = Omit<Any, "typeUrl"> & { typeUrl: any };
+export type ProtoMsg = Omit<Any, 'typeUrl'> & { typeUrl: any };
 
 export interface IAminoMsg<Amino> {
     type: any;
@@ -41,4 +41,3 @@ export interface TelescopeGeneratedCodec<
     fromProtoMsg?: (message: ProtoMsg) => T;
     toProtoMsg?: (message: T) => Any;
 }
-
