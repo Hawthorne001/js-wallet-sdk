@@ -21,31 +21,32 @@ import {
     ValidSignedTransactionParams,
     base,
     BigNumber,
-} from "@okxweb3/coin-base";
-import {EthWallet, keccak256} from "@okxweb3/coin-ethereum";
-import {getAddress} from "@ethersproject/address";
-import {computeAddress} from "@ethersproject/transactions";
-import {validPrivateKey} from "./api";
-import {Wallet} from "./v6";
-import {KlaytnTxFactory} from "@kaiachain/js-ext-core";
+    ValidAddressError,
+} from '@okxweb3/coin-base';
+import { EthWallet, keccak256 } from '@okxweb3/coin-ethereum';
+import { getAddress } from '@ethersproject/address';
+import { computeAddress } from '@ethersproject/transactions';
+import { validPrivateKey } from './api';
+import { Wallet } from './v6';
+import { KlaytnTxFactory } from '@kaiachain/js-ext-core';
 
 export type KaiaTxParams = {
     kaiaTxType?: number;
     senderRawTx?: string;
-    from?: string,
+    from?: string;
 
-    to: string,
-    value: string,
-    useValue?: boolean,
-    nonce: number,
-    contractAddress?: string
-    gasPrice: string,
-    gasLimit: string,
+    to: string;
+    value: string;
+    useValue?: boolean;
+    nonce: number;
+    contractAddress?: string;
+    gasPrice: string;
+    gasLimit: string;
 
     data?: string;
-    humanReadable?: boolean,
-    codeFormat?: any,
-    key?: any,
+    humanReadable?: boolean;
+    codeFormat?: any;
+    key?: any;
     chainId: string;
 
     // Typed-Transaction features
@@ -61,24 +62,24 @@ export type KaiaTxParams = {
     // EIP-1559; Type 2
     maxPriorityFeePerGas: string;
     maxFeePerGas: string;
-}
+};
 
 export type EthTxParams = {
-    from: string,
-    to: string,
-    value: string,
-    useValue?: boolean,
+    from: string;
+    to: string;
+    value: string;
+    useValue?: boolean;
 
-    nonce: number,
+    nonce: number;
 
-    contractAddress?: string
-    gasPrice: string,
-    gasLimit: string,
+    contractAddress?: string;
+    gasPrice: string;
+    gasLimit: string;
 
     data?: string;
-    humanReadable?: boolean,
-    codeFormat?: any,
-    key?: any,
+    humanReadable?: boolean;
+    codeFormat?: any;
+    key?: any;
     chainId: string;
 
     // Typed-Transaction features
@@ -94,34 +95,32 @@ export type EthTxParams = {
     // EIP-1559; Type 2
     maxPriorityFeePerGas: string;
     maxFeePerGas: string;
-}
+};
 
 export class KaiaWallet extends EthWallet {
-
     async getNewAddress(param: NewAddressParams): Promise<any> {
         let pri = param.privateKey;
         let ok = validPrivateKey(pri);
         if (!ok) {
-            throw new Error('invalid key')
+            throw new Error('invalid key');
         }
         try {
-            const privateKey = base.fromHex(pri.toLowerCase())
-            assertBufferLength(privateKey, 32)
+            const privateKey = base.fromHex(pri.toLowerCase());
+            assertBufferLength(privateKey, 32);
             let wallet = new Wallet(pri);
             return Promise.resolve({
                 address: await wallet.getAddress(),
                 publicKey: wallet.signingKey.publicKey,
             });
-        } catch (e) {
-        }
-        return Promise.reject(NewAddressError)
+        } catch (e) {}
+        return Promise.reject(NewAddressError);
     }
 
     async validPrivateKey(param: ValidPrivateKeyParams): Promise<any> {
         let isValid = validPrivateKey(param.privateKey);
         const data: ValidPrivateKeyData = {
             isValid: isValid,
-            privateKey: param.privateKey
+            privateKey: param.privateKey,
         };
         return Promise.resolve(data);
     }
@@ -131,35 +130,34 @@ export class KaiaWallet extends EthWallet {
         let result;
         try {
             result = getAddress(param.address);
-            isValid = true
+            isValid = true;
         } catch (e) {
             isValid = false;
         }
 
         return Promise.resolve({
             isValid: isValid,
-            address: result
+            address: result,
         });
     }
 
     convert2HexString(data: any): string {
-        let n: BigNumber
+        let n: BigNumber;
         if (BigNumber.isBigNumber(data)) {
-            n = data
+            n = data;
         } else {
             // number or string
-            n = new BigNumber(data)
+            n = new BigNumber(data);
         }
-        return base.toBigIntHex(n)
+        return base.toBigIntHex(n);
     }
 
     convert2KaiaTxParam(data: any): KaiaTxParams {
         if (!data.gasPrice || !data.gasLimit) {
-            throw new Error("invalid parameter")
+            throw new Error('invalid parameter');
         }
-        const param = {
+        const param: KaiaTxParams = {
             kaiaTxType: data.kaiaTxType,
-            feePayer: data.feePayer,
             senderRawTx: data.senderRawTx,
             from: data.from,
             to: data.to,
@@ -176,26 +174,48 @@ export class KaiaWallet extends EthWallet {
             // default chainId: eth mainnet
             chainId: this.convert2HexString(data.chainId || 1),
             type: data.type || 0,
-            maxPriorityFeePerGas: this.convert2HexString(data.maxPriorityFeePerGas || 0),
+            maxPriorityFeePerGas: this.convert2HexString(
+                data.maxPriorityFeePerGas || 0
+            ),
             maxFeePerGas: this.convert2HexString(data.maxFeePerGas || 0),
-            feeRatio: data.feeRatio
-        }
-        return param as KaiaTxParams
+            feeRatio: data.feeRatio,
+        };
+        return param;
     }
 
     async signTransaction(param: SignTxParams): Promise<any> {
         try {
             const privateKey = param.privateKey;
             if (privateKey) {
-                assertBufferLength(base.fromHex(privateKey), 32)
+                assertBufferLength(base.fromHex(privateKey), 32);
             }
 
             if (param.data.senderRawTx) {
                 const w = new Wallet(param.privateKey);
-                return w.signTransactionAsFeePayer(param.data.senderRawTx)
+                return await w.signTransactionAsFeePayer(
+                    param.data.senderRawTx
+                );
             } else if (param.data.kaiaTxType) {
                 const w = new Wallet(param.privateKey);
                 const txParams = this.convert2KaiaTxParam(param.data);
+
+                // Validate recipient address
+                const validation = await this.validAddress({
+                    address: txParams.to,
+                });
+                if (!validation.isValid) {
+                    return Promise.reject(ValidAddressError);
+                }
+
+                if (txParams.contractAddress) {
+                    const validation = await this.validAddress({
+                        address: txParams.contractAddress,
+                    });
+                    if (!validation.isValid) {
+                        return Promise.reject(ValidAddressError);
+                    }
+                }
+
                 let tx = {
                     type: txParams.kaiaTxType, // fee delegated smart contract execution
                     chainId: txParams.chainId,
@@ -212,14 +232,14 @@ export class KaiaWallet extends EthWallet {
                     maxFeePerGas: txParams.maxFeePerGas,
                     maxPriorityFeePerGas: txParams.maxPriorityFeePerGas,
                     feeRatio: txParams.feeRatio,
-                }
+                };
                 let pTx = await w.populateTransaction(tx);
-                return Promise.resolve(w.signTransaction(pTx));
+                return await w.signTransaction(pTx);
             } else {
-                return super.signTransaction(param)
+                return super.signTransaction(param);
             }
         } catch (e) {
-            return Promise.reject(SignTxError)
+            return Promise.reject(SignTxError);
         }
     }
 
@@ -254,7 +274,9 @@ export class KaiaWallet extends EthWallet {
     }
 
     // BTC does not need to implement this interface. Hardware wallets can directly generate and broadcast transactions.
-    async getHardWareSignedTransaction(param: HardwareRawTransactionParam): Promise<any> {
+    async getHardWareSignedTransaction(
+        param: HardwareRawTransactionParam
+    ): Promise<any> {
         // try {
         //     let klaytnTx = KlaytnTxFactory.fromRLP(param.raw)
         //     klaytnTx.addSenderSig([param.v!, param.r!, param.s!])
@@ -268,10 +290,14 @@ export class KaiaWallet extends EthWallet {
     async calcTxHash(param: CalcTxHashParams): Promise<string> {
         const signedTx = KlaytnTxFactory.fromRLP(param.data);
         let txHex = signedTx.txHashRLP();
-        return Promise.resolve(base.toHex(keccak256(base.fromHex(txHex)), true));
+        return Promise.resolve(
+            base.toHex(keccak256(base.fromHex(txHex)), true)
+        );
     }
 
-    async validSignedTransaction(param: ValidSignedTransactionParams): Promise<any> {
+    async validSignedTransaction(
+        param: ValidSignedTransactionParams
+    ): Promise<any> {
         return Promise.reject(validSignedTransactionError);
     }
 }

@@ -1,2 +1,2 @@
-export * from "./api"
-export * from "./KaiaWallet"
+export * from './api';
+export * from './KaiaWallet';
