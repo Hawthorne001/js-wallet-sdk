@@ -1,22 +1,28 @@
-import { StellarWallet, StellarTxParam, MuxedAddressParam } from "../src";
-import { GenPrivateKeyError, NotImplementedError } from "@okxweb3/coin-base";
+import { StellarWallet, StellarTxParam, MuxedAddressParam } from '../src';
+import {
+    GenPrivateKeyError,
+    NotImplementedError,
+    SignTxError,
+    NewAddressError,
+    ValidAddressError,
+} from '@okxweb3/coin-base';
 // @ts-ignore
-import { Networks } from "../src/lib";
+import { Networks } from '../src/lib';
 import { describe, expect, test, jest, beforeEach } from '@jest/globals';
 
 // Mock the crypto lib to test error paths
-jest.mock("@okxweb3/crypto-lib", () => ({
+jest.mock('@okxweb3/crypto-lib', () => ({
     signUtil: {
         ed25519: {
             ed25519_getRandomPrivateKey: jest.fn(),
             ed25519_getDerivedPrivateKey: jest.fn(),
-        }
-    }
+        },
+    },
 }));
 
 describe('StellarWallet Comprehensive Tests', () => {
     let wallet: StellarWallet;
-    const { signUtil } = require("@okxweb3/crypto-lib");
+    const { signUtil } = require('@okxweb3/crypto-lib');
 
     beforeEach(() => {
         wallet = new StellarWallet();
@@ -26,246 +32,273 @@ describe('StellarWallet Comprehensive Tests', () => {
     describe('Error Handling Coverage', () => {
         // Test error handling in getRandomPrivateKey (lines 74-78)
         test('getRandomPrivateKey should handle crypto lib errors', async () => {
-            signUtil.ed25519.ed25519_getRandomPrivateKey.mockImplementation(() => {
-                throw new Error('Crypto error');
-            });
+            signUtil.ed25519.ed25519_getRandomPrivateKey.mockImplementation(
+                () => {
+                    throw new Error('Crypto error');
+                }
+            );
 
-            await expect(wallet.getRandomPrivateKey()).rejects.toBe(GenPrivateKeyError);
-            expect(signUtil.ed25519.ed25519_getRandomPrivateKey).toHaveBeenCalledWith(false, "hex");
+            await expect(wallet.getRandomPrivateKey()).rejects.toBe(
+                GenPrivateKeyError
+            );
+            expect(
+                signUtil.ed25519.ed25519_getRandomPrivateKey
+            ).toHaveBeenCalledWith(false, 'hex');
         });
 
         // Test error handling in getDerivedPrivateKey (line 87)
         test('getDerivedPrivateKey should handle crypto lib errors', async () => {
-            signUtil.ed25519.ed25519_getDerivedPrivateKey.mockImplementation(() => {
-                throw new Error('Crypto error');
-            });
+            signUtil.ed25519.ed25519_getDerivedPrivateKey.mockImplementation(
+                () => {
+                    throw new Error('Crypto error');
+                }
+            );
 
             const param = {
-                mnemonic: "test mnemonic",
-                hdPath: "m/44'/148'/0'"
+                mnemonic: 'test mnemonic',
+                hdPath: "m/44'/148'/0'",
             };
 
-            await expect(wallet.getDerivedPrivateKey(param)).rejects.toBe(GenPrivateKeyError);
-            expect(signUtil.ed25519.ed25519_getDerivedPrivateKey).toHaveBeenCalledWith(
-                param.mnemonic,
-                param.hdPath,
-                false,
-                "hex"
+            await expect(wallet.getDerivedPrivateKey(param)).rejects.toBe(
+                GenPrivateKeyError
             );
+            expect(
+                signUtil.ed25519.ed25519_getDerivedPrivateKey
+            ).toHaveBeenCalledWith(param.mnemonic, param.hdPath, false, 'hex');
         });
 
         // Test error handling in getNewAddress for invalid key (line 115)
-        test('getNewAddress should throw error for all-zero private key', () => {
+        test('getNewAddress should throw error for all-zero private key', async () => {
             // Use a valid Stellar secret key that will result in all-zero raw key
             // This is a known all-zero secret seed
-            const invalidKey = "SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
-            
-            expect(() => {
-                wallet.getNewAddress({ privateKey: invalidKey });
-            }).toThrow(); // Just expect any error since the checksum validation happens first
+            const invalidKey =
+                'SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
+
+            await expect(
+                wallet.getNewAddress({ privateKey: invalidKey })
+            ).rejects.toBe(NewAddressError);
         });
 
         // Test error handling in getMuxedAddress for missing address (line 125)
-        test('getMuxedAddress should throw error for missing address', () => {
+        test('getMuxedAddress should throw error for missing address', async () => {
             const param: MuxedAddressParam = {
-                address: "",
-                id: "1"
+                address: '',
+                id: '1',
             };
 
-            expect(() => {
-                wallet.getMuxedAddress(param);
-            }).toThrow('Missing address');
+            await expect(wallet.getMuxedAddress(param)).rejects.toBe(
+                NewAddressError
+            );
         });
 
         // Test signMessage returns NotImplementedError (line 133)
         test('signMessage should return NotImplementedError', async () => {
             const param = {
-                privateKey: "SAGYHCI53Z3QG2TGYUIF24BJEKTZSPSQPQ7OW2WULSSTZXJ426THA4GW",
-                data: "test message"
+                privateKey:
+                    'SAGYHCI53Z3QG2TGYUIF24BJEKTZSPSQPQ7OW2WULSSTZXJ426THA4GW',
+                data: 'test message',
             };
 
-            await expect(wallet.signMessage(param)).rejects.toBe(NotImplementedError);
+            await expect(wallet.signMessage(param)).rejects.toBe(
+                NotImplementedError
+            );
         });
     });
 
     describe('SignTransaction Error Handling', () => {
-        const validPrivateKey = "SAGYHCI53Z3QG2TGYUIF24BJEKTZSPSQPQ7OW2WULSSTZXJ426THA4GW";
-        const validAddress = "GBL7IXVKK7UKX6YZB5AA3QB5H47SFNM6RNSXT6WNWH6R36NFYHDR5OBA";
+        const validPrivateKey =
+            'SAGYHCI53Z3QG2TGYUIF24BJEKTZSPSQPQ7OW2WULSSTZXJ426THA4GW';
+        const validAddress =
+            'GBL7IXVKK7UKX6YZB5AA3QB5H47SFNM6RNSXT6WNWH6R36NFYHDR5OBA';
 
         // Test missing decimals error (line 157)
-        test('signTransaction should throw error for missing decimals', () => {
+        test('signTransaction should throw error for missing decimals', async () => {
             const txParam: StellarTxParam = {
-                type: "transfer",
+                type: 'transfer',
                 source: validAddress,
-                sequence: "1",
+                sequence: '1',
                 toAddress: validAddress,
-                amount: "1000000",
-                fee: "100",
-                decimals: 0 // This will be falsy
+                amount: '1000000',
+                fee: '100',
+                decimals: 0, // This will be falsy
             };
 
             const param = {
                 privateKey: validPrivateKey,
-                data: txParam
+                data: txParam,
             };
 
-            expect(() => {
-                wallet.signTransaction(param);
-            }).toThrow("missing decimals");
+            await expect(wallet.signTransaction(param)).rejects.toBe(
+                'missing decimals'
+            );
         });
 
         // Test missing toAddress error for transfer (line 161)
-        test('signTransaction should throw error for missing toAddress in transfer', () => {
+        test('signTransaction should throw error for missing toAddress in transfer', async () => {
             const txParam: StellarTxParam = {
-                type: "transfer",
+                type: 'transfer',
                 source: validAddress,
-                sequence: "1",
+                sequence: '1',
                 // toAddress is missing
-                amount: "1000000",
-                fee: "100",
-                decimals: 7
+                amount: '1000000',
+                fee: '100',
+                decimals: 7,
             };
 
             const param = {
                 privateKey: validPrivateKey,
-                data: txParam
+                data: txParam,
             };
 
-            expect(() => {
-                wallet.signTransaction(param);
-            }).toThrow("missing toAddress");
+            await expect(wallet.signTransaction(param)).rejects.toBe(
+                ValidAddressError
+            );
         });
 
         // Test missing amount error for native asset transfer (line 173)
-        test('signTransaction should throw error for missing amount in native transfer', () => {
+        test('signTransaction should throw error for missing amount in native transfer', async () => {
             const txParam: StellarTxParam = {
-                type: "transfer",
+                type: 'transfer',
                 source: validAddress,
-                sequence: "1",
+                sequence: '1',
                 toAddress: validAddress,
                 // amount is missing and no asset specified
-                fee: "100",
-                decimals: 7
+                fee: '100',
+                decimals: 7,
             };
 
             const param = {
                 privateKey: validPrivateKey,
-                data: txParam
+                data: txParam,
             };
 
-            expect(() => {
-                wallet.signTransaction(param);
-            }).toThrow("missing amount");
+            await expect(wallet.signTransaction(param)).rejects.toBe(
+                'missing amount'
+            );
         });
 
         // Test missing asset error for changeTrust (line 184)
-        test('signTransaction should throw error for missing asset in changeTrust', () => {
+        test('signTransaction should throw error for missing asset in changeTrust', async () => {
             const txParam: StellarTxParam = {
-                type: "changeTrust",
+                type: 'changeTrust',
                 source: validAddress,
-                sequence: "1",
-                fee: "100",
-                decimals: 7
+                sequence: '1',
+                fee: '100',
+                decimals: 7,
                 // asset is missing
             };
 
             const param = {
                 privateKey: validPrivateKey,
-                data: txParam
+                data: txParam,
             };
 
-            expect(() => {
-                wallet.signTransaction(param);
-            }).toThrow("missing asset");
+            await expect(wallet.signTransaction(param)).rejects.toBe(
+                'missing asset'
+            );
         });
 
         // Test invalid transaction type error (line 194)
-        test('signTransaction should throw error for invalid transaction type', () => {
+        test('signTransaction should throw error for invalid transaction type', async () => {
             const txParam = {
-                type: "invalidType",
+                type: 'invalidType',
                 source: validAddress,
-                sequence: "1",
-                fee: "100",
-                decimals: 7
+                sequence: '1',
+                fee: '100',
+                decimals: 7,
             } as any; // Cast to any to bypass TypeScript checking
 
             const param = {
                 privateKey: validPrivateKey,
-                data: txParam
+                data: txParam,
             };
 
-            expect(() => {
-                wallet.signTransaction(param);
-            }).toThrow("invalid tx type");
+            await expect(wallet.signTransaction(param)).rejects.toBe(
+                'invalid tx type'
+            );
         });
     });
 
     describe('Additional Edge Cases and Branch Coverage', () => {
         // Test successful getRandomPrivateKey path
         test('getRandomPrivateKey should work correctly when crypto lib succeeds', async () => {
-            const mockHexKey = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
-            signUtil.ed25519.ed25519_getRandomPrivateKey.mockReturnValue(mockHexKey);
+            const mockHexKey =
+                '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+            signUtil.ed25519.ed25519_getRandomPrivateKey.mockReturnValue(
+                mockHexKey
+            );
 
             const result = await wallet.getRandomPrivateKey();
-            
+
             expect(typeof result).toBe('string');
             expect(result).toMatch(/^S[A-Z0-9]{55}$/); // Stellar secret key format
-            expect(signUtil.ed25519.ed25519_getRandomPrivateKey).toHaveBeenCalledWith(false, "hex");
+            expect(
+                signUtil.ed25519.ed25519_getRandomPrivateKey
+            ).toHaveBeenCalledWith(false, 'hex');
         });
 
         // Test successful getDerivedPrivateKey path
         test('getDerivedPrivateKey should work correctly when crypto lib succeeds', async () => {
-            const mockHexKey = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
-            signUtil.ed25519.ed25519_getDerivedPrivateKey.mockResolvedValue(mockHexKey);
+            const mockHexKey =
+                '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+            signUtil.ed25519.ed25519_getDerivedPrivateKey.mockResolvedValue(
+                mockHexKey
+            );
 
             const param = {
-                mnemonic: "illness spike retreat truth genius clock brain pass fit cave bargain toe",
-                hdPath: "m/44'/148'/0'"
+                mnemonic:
+                    'illness spike retreat truth genius clock brain pass fit cave bargain toe',
+                hdPath: "m/44'/148'/0'",
             };
 
             const result = await wallet.getDerivedPrivateKey(param);
-            
+
             expect(typeof result).toBe('string');
             expect(result).toMatch(/^S[A-Z0-9]{55}$/); // Stellar secret key format
-            expect(signUtil.ed25519.ed25519_getDerivedPrivateKey).toHaveBeenCalledWith(
-                param.mnemonic,
-                param.hdPath,
-                false,
-                "hex"
-            );
+            expect(
+                signUtil.ed25519.ed25519_getDerivedPrivateKey
+            ).toHaveBeenCalledWith(param.mnemonic, param.hdPath, false, 'hex');
         });
 
         // Test validPrivateKey with invalid key (false branch)
         test('validPrivateKey should return false for invalid key', async () => {
-            const result = await wallet.validPrivateKey({ privateKey: "invalid_key" });
-            
+            const result = await wallet.validPrivateKey({
+                privateKey: 'invalid_key',
+            });
+
             expect(result.isValid).toBe(false);
-            expect(result.privateKey).toBe("invalid_key");
+            expect(result.privateKey).toBe('invalid_key');
         });
 
         // Test validPrivateKey with all-zero key (false branch)
         test('validPrivateKey should return false for all-zero key', async () => {
-            const invalidKey = "SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
-            const result = await wallet.validPrivateKey({ privateKey: invalidKey });
-            
+            const invalidKey =
+                'SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
+            const result = await wallet.validPrivateKey({
+                privateKey: invalidKey,
+            });
+
             expect(result.isValid).toBe(false);
             expect(result.privateKey).toBe(invalidKey);
         });
 
         // Test validAddress with muxed address (second try block)
         test('validAddress should validate muxed addresses', async () => {
-            const muxedAddress = "MBL7IXVKK7UKX6YZB5AA3QB5H47SFNM6RNSXT6WNWH6R36NFYHDR4AAAAAAAAAAAAB3NQ";
+            const muxedAddress =
+                'MBL7IXVKK7UKX6YZB5AA3QB5H47SFNM6RNSXT6WNWH6R36NFYHDR4AAAAAAAAAAAAB3NQ';
             const result = await wallet.validAddress({ address: muxedAddress });
-            
+
             expect(result.isValid).toBe(true);
             expect(result.address).toBe(muxedAddress);
         });
 
         // Test validAddress with invalid address (false branch)
         test('validAddress should return false for invalid address', async () => {
-            const invalidAddress = "invalid_address_format";
-            const result = await wallet.validAddress({ address: invalidAddress });
-            
+            const invalidAddress = 'invalid_address_format';
+            const result = await wallet.validAddress({
+                address: invalidAddress,
+            });
+
             expect(result.isValid).toBe(false);
             expect(result.address).toBe(invalidAddress);
         });
@@ -273,23 +306,24 @@ describe('StellarWallet Comprehensive Tests', () => {
         // Test signTransaction without privateKey (line 197-200 branch)
         test('signTransaction should work without signing when no privateKey provided', async () => {
             const txParam: StellarTxParam = {
-                type: "transfer",
-                source: "GBL7IXVKK7UKX6YZB5AA3QB5H47SFNM6RNSXT6WNWH6R36NFYHDR5OBA",
-                sequence: "1",
-                toAddress: "GBABZSCZ4NRIXUXDPQLLX5PUOEUUTHT5KFF4DS447GRJXDBWA32ZOJFW",
-                amount: "1000000",
-                fee: "100",
+                type: 'transfer',
+                source: 'GBL7IXVKK7UKX6YZB5AA3QB5H47SFNM6RNSXT6WNWH6R36NFYHDR5OBA',
+                sequence: '1',
+                toAddress:
+                    'GBABZSCZ4NRIXUXDPQLLX5PUOEUUTHT5KFF4DS447GRJXDBWA32ZOJFW',
+                amount: '1000000',
+                fee: '100',
                 decimals: 7,
-                networkPassphrase: Networks.TESTNET
+                networkPassphrase: Networks.TESTNET,
             };
 
             const param = {
                 privateKey: undefined, // Explicitly set to undefined to test the branch
-                data: txParam
+                data: txParam,
             } as any;
 
             const result = await wallet.signTransaction(param);
-            
+
             expect(typeof result).toBe('string');
             expect(result.length).toBeGreaterThan(0);
         });
@@ -297,26 +331,27 @@ describe('StellarWallet Comprehensive Tests', () => {
         // Test changeTrust transaction path
         test('signTransaction should handle changeTrust operations correctly', async () => {
             const txParam: StellarTxParam = {
-                type: "changeTrust",
-                source: "GBL7IXVKK7UKX6YZB5AA3QB5H47SFNM6RNSXT6WNWH6R36NFYHDR5OBA",
-                sequence: "1",
-                fee: "100",
+                type: 'changeTrust',
+                source: 'GBL7IXVKK7UKX6YZB5AA3QB5H47SFNM6RNSXT6WNWH6R36NFYHDR5OBA',
+                sequence: '1',
+                fee: '100',
                 decimals: 7,
                 networkPassphrase: Networks.TESTNET,
                 asset: {
-                    assetName: "USDT",
-                    issuer: "GBABZSCZ4NRIXUXDPQLLX5PUOEUUTHT5KFF4DS447GRJXDBWA32ZOJFW",
-                    amount: "10000000000"
-                }
+                    assetName: 'USDT',
+                    issuer: 'GBABZSCZ4NRIXUXDPQLLX5PUOEUUTHT5KFF4DS447GRJXDBWA32ZOJFW',
+                    amount: '10000000000',
+                },
             };
 
             const param = {
-                privateKey: "SAGYHCI53Z3QG2TGYUIF24BJEKTZSPSQPQ7OW2WULSSTZXJ426THA4GW",
-                data: txParam
+                privateKey:
+                    'SAGYHCI53Z3QG2TGYUIF24BJEKTZSPSQPQ7OW2WULSSTZXJ426THA4GW',
+                data: txParam,
             };
 
             const result = await wallet.signTransaction(param);
-            
+
             expect(typeof result).toBe('string');
             expect(result.length).toBeGreaterThan(0);
         });
@@ -324,27 +359,29 @@ describe('StellarWallet Comprehensive Tests', () => {
         // Test transfer with custom asset (not native)
         test('signTransaction should handle custom asset transfers', async () => {
             const txParam: StellarTxParam = {
-                type: "transfer",
-                source: "GBL7IXVKK7UKX6YZB5AA3QB5H47SFNM6RNSXT6WNWH6R36NFYHDR5OBA",
-                sequence: "1",
-                toAddress: "GBABZSCZ4NRIXUXDPQLLX5PUOEUUTHT5KFF4DS447GRJXDBWA32ZOJFW",
-                fee: "100",
+                type: 'transfer',
+                source: 'GBL7IXVKK7UKX6YZB5AA3QB5H47SFNM6RNSXT6WNWH6R36NFYHDR5OBA',
+                sequence: '1',
+                toAddress:
+                    'GBABZSCZ4NRIXUXDPQLLX5PUOEUUTHT5KFF4DS447GRJXDBWA32ZOJFW',
+                fee: '100',
                 decimals: 7,
                 networkPassphrase: Networks.TESTNET,
                 asset: {
-                    assetName: "USD",
-                    issuer: "GBABZSCZ4NRIXUXDPQLLX5PUOEUUTHT5KFF4DS447GRJXDBWA32ZOJFW",
-                    amount: "1000000000"
-                }
+                    assetName: 'USD',
+                    issuer: 'GBABZSCZ4NRIXUXDPQLLX5PUOEUUTHT5KFF4DS447GRJXDBWA32ZOJFW',
+                    amount: '1000000000',
+                },
             };
 
             const param = {
-                privateKey: "SAGYHCI53Z3QG2TGYUIF24BJEKTZSPSQPQ7OW2WULSSTZXJ426THA4GW",
-                data: txParam
+                privateKey:
+                    'SAGYHCI53Z3QG2TGYUIF24BJEKTZSPSQPQ7OW2WULSSTZXJ426THA4GW',
+                data: txParam,
             };
 
             const result = await wallet.signTransaction(param);
-            
+
             expect(typeof result).toBe('string');
             expect(result.length).toBeGreaterThan(0);
         });
@@ -355,19 +392,21 @@ describe('StellarWallet Comprehensive Tests', () => {
         test('calcTxHash should calculate transaction hash correctly', async () => {
             // First create a transaction to get valid XDR
             const txParam: StellarTxParam = {
-                type: "transfer",
-                source: "GBL7IXVKK7UKX6YZB5AA3QB5H47SFNM6RNSXT6WNWH6R36NFYHDR5OBA",
-                sequence: "1",
-                toAddress: "GBABZSCZ4NRIXUXDPQLLX5PUOEUUTHT5KFF4DS447GRJXDBWA32ZOJFW",
-                amount: "1000000",
-                fee: "100",
+                type: 'transfer',
+                source: 'GBL7IXVKK7UKX6YZB5AA3QB5H47SFNM6RNSXT6WNWH6R36NFYHDR5OBA',
+                sequence: '1',
+                toAddress:
+                    'GBABZSCZ4NRIXUXDPQLLX5PUOEUUTHT5KFF4DS447GRJXDBWA32ZOJFW',
+                amount: '1000000',
+                fee: '100',
                 decimals: 7,
-                networkPassphrase: Networks.TESTNET
+                networkPassphrase: Networks.TESTNET,
             };
 
             const signParam = {
-                privateKey: "SAGYHCI53Z3QG2TGYUIF24BJEKTZSPSQPQ7OW2WULSSTZXJ426THA4GW",
-                data: txParam
+                privateKey:
+                    'SAGYHCI53Z3QG2TGYUIF24BJEKTZSPSQPQ7OW2WULSSTZXJ426THA4GW',
+                data: txParam,
             };
 
             const txXDR = await wallet.signTransaction(signParam);
@@ -375,12 +414,12 @@ describe('StellarWallet Comprehensive Tests', () => {
             const hashParam = {
                 data: {
                     tx: txXDR,
-                    networkPassphrase: Networks.TESTNET
-                }
+                    networkPassphrase: Networks.TESTNET,
+                },
             };
 
             const hash = await wallet.calcTxHash(hashParam);
-            
+
             expect(typeof hash).toBe('string');
             expect(hash.length).toBeGreaterThan(0);
             expect(hash).toMatch(/^[a-f0-9]+$/i); // Should be hex string
@@ -400,13 +439,20 @@ describe('StellarWallet Comprehensive Tests', () => {
 
         // Test getMuxedAddress with different IDs
         test('getMuxedAddress should handle different ID formats', async () => {
-            const validAddress = "GBL7IXVKK7UKX6YZB5AA3QB5H47SFNM6RNSXT6WNWH6R36NFYHDR5OBA";
-            
-            const result1 = await wallet.getMuxedAddress({ address: validAddress, id: "100" });
+            const validAddress =
+                'GBL7IXVKK7UKX6YZB5AA3QB5H47SFNM6RNSXT6WNWH6R36NFYHDR5OBA';
+
+            const result1 = await wallet.getMuxedAddress({
+                address: validAddress,
+                id: '100',
+            });
             expect(typeof result1).toBe('string');
             expect(result1).toMatch(/^M/); // Muxed addresses start with M
 
-            const result2 = await wallet.getMuxedAddress({ address: validAddress, id: "18446744073709551615" });
+            const result2 = await wallet.getMuxedAddress({
+                address: validAddress,
+                id: '18446744073709551615',
+            });
             expect(typeof result2).toBe('string');
             expect(result2).toMatch(/^M/);
         });
@@ -416,36 +462,40 @@ describe('StellarWallet Comprehensive Tests', () => {
         // Test transaction with all optional parameters
         test('signTransaction should handle all optional parameters', async () => {
             const txParam: StellarTxParam = {
-                type: "transfer",
-                source: "GBL7IXVKK7UKX6YZB5AA3QB5H47SFNM6RNSXT6WNWH6R36NFYHDR5OBA",
-                sequence: "1",
-                toAddress: "GBABZSCZ4NRIXUXDPQLLX5PUOEUUTHT5KFF4DS447GRJXDBWA32ZOJFW",
-                amount: "1000000",
-                fee: "100",
+                type: 'transfer',
+                source: 'GBL7IXVKK7UKX6YZB5AA3QB5H47SFNM6RNSXT6WNWH6R36NFYHDR5OBA',
+                sequence: '1',
+                toAddress:
+                    'GBABZSCZ4NRIXUXDPQLLX5PUOEUUTHT5KFF4DS447GRJXDBWA32ZOJFW',
+                amount: '1000000',
+                fee: '100',
                 decimals: 7,
-                memo: "Test transaction",
+                memo: 'Test transaction',
                 networkPassphrase: Networks.TESTNET,
                 timebounds: {
                     minTime: new Date('2024-01-01'),
-                    maxTime: new Date('2024-12-31')
+                    maxTime: new Date('2024-12-31'),
                 },
                 ledgerbounds: {
                     minLedger: 1000,
-                    maxLedger: 2000
+                    maxLedger: 2000,
                 },
-                minAccountSequence: "100",
+                minAccountSequence: '100',
                 minAccountSequenceAge: 60,
                 minAccountSequenceLedgerGap: 10,
-                extraSigners: ["GC3MMSXBWHL6CPOAVERSJITX7BH76YU252WGLUOM5CJX3E7UCYZBTPJQ"]
+                extraSigners: [
+                    'GC3MMSXBWHL6CPOAVERSJITX7BH76YU252WGLUOM5CJX3E7UCYZBTPJQ',
+                ],
             };
 
             const param = {
-                privateKey: "SAGYHCI53Z3QG2TGYUIF24BJEKTZSPSQPQ7OW2WULSSTZXJ426THA4GW",
-                data: txParam
+                privateKey:
+                    'SAGYHCI53Z3QG2TGYUIF24BJEKTZSPSQPQ7OW2WULSSTZXJ426THA4GW',
+                data: txParam,
             };
 
             const result = await wallet.signTransaction(param);
-            
+
             expect(typeof result).toBe('string');
             expect(result.length).toBeGreaterThan(0);
         });
@@ -453,26 +503,279 @@ describe('StellarWallet Comprehensive Tests', () => {
         // Test transaction with no timebounds (default case)
         test('signTransaction should use default timebounds when not provided', async () => {
             const txParam: StellarTxParam = {
-                type: "transfer",
-                source: "GBL7IXVKK7UKX6YZB5AA3QB5H47SFNM6RNSXT6WNWH6R36NFYHDR5OBA",
-                sequence: "1",
-                toAddress: "GBABZSCZ4NRIXUXDPQLLX5PUOEUUTHT5KFF4DS447GRJXDBWA32ZOJFW",
-                amount: "1000000",
-                fee: "100",
+                type: 'transfer',
+                source: 'GBL7IXVKK7UKX6YZB5AA3QB5H47SFNM6RNSXT6WNWH6R36NFYHDR5OBA',
+                sequence: '1',
+                toAddress:
+                    'GBABZSCZ4NRIXUXDPQLLX5PUOEUUTHT5KFF4DS447GRJXDBWA32ZOJFW',
+                amount: '1000000',
+                fee: '100',
                 decimals: 7,
-                networkPassphrase: Networks.TESTNET
+                networkPassphrase: Networks.TESTNET,
                 // timebounds not provided
             };
 
             const param = {
-                privateKey: "SAGYHCI53Z3QG2TGYUIF24BJEKTZSPSQPQ7OW2WULSSTZXJ426THA4GW",
-                data: txParam
+                privateKey:
+                    'SAGYHCI53Z3QG2TGYUIF24BJEKTZSPSQPQ7OW2WULSSTZXJ426THA4GW',
+                data: txParam,
             };
 
             const result = await wallet.signTransaction(param);
-            
+
             expect(typeof result).toBe('string');
             expect(result.length).toBeGreaterThan(0);
         });
     });
-}); 
+
+    describe('Address Validation in Transactions', () => {
+        const validPrivateKey =
+            'SAGYHCI53Z3QG2TGYUIF24BJEKTZSPSQPQ7OW2WULSSTZXJ426THA4GW';
+        const validStellarAddress =
+            'GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W37';
+
+        test('should accept valid Stellar addresses', async () => {
+            const validAddresses = [
+                'GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W37', // Regular Stellar address
+                'MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ', // Muxed account
+            ];
+
+            for (const address of validAddresses) {
+                const param: StellarTxParam = {
+                    type: 'transfer',
+                    source: validStellarAddress,
+                    sequence: '1',
+                    fee: '100',
+                    toAddress: address,
+                    amount: '10',
+                    decimals: 7,
+                    networkPassphrase: Networks.TESTNET,
+                };
+
+                const signParam = {
+                    privateKey: validPrivateKey,
+                    data: param,
+                };
+
+                try {
+                    const result = await wallet.signTransaction(signParam);
+                    expect(typeof result).toBe('string');
+                    expect(result.length).toBeGreaterThan(0);
+                } catch (error) {
+                    console.log('Error in test:', error);
+                    throw error;
+                }
+            }
+        });
+
+        test('should reject invalid toAddress - Bitcoin genesis address', async () => {
+            const param: StellarTxParam = {
+                type: 'transfer',
+                source: validStellarAddress,
+                sequence: '1',
+                fee: '100',
+                toAddress: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa', // Bitcoin genesis address
+                amount: '10',
+                decimals: 7,
+                networkPassphrase: Networks.TESTNET,
+            };
+
+            const signParam = {
+                privateKey: validPrivateKey,
+                data: param,
+            };
+
+            await expect(wallet.signTransaction(signParam)).rejects.toBe(
+                ValidAddressError
+            );
+        });
+
+        test('should reject invalid toAddress - Ethereum address', async () => {
+            const param: StellarTxParam = {
+                type: 'transfer',
+                source: validStellarAddress,
+                sequence: '1',
+                fee: '100',
+                toAddress: '0x742d35Cc6634C0532925a3b8D6C9E0C8b3a8C0E3', // Ethereum address
+                amount: '10',
+                decimals: 7,
+                networkPassphrase: Networks.TESTNET,
+            };
+
+            const signParam = {
+                privateKey: validPrivateKey,
+                data: param,
+            };
+
+            await expect(wallet.signTransaction(signParam)).rejects.toBe(
+                ValidAddressError
+            );
+        });
+
+        test('should reject invalid toAddress - TRON address', async () => {
+            const param: StellarTxParam = {
+                type: 'transfer',
+                source: validStellarAddress,
+                sequence: '1',
+                fee: '100',
+                toAddress: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t', // TRON address
+                amount: '10',
+                decimals: 7,
+                networkPassphrase: Networks.TESTNET,
+            };
+
+            const signParam = {
+                privateKey: validPrivateKey,
+                data: param,
+            };
+
+            await expect(wallet.signTransaction(signParam)).rejects.toBe(
+                ValidAddressError
+            );
+        });
+
+        test('should reject invalid toAddress - Empty string', async () => {
+            const param: StellarTxParam = {
+                type: 'transfer',
+                source: validStellarAddress,
+                sequence: '1',
+                fee: '100',
+                toAddress: '', // Empty address
+                amount: '10',
+                decimals: 7,
+                networkPassphrase: Networks.TESTNET,
+            };
+
+            const signParam = {
+                privateKey: validPrivateKey,
+                data: param,
+            };
+
+            await expect(wallet.signTransaction(signParam)).rejects.toBe(
+                ValidAddressError
+            );
+        });
+
+        test('should reject invalid toAddress - Solana address', async () => {
+            const param: StellarTxParam = {
+                type: 'transfer',
+                source: validStellarAddress,
+                sequence: '1',
+                fee: '100',
+                toAddress: '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM', // Solana address
+                amount: '10',
+                decimals: 7,
+                networkPassphrase: Networks.TESTNET,
+            };
+
+            const signParam = {
+                privateKey: validPrivateKey,
+                data: param,
+            };
+
+            await expect(wallet.signTransaction(signParam)).rejects.toBe(
+                ValidAddressError
+            );
+        });
+
+        test('should reject invalid toAddress - Invalid format', async () => {
+            const param: StellarTxParam = {
+                type: 'transfer',
+                source: validStellarAddress,
+                sequence: '1',
+                fee: '100',
+                toAddress: 'invalid_stellar_address', // Invalid format
+                amount: '10',
+                decimals: 7,
+                networkPassphrase: Networks.TESTNET,
+            };
+
+            const signParam = {
+                privateKey: validPrivateKey,
+                data: param,
+            };
+
+            await expect(wallet.signTransaction(signParam)).rejects.toBe(
+                ValidAddressError
+            );
+        });
+
+        test('should accept valid toAddress for asset transfers', async () => {
+            const param: StellarTxParam = {
+                type: 'transfer',
+                source: validStellarAddress,
+                sequence: '1',
+                fee: '100',
+                toAddress: validStellarAddress,
+                decimals: 7,
+                asset: {
+                    assetName: 'USD',
+                    issuer: 'GBABZSCZ4NRIXUXDPQLLX5PUOEUUTHT5KFF4DS447GRJXDBWA32ZOJFW',
+                    amount: '100',
+                },
+                networkPassphrase: Networks.TESTNET,
+            };
+
+            const signParam = {
+                privateKey: validPrivateKey,
+                data: param,
+            };
+
+            const result = await wallet.signTransaction(signParam);
+            expect(typeof result).toBe('string');
+            expect(result.length).toBeGreaterThan(0);
+        });
+
+        test('should reject invalid toAddress for asset transfers', async () => {
+            const param: StellarTxParam = {
+                type: 'transfer',
+                source: validStellarAddress,
+                sequence: '1',
+                fee: '100',
+                toAddress: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t', // TRON address
+                decimals: 7,
+                asset: {
+                    assetName: 'USD',
+                    issuer: 'GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W38',
+                    amount: '100',
+                },
+                networkPassphrase: Networks.TESTNET,
+            };
+
+            const signParam = {
+                privateKey: validPrivateKey,
+                data: param,
+            };
+
+            await expect(wallet.signTransaction(signParam)).rejects.toBe(
+                ValidAddressError
+            );
+        });
+
+        test('should not validate toAddress for changeTrust operations', async () => {
+            // changeTrust operations don't have toAddress, so validation should be skipped
+            const param: StellarTxParam = {
+                type: 'changeTrust',
+                source: validStellarAddress,
+                sequence: '1',
+                fee: '100',
+                decimals: 7,
+                asset: {
+                    assetName: 'USD',
+                    issuer: 'GBABZSCZ4NRIXUXDPQLLX5PUOEUUTHT5KFF4DS447GRJXDBWA32ZOJFW',
+                    amount: '1000',
+                },
+                networkPassphrase: Networks.TESTNET,
+            };
+
+            const signParam = {
+                privateKey: validPrivateKey,
+                data: param,
+            };
+
+            const result = await wallet.signTransaction(signParam);
+            expect(typeof result).toBe('string');
+            expect(result.length).toBeGreaterThan(0);
+        });
+    });
+});

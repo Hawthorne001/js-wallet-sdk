@@ -1,8 +1,7 @@
-export * from './lib/signer'
-export * from './lib/types'
-export * from './lib/utils/hash'
-export * from './lib/account'
-
+export * from './lib/signer';
+export * from './lib/types';
+export * from './lib/utils/hash';
+export * from './lib/account';
 
 /**
  * Utils
@@ -22,7 +21,7 @@ export * as typedData from './lib/utils/typedData';
 export * from './lib/utils/address';
 export * from './lib/utils/calldata';
 
-export * from './message'
-export * from './key'
-export * from './transaction'
-export * from './StarknetWallet'
+export * from './message';
+export * from './key';
+export * from './transaction';
+export * from './StarknetWallet';

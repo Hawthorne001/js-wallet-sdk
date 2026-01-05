@@ -1,24 +1,31 @@
 import {
-    BaseWallet, buildCommonSignMsg,
+    BaseWallet,
+    buildCommonSignMsg,
     DerivePriKeyParams,
     GenPrivateKeyError,
-    GetDerivedPathParam, jsonStringifyUniform,
+    GetDerivedPathParam,
+    jsonStringifyUniform,
     NewAddressData,
     NewAddressError,
-    NewAddressParams, SignCommonMsgParams,
+    NewAddressParams,
+    SignCommonMsgParams,
     SignTxError,
+    ValidAddressError,
     SignTxParams,
     ValidAddressData,
-    ValidAddressParams, ValidPrivateKeyData, ValidPrivateKeyParams,
+    ValidAddressParams,
+    ValidPrivateKeyData,
+    ValidPrivateKeyParams,
     VerifyMessageParams,
     base,
+    InvalidPrivateKeyError,
 } from '@okxweb3/coin-base';
-import {bip32, bip39} from '@okxweb3/crypto-lib';
-
+import { bip32, bip39 } from '@okxweb3/crypto-lib';
 
 import {
     CalculateContractAddressFromHash,
-    ContractCall, computeHashOnElements,
+    ContractCall,
+    computeHashOnElements,
     constants,
     CreateContractCall,
     CreateMultiContractCall,
@@ -33,17 +40,17 @@ import {
     TypedData,
     validateAndParseAddress,
     verifyMessage,
-    WeierstrassSignatureType
-} from "./index";
-import {hexToDecimalString} from "./lib/utils/num";
-import {estimateFeeToBounds} from "./lib/utils/stark";
-import {ZERO} from "./lib/global/constants";
+    WeierstrassSignatureType,
+} from './index';
+import { hexToDecimalString } from './lib/utils/num';
+import { estimateFeeToBounds } from './lib/utils/stark';
+import { ZERO } from './lib/global/constants';
 
 export type StarknetTransactionType =
-    "transfer"
-    | "deploy_account"
-    | "contract_call"
-    | "multi_contract_call"
+    | 'transfer'
+    | 'deploy_account'
+    | 'contract_call'
+    | 'multi_contract_call';
 
 export type StarknetResourceBounds = {
     l1_gas: {
@@ -57,19 +64,21 @@ export type StarknetResourceBounds = {
     l1_data_gas: {
         max_amount: string;
         max_price_per_unit: string;
-    }
-}
+    };
+};
 
 export type StarknetResourceBoundsRPC = {
-    l1_gas_consumed: string,
-    l1_gas_price: string,
-    l1_data_gas_consumed: string,
-    l1_data_gas_price: string,
-    l2_gas_consumed: string,
-    l2_gas_price: string,
-}
+    l1_gas_consumed: string;
+    l1_gas_price: string;
+    l1_data_gas_consumed: string;
+    l1_data_gas_price: string;
+    l2_gas_consumed: string;
+    l2_gas_price: string;
+};
 
-export function resourceBoundsFromRPC(rb: StarknetResourceBoundsRPC): StarknetResourceBounds {
+export function resourceBoundsFromRPC(
+    rb: StarknetResourceBoundsRPC
+): StarknetResourceBounds {
     const toHex = (val: string) => '0x' + BigInt(val).toString(16);
     return {
         l1_gas: {
@@ -88,41 +97,43 @@ export function resourceBoundsFromRPC(rb: StarknetResourceBoundsRPC): StarknetRe
 }
 
 export type StarknetSignData = {
-    type: StarknetTransactionType
+    type: StarknetTransactionType;
     nonce: string;
-    resourceBounds?:  StarknetResourceBoundsRPC;
+    resourceBounds?: StarknetResourceBoundsRPC;
     chainId?: constants.StarknetChainId;
     transferData?: {
-        contractAddress: string
-        from: string
-        to: string
-        amount: string
-    }
-    deployAccountData?: DeployAccountContractPayload
+        contractAddress: string;
+        from: string;
+        to: string;
+        amount: string;
+    };
+    deployAccountData?: DeployAccountContractPayload;
     contractCallData?: {
-        contractAddress: string
-        from: string
-        functionName: string
-        callData: string[]
-    }
+        contractAddress: string;
+        from: string;
+        functionName: string;
+        callData: string[];
+    };
     multiContractCallData?: {
-        from: string
-        calls: ContractCall[]
-    }
-}
+        from: string;
+        calls: ContractCall[];
+    };
+};
 
 function validateHexString(value: string) {
     if (!value) {
         return false;
     }
-    const hexStr = value.toLowerCase().startsWith("0x") ? value.substring(2).toLowerCase() : value.toLowerCase();
+    const hexStr = value.toLowerCase().startsWith('0x')
+        ? value.substring(2).toLowerCase()
+        : value.toLowerCase();
     if (hexStr.length === 0) {
         return false;
     }
     if (!hexStr.match(/^[0-9A-Fa-f]*$/)) {
         return false;
     }
-    return true
+    return true;
 }
 
 function checkPrivateKey(privateKeyHex: string): boolean {
@@ -130,14 +141,17 @@ function checkPrivateKey(privateKeyHex: string): boolean {
         return false;
     }
     const keyBytes = base.fromHex(privateKeyHex.toLowerCase());
-    if (keyBytes.length < 25 || keyBytes.length > 33 || keyBytes.every(byte=>byte ===0)) {
+    if (
+        keyBytes.length < 25 ||
+        keyBytes.length > 33 ||
+        keyBytes.every((byte) => byte === 0)
+    ) {
         return false;
     }
-    return true
+    return true;
 }
 
 export class StarknetWallet extends BaseWallet {
-
     getRandomPrivateKey(): Promise<any> {
         return GetRandomPrivateKey();
     }
@@ -147,7 +161,8 @@ export class StarknetWallet extends BaseWallet {
     }
 
     async getDerivedPrivateKey(param: DerivePriKeyParams): Promise<any> {
-        return bip39.mnemonicToSeedV2(param.mnemonic)
+        return bip39
+            .mnemonicToSeedV2(param.mnemonic)
             .then((masterSeed: Buffer) => {
                 // Derived ETH seed
                 let ethKey = bip32.fromSeedV2(masterSeed, "m/44'/60'/0'/0/0");
@@ -156,45 +171,52 @@ export class StarknetWallet extends BaseWallet {
                 }
                 let starkKey = Buffer.from(ethKey.privateKey);
                 // Derived StarkNet seed
-                let childKey = bip32.fromSeedV2(starkKey, param.hdPath)
+                let childKey = bip32.fromSeedV2(starkKey, param.hdPath);
                 if (childKey.privateKey) {
                     let hdKey = base.toHex(childKey.privateKey);
-                    let privateKey = ec.starkCurve.grindKey(hdKey)
+                    let privateKey = ec.starkCurve.grindKey(hdKey);
                     return Promise.resolve(`0x${privateKey}`);
                 } else {
                     return Promise.reject(GenPrivateKeyError);
                 }
-            }).catch((e) => {
+            })
+            .catch((e) => {
                 return Promise.reject(GenPrivateKeyError);
             });
     }
 
     // This is old implementation, please use getDerivedPrivateKey instead.
     async getDerivedPrivateKeyOld(param: DerivePriKeyParams): Promise<any> {
-        return bip39.mnemonicToSeed(param.mnemonic)
+        return bip39
+            .mnemonicToSeed(param.mnemonic)
             .then((masterSeed: Buffer) => {
                 // Derived ETH seed
-                let ethKey = bip32.fromSeed(masterSeed).derivePath("m/44'/60'/0'/0/0");
+                let ethKey = bip32
+                    .fromSeed(masterSeed)
+                    .derivePath("m/44'/60'/0'/0/0");
                 if (!ethKey.privateKey) {
                     return Promise.reject(GenPrivateKeyError);
                 }
                 let starkKey = Buffer.from(ethKey.privateKey);
                 // Derived StarkNet seed
-                let childKey = bip32.fromSeed(starkKey).derivePath(param.hdPath)
+                let childKey = bip32
+                    .fromSeed(starkKey)
+                    .derivePath(param.hdPath);
                 if (childKey.privateKey) {
                     let hdKey = base.toHex(childKey.privateKey);
-                    let privateKey = ec.starkCurve.grindKey(hdKey)
+                    let privateKey = ec.starkCurve.grindKey(hdKey);
                     return Promise.resolve(`0x${privateKey}`);
                 } else {
                     return Promise.reject(GenPrivateKeyError);
                 }
-            }).catch((e) => {
-                return Promise.reject(GenPrivateKeyError + ":" + e);
+            })
+            .catch((e) => {
+                return Promise.reject(GenPrivateKeyError + ':' + e);
             });
     }
 
     async getNewAddress(param: NewAddressParams): Promise<any> {
-        if (!checkPrivateKey(param.privateKey)){
+        if (!checkPrivateKey(param.privateKey)) {
             throw new Error('invalid key');
         }
         try {
@@ -203,33 +225,36 @@ export class StarknetWallet extends BaseWallet {
             const address = CalculateContractAddressFromHash(pub);
             let data: NewAddressData = {
                 address: address,
-                publicKey: pub
+                publicKey: pub,
             };
             return Promise.resolve(data);
         } catch (e) {
-            return Promise.reject(NewAddressError + ":" + e);
+            return Promise.reject(NewAddressError);
         }
     }
     async validPrivateKey(param: ValidPrivateKeyParams): Promise<any> {
-        let isValid = checkPrivateKey(param.privateKey)
+        let isValid = checkPrivateKey(param.privateKey);
         const data: ValidPrivateKeyData = {
             isValid: isValid,
-            privateKey: param.privateKey
+            privateKey: param.privateKey,
         };
         return Promise.resolve(data);
     }
 
     async signTransaction(param: SignTxParams): Promise<any> {
         try {
+            if (!param.privateKey) {
+                return Promise.reject(InvalidPrivateKeyError);
+            }
             const data: StarknetSignData = param.data;
             if (data.nonce === undefined) {
                 return Promise.reject(SignTxError);
             }
             const nonce = data.nonce;
             const chain_id = data.chainId || constants.StarknetChainId.SN_MAIN;
-            let resourceBounds = estimateFeeToBounds(ZERO)
+            let resourceBounds = estimateFeeToBounds(ZERO);
             if (data.resourceBounds) {
-                resourceBounds = resourceBoundsFromRPC(data.resourceBounds)
+                resourceBounds = resourceBoundsFromRPC(data.resourceBounds);
             }
 
             const pri = modPrivateKey(param.privateKey);
@@ -239,27 +264,69 @@ export class StarknetWallet extends BaseWallet {
                 const from = data.transferData.from;
                 const to = data.transferData.to;
                 const amount = data.transferData.amount;
-                const tx = await CreateTransferTx(contractAddress, from, to, amount, nonce, resourceBounds, chain_id, pri);
-                return Promise.resolve(tx)
+
+                // Validate toAddress for transfers
+                const validation = await this.validAddress({ address: to });
+                if (!validation.isValid) {
+                    return Promise.reject(ValidAddressError);
+                }
+
+                const tx = await CreateTransferTx(
+                    contractAddress,
+                    from,
+                    to,
+                    amount,
+                    nonce,
+                    resourceBounds,
+                    chain_id,
+                    pri
+                );
+                return Promise.resolve(tx);
             } else if (data.type == 'deploy_account') {
-                const tx = await CreateSignedDeployAccountTx(resourceBounds, chain_id, pri);
-                return Promise.resolve(tx)
-            } else if (data.type == 'contract_call' && data.contractCallData !== undefined) {
+                const tx = await CreateSignedDeployAccountTx(
+                    resourceBounds,
+                    chain_id,
+                    pri
+                );
+                return Promise.resolve(tx);
+            } else if (
+                data.type == 'contract_call' &&
+                data.contractCallData !== undefined
+            ) {
                 const contractAddress = data.contractCallData.contractAddress;
                 const from = data.contractCallData.from;
                 const functionName = data.contractCallData.functionName;
                 const callData = data.contractCallData.callData;
-                const tx = await CreateContractCall(contractAddress, from, functionName, callData, nonce, resourceBounds, chain_id, pri);
-                return Promise.resolve(tx)
-            } else if (data.type == 'multi_contract_call' && data.multiContractCallData !== undefined) {
+                const tx = await CreateContractCall(
+                    contractAddress,
+                    from,
+                    functionName,
+                    callData,
+                    nonce,
+                    resourceBounds,
+                    chain_id,
+                    pri
+                );
+                return Promise.resolve(tx);
+            } else if (
+                data.type == 'multi_contract_call' &&
+                data.multiContractCallData !== undefined
+            ) {
                 const from = data.multiContractCallData.from;
                 const calls = data.multiContractCallData.calls;
-                const tx = CreateMultiContractCall(from, calls, nonce, resourceBounds, chain_id, pri);
-                return Promise.resolve(tx)
+                const tx = CreateMultiContractCall(
+                    from,
+                    calls,
+                    nonce,
+                    resourceBounds,
+                    chain_id,
+                    pri
+                );
+                return Promise.resolve(tx);
             }
             return Promise.reject(SignTxError);
         } catch (e) {
-            return Promise.reject(SignTxError + ":" + e);
+            return Promise.reject(SignTxError);
         }
     }
 
@@ -267,7 +334,8 @@ export class StarknetWallet extends BaseWallet {
         let isValid: boolean;
         try {
             validateAndParseAddress(param.address);
-            isValid = (param.address.startsWith("0x") && param.address.length > 50);
+            isValid =
+                param.address.startsWith('0x') && param.address.length > 50;
         } catch (e) {
             isValid = false;
         }
@@ -280,11 +348,22 @@ export class StarknetWallet extends BaseWallet {
     }
 
     async signMessage(param: SignTxParams): Promise<any> {
+        if (!param.privateKey) {
+            return Promise.reject(`${InvalidPrivateKeyError}: cannot be empty`);
+        }
+        const { isValid } = await this.validPrivateKey({
+            privateKey: param.privateKey,
+        });
+        if (!isValid) {
+            return Promise.reject(
+                `${InvalidPrivateKeyError}: not valid private key`
+            );
+        }
         try {
             const pri = modPrivateKey(param.privateKey);
-            if (typeof param.data.message === "string") {
+            if (typeof param.data.message === 'string') {
                 const msg = param.data.message;
-                if (msg.startsWith("0x")) {
+                if (msg.startsWith('0x')) {
                     const signature = await signMessage(msg, pri);
                     const sig = signature.signature;
                     const sigSES = {
@@ -300,7 +379,10 @@ export class StarknetWallet extends BaseWallet {
                 }
             } else {
                 const typedDataValidate: TypedData = param.data.message;
-                const signature = await signMessageWithTypeData(typedDataValidate, pri);
+                const signature = await signMessageWithTypeData(
+                    typedDataValidate,
+                    pri
+                );
                 const sig = signature.signature as WeierstrassSignatureType;
                 const sigSES = {
                     signature: {
@@ -314,32 +396,46 @@ export class StarknetWallet extends BaseWallet {
                 return Promise.resolve(sigSES);
             }
         } catch (e) {
-            return Promise.reject(SignTxError + ":" + e);
+            return Promise.reject(SignTxError);
         }
     }
     async signCommonMsg(params: SignCommonMsgParams): Promise<any> {
         let data;
-        if(params.message.text){
-            data=params.message.text;
+        if (params.message.text) {
+            data = params.message.text;
         } else {
-            let addr = await this.getNewAddress({privateKey:params.privateKey});
-            if(addr.publicKey.startsWith("0x")) {
+            let addr = await this.getNewAddress({
+                privateKey: params.privateKey,
+            });
+            if (addr.publicKey.startsWith('0x')) {
                 addr.publicKey = addr.publicKey.substring(2);
             }
             data = buildCommonSignMsg(addr.publicKey, params.message.walletId);
         }
         let msgHash = base.magicHash(data);
-        let msgHashFirst = msgHash.slice(0,16)
+        let msgHashFirst = msgHash.slice(0, 16);
         let msgHashEnd = msgHash.slice(16);
-        let hash = computeHashOnElements([hexToDecimalString(base.toHex(msgHashFirst)), hexToDecimalString(base.toHex(msgHashEnd))]);
-        if(hash.startsWith("0x")) {
-            hash = hash.substring(2)
+        let hash = computeHashOnElements([
+            hexToDecimalString(base.toHex(msgHashFirst)),
+            hexToDecimalString(base.toHex(msgHashEnd)),
+        ]);
+        if (hash.startsWith('0x')) {
+            hash = hash.substring(2);
         }
         const pri = modPrivateKey(params.privateKey);
         let sig = ec.starkCurve.sign(hash, pri);
-        let point = ec.starkCurve.ProjectivePoint.fromHex(base.toHex(ec.starkCurve.getPublicKey(pri)));
-        let res = {publicKey:point.x.toString(16),publicKeyY:point.y.toString(16),signedDataR:sig.r.toString(16),signedDataS:sig.s.toString(16)};
-        return Promise.resolve(base.toHex(base.toUtf8(jsonStringifyUniform(res))));
+        let point = ec.starkCurve.ProjectivePoint.fromHex(
+            base.toHex(ec.starkCurve.getPublicKey(pri))
+        );
+        let res = {
+            publicKey: point.x.toString(16),
+            publicKeyY: point.y.toString(16),
+            signedDataR: sig.r.toString(16),
+            signedDataS: sig.s.toString(16),
+        };
+        return Promise.resolve(
+            base.toHex(base.toUtf8(jsonStringifyUniform(res)))
+        );
     }
 
     verifyMessage(param: VerifyMessageParams): Promise<any> {

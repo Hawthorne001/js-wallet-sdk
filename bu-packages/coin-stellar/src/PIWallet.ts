@@ -1,16 +1,11 @@
-import {
-    GetDerivedPathParam
-} from "@okxweb3/coin-base";
-import {StellarWallet} from "./StellarWallet";
-
-
+import { GetDerivedPathParam } from '@okxweb3/coin-base';
+import { StellarWallet } from './StellarWallet';
 
 export const PINetworks = {
     TESTNET: 'Pi Testnet',
     TESTNET2: 'Pi Testnet',
     MAINNET: 'Pi Network',
 };
-
 
 export class PIWallet extends StellarWallet {
     async getDerivedPath(param: GetDerivedPathParam): Promise<any> {
