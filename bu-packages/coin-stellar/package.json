@@ -52,5 +52,5 @@
     "sodium-native": "4.1.1",
     "tweetnacl": "1.0.3"
   },
-  "description": "@ok/coin-stellar is a Stellar SDK for building Web3 wallets and applications. It supports Stellar and PI blockchains, enabling private key management, address generation, transaction signing, trustline creation, and asset transfers"
+  "description": "@okxweb3/coin-stellar is a Stellar SDK for building Web3 wallets and applications. It supports Stellar and PI blockchains, enabling private key management, address generation, transaction signing, trustline creation, and asset transfers"
 }
