@@ -18,13 +18,9 @@ import {
 import { hashMessage, MessageTypes } from './message';
 import { padWithZeroes, SignTypedDataVersion } from './lib/sdk/eth-sig-util';
 import {
-    signTypedMessage,
+    signTypedData,
     TypedDataUtils,
     typedSignatureHash,
-} from 'eth-sig-util';
-import {
-    signTypedData,
-    TypedDataUtils as TypedDataUtilsNew,
 } from '@metamask/eth-sig-util';
 
 export function getNewAddress(privateKeyHex: string) {
@@ -120,9 +116,19 @@ export function signMPCMessage(
     if (messageType == MessageTypes.TYPE_DATA_V1) {
         return typedSignatureHash(JSON.parse(message));
     } else if (messageType == MessageTypes.TYPE_DATA_V3) {
-        return base.toHex(TypedDataUtils.sign(JSON.parse(message), false));
+        return base.toHex(
+            TypedDataUtils.eip712Hash(
+                JSON.parse(message),
+                SignTypedDataVersion.V3
+            )
+        );
     } else if (messageType == MessageTypes.TYPE_DATA_V4) {
-        return base.toHex(TypedDataUtils.sign(JSON.parse(message)));
+        return base.toHex(
+            TypedDataUtils.eip712Hash(
+                JSON.parse(message),
+                SignTypedDataVersion.V4
+            )
+        );
     }
     return hashMessage(messageType, message);
 }
