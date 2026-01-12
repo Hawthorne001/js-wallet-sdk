@@ -13,6 +13,7 @@ import {
     GetHardwareRawTransactionError,
     GetMpcRawTransactionError,
     GetMpcTransactionError,
+    InvalidPrivateKeyError,
     jsonStringifyUniform,
     MpcMessageParam,
     MpcRawTransactionData,
@@ -22,10 +23,12 @@ import {
     NewAddressError,
     NewAddressParams,
     secp256k1SignTest,
-    segwitType, SignCommonMsgParams,
+    segwitType,
+    SignCommonMsgParams,
     SignMsgError,
     SignTxError,
-    SignTxParams, SignType,
+    SignTxParams,
+    SignType,
     TypedMessage,
     ValidAddressData,
     ValidAddressParams,
@@ -33,11 +36,12 @@ import {
     ValidPrivateKeyParams,
     validSignedTransactionError,
     ValidSignedTransactionParams,
-    VerifyMessageParams
+    VerifyMessageParams,
 } from '@okxweb3/coin-base';
-import {bip32, bip39} from '@okxweb3/crypto-lib';
-import {base} from '@okxweb3/coin-base';
-import * as bitcoin from "../index"
+import { bip32, bip39 } from '@okxweb3/crypto-lib';
+import { base } from '@okxweb3/coin-base';
+import * as bitcoin from '../index';
+
 import {
     AtomicalTestWallet,
     AtomicalWallet,
@@ -47,17 +51,16 @@ import {
     RuneMainWallet,
     RuneMainTestWallet,
     CatWallet,
-    psbtDecode, privateKeyFromWIF
-} from "../index";
+    psbtDecode,
+    privateKeyFromWIF,
+} from '../index';
 
-
-export const BITCOIN_MESSAGE_ECDSA = 0
-export const BITCOIN_MESSAGE_BIP0322_SIMPLE = 1
+export const BITCOIN_MESSAGE_ECDSA = 0;
+export const BITCOIN_MESSAGE_BIP0322_SIMPLE = 1;
 
 export class BtcWallet extends BaseWallet {
-
     network() {
-        return bitcoin.networks.bitcoin
+        return bitcoin.networks.bitcoin;
     }
 
     async getDerivedPath(param: GetDerivedPathParam): Promise<any> {
@@ -73,25 +76,25 @@ export class BtcWallet extends BaseWallet {
         } else if (param.segwitType == segwitType.SEGWIT_NATIVE) {
             return `m/84'/0'/0'/0/${param.index}`;
         } else if (param.segwitType == segwitType.SEGWIT_TAPROOT) {
-            return `m/86'/0'/0'/0/${param.index}`
+            return `m/86'/0'/0'/0/${param.index}`;
         } else {
             return Promise.reject(DerivePathError);
         }
     }
 
     async validPrivateKey(param: ValidPrivateKeyParams) {
-        let isValid: boolean
+        let isValid: boolean;
         try {
-            const {version} = bitcoin.wif.decode(param.privateKey)
-            isValid = (version === this.network().wif)
+            const { version } = bitcoin.wif.decode(param.privateKey);
+            isValid = version === this.network().wif;
         } catch (e) {
-            isValid = false
+            isValid = false;
         }
         const data: ValidPrivateKeyData = {
             isValid: isValid,
-            privateKey: param.privateKey
+            privateKey: param.privateKey,
         };
-        return Promise.resolve(data)
+        return Promise.resolve(data);
     }
 
     // SegWit, a compatibility upgrade to the Bitcoin protocol, separates signature data from Bitcoin transactions.
@@ -100,32 +103,48 @@ export class BtcWallet extends BaseWallet {
             let network = this.network();
             let privateKey = param.privateKey;
             // addressType = "Legacy" | "segwit_native" | "segwit_p2sh"
-            const addressType = param.addressType || "Legacy"
+            const addressType = param.addressType || 'Legacy';
             const publicKey = bitcoin.wif2Public(privateKey, network);
-            let address: string | undefined
-            if (addressType === "Legacy") {
+            let address: string | undefined;
+            if (addressType === 'Legacy') {
                 // legacy address: start with `1`,  encoded to base58
-                const result = bitcoin.payments.p2pkh({pubkey: publicKey, network});
-                address = result.address
-            } else if (addressType === "segwit_native") {
+                const result = bitcoin.payments.p2pkh({
+                    pubkey: publicKey,
+                    network,
+                });
+                address = result.address;
+            } else if (addressType === 'segwit_native') {
                 // native segwit address: start with `bc1`, encoded to bech32
-                const result = bitcoin.payments.p2wpkh({pubkey: publicKey, network});
-                address = result.address
-            } else if (addressType === "segwit_nested") {
+                const result = bitcoin.payments.p2wpkh({
+                    pubkey: publicKey,
+                    network,
+                });
+                address = result.address;
+            } else if (addressType === 'segwit_nested') {
                 // nested segwit address: using p2sh, start with `3`, encoded to base58
                 const result = bitcoin.payments.p2sh({
-                    redeem: bitcoin.payments.p2wpkh({pubkey: publicKey, network}),
+                    redeem: bitcoin.payments.p2wpkh({
+                        pubkey: publicKey,
+                        network,
+                    }),
                 });
-                address = result.address
-            } else if (addressType === "segwit_taproot") {
+                address = result.address;
+            } else if (addressType === 'segwit_taproot') {
                 // taproot address, encoded in bech32m
-                const result = bitcoin.payments.p2tr({internalPubkey: publicKey.slice(1), network});
-                address = result.address
+                const result = bitcoin.payments.p2tr({
+                    internalPubkey: publicKey.slice(1),
+                    network,
+                });
+                address = result.address;
             }
 
             let data: NewAddressData = {
-                address: address || "",
-                publicKey: base.toHex(addressType === "segwit_taproot" ? publicKey.slice(1) : publicKey),
+                address: address || '',
+                publicKey: base.toHex(
+                    addressType === 'segwit_taproot'
+                        ? publicKey.slice(1)
+                        : publicKey
+                ),
                 compressedPublicKey: base.toHex(publicKey),
             };
             return Promise.resolve(data);
@@ -138,143 +157,225 @@ export class BtcWallet extends BaseWallet {
         let isValid = false;
         let network = this.network();
         try {
-            let outputScript = bitcoin.address.toOutputScript(param.address, network);
+            let outputScript = bitcoin.address.toOutputScript(
+                param.address,
+                network
+            );
             if (outputScript) {
                 isValid = true;
             }
-        } catch (e) {
-        }
+        } catch (e) {}
         if (param.addressType) {
-            isValid = param.addressType === bitcoin.getAddressType(param.address, network);
+            isValid =
+                param.addressType ===
+                bitcoin.getAddressType(param.address, network);
         }
         let data: ValidAddressData = {
             isValid: isValid,
-            address: param.address
+            address: param.address,
         };
         return Promise.resolve(data);
     }
 
     async signTransaction(param: SignTxParams): Promise<any> {
         const type = param.data.type || 0;
-        if (type === bitcoin.BtcXrcTypes.INSCRIBE) { // inscribe
+        if (type === bitcoin.BtcXrcTypes.INSCRIBE) {
+            // inscribe
             try {
-                return Promise.resolve(bitcoin.inscribe(this.network(), param.data));
+                return Promise.resolve(
+                    bitcoin.inscribe(this.network(), param.data)
+                );
             } catch (e) {
                 return Promise.reject(SignTxError);
             }
-        } else if (type === bitcoin.BtcXrcTypes.PSBT) { // psbt
+        } else if (type === bitcoin.BtcXrcTypes.PSBT) {
+            // psbt
             try {
-                return Promise.resolve(bitcoin.psbtSign(param.data.psbt, param.privateKey, this.network()));
+                return Promise.resolve(
+                    bitcoin.psbtSign(
+                        param.data.psbt,
+                        param.privateKey,
+                        this.network()
+                    )
+                );
             } catch (e) {
                 return Promise.reject(SignTxError);
             }
-        } else if (type === bitcoin.BtcXrcTypes.PSBT_DEODE) { // psbt_decode
+        } else if (type === bitcoin.BtcXrcTypes.PSBT_DECODE) {
+            // psbt_decode
             try {
-                return Promise.resolve(bitcoin.psbtDecode(param.data.psbt,this.network()));
+                return Promise.resolve(
+                    bitcoin.psbtDecode(param.data.psbt, this.network())
+                );
             } catch (e) {
                 return Promise.reject(SignTxError);
             }
-        } else if (type ===  bitcoin.BtcXrcTypes.PSBT_MPC_UNSIGNED_LIST) {
+        } else if (type === bitcoin.BtcXrcTypes.PSBT_MPC_UNSIGNED_LIST) {
             try {
-                return Promise.resolve(bitcoin.generateMPCUnsignedListingPSBT(param.data.psbt, param.data.publicKey, this.network()));
+                return Promise.resolve(
+                    bitcoin.generateMPCUnsignedListingPSBT(
+                        param.data.psbt,
+                        param.data.publicKey,
+                        this.network()
+                    )
+                );
             } catch (e) {
                 return Promise.reject(SignTxError);
             }
-        } else if (type ===  bitcoin.BtcXrcTypes.PSBT_MPC_SIGNED_LIST) {
+        } else if (type === bitcoin.BtcXrcTypes.PSBT_MPC_SIGNED_LIST) {
             try {
-                return Promise.resolve(bitcoin.generateMPCSignedListingPSBT(param.data.psbt, param.data.publicKey, param.data.signature, this.network()));
+                return Promise.resolve(
+                    bitcoin.generateMPCSignedListingPSBT(
+                        param.data.psbt,
+                        param.data.publicKey,
+                        param.data.signature,
+                        this.network()
+                    )
+                );
             } catch (e) {
                 return Promise.reject(SignTxError);
             }
         } else if (type === bitcoin.BtcXrcTypes.PSBT_MPC_UNSIGNED_BUY) {
             try {
-                return Promise.resolve(bitcoin.generateMPCUnsignedBuyingPSBT(param.data.psbt, param.data.publicKey, this.network(), param.data.batchSize));
+                return Promise.resolve(
+                    bitcoin.generateMPCUnsignedBuyingPSBT(
+                        param.data.psbt,
+                        param.data.publicKey,
+                        this.network(),
+                        param.data.batchSize
+                    )
+                );
             } catch (e) {
                 return Promise.reject(SignTxError);
             }
         } else if (type === bitcoin.BtcXrcTypes.PSBT_MPC_SIGNED_BUY) {
             try {
-                return Promise.resolve(bitcoin.generateMPCSignedBuyingTx(param.data.psbt, param.data.publicKey, param.data.signatureList, this.network(), param.data.batchSize));
+                return Promise.resolve(
+                    bitcoin.generateMPCSignedBuyingTx(
+                        param.data.psbt,
+                        param.data.publicKey,
+                        param.data.signatureList,
+                        this.network(),
+                        param.data.batchSize
+                    )
+                );
             } catch (e) {
                 return Promise.reject(SignTxError);
             }
         } else if (type === bitcoin.BtcXrcTypes.PSBT_MPC_UNSIGNED) {
             try {
-                return Promise.resolve(bitcoin.generateMPCUnsignedPSBT(param.data.psbt, param.data.publicKey, this.network()));
+                return Promise.resolve(
+                    bitcoin.generateMPCUnsignedPSBT(
+                        param.data.psbt,
+                        param.data.publicKey,
+                        this.network()
+                    )
+                );
             } catch (e) {
                 return Promise.reject(SignTxError);
             }
         } else if (type === bitcoin.BtcXrcTypes.PSBT_MPC_SIGNED) {
             try {
-                return Promise.resolve(bitcoin.generateMPCSignedPSBT(param.data.psbt, param.data.publicKey, param.data.signatureList, this.network()));
+                return Promise.resolve(
+                    bitcoin.generateMPCSignedPSBT(
+                        param.data.psbt,
+                        param.data.publicKey,
+                        param.data.signatureList,
+                        this.network()
+                    )
+                );
             } catch (e) {
                 return Promise.reject(SignTxError);
             }
-        } else if (type === bitcoin.BtcXrcTypes.PSBT_KEY_SCRIPT_PATH) { // psbt key-path and script-path spend
+        } else if (type === bitcoin.BtcXrcTypes.PSBT_KEY_SCRIPT_PATH) {
+            // psbt key-path and script-path spend
             try {
-                return Promise.resolve(bitcoin.signPsbtWithKeyPathAndScriptPath(param.data.psbt, param.privateKey, this.network(), {
-                    autoFinalized: param.data.autoFinalized,
-                    toSignInputs: param.data.toSignInputs
-                }));
+                return Promise.resolve(
+                    bitcoin.signPsbtWithKeyPathAndScriptPath(
+                        param.data.psbt,
+                        param.privateKey,
+                        this.network(),
+                        {
+                            autoFinalized: param.data.autoFinalized,
+                            toSignInputs: param.data.toSignInputs,
+                        }
+                    )
+                );
             } catch (e) {
                 return Promise.reject(SignTxError);
             }
-        } else if (type === bitcoin.BtcXrcTypes.PSBT_KEY_SCRIPT_PATH_BATCH) { // batch of psbt key-path and script-path spend
+        } else if (type === bitcoin.BtcXrcTypes.PSBT_KEY_SCRIPT_PATH_BATCH) {
+            // batch of psbt key-path and script-path spend
             try {
-                return Promise.resolve(bitcoin.signPsbtWithKeyPathAndScriptPathBatch(param.data.psbtHexs, param.privateKey, this.network(), param.data.options));
+                return Promise.resolve(
+                    bitcoin.signPsbtWithKeyPathAndScriptPathBatch(
+                        param.data.psbtHexs,
+                        param.privateKey,
+                        this.network(),
+                        param.data.options
+                    )
+                );
             } catch (e) {
                 return Promise.reject(SignTxError);
             }
-        } else if (type === bitcoin.BtcXrcTypes.SRC20) { // src20
+        } else if (type === bitcoin.BtcXrcTypes.SRC20) {
+            // src20
             try {
-                return Promise.resolve(bitcoin.srcInscribe(this.network(), param.data));
+                return Promise.resolve(
+                    bitcoin.srcInscribe(this.network(), param.data)
+                );
             } catch (e) {
                 return Promise.reject(SignTxError);
             }
-        } else if (type === bitcoin.BtcXrcTypes.RUNE) { // rune
+        } else if (type === bitcoin.BtcXrcTypes.RUNE) {
+            // rune
             try {
-                let wallet = new RuneWallet()
+                let wallet = new RuneWallet();
                 if (this.network() === networks.testnet) {
-                    wallet = new RuneTestWallet()
+                    wallet = new RuneTestWallet();
                 }
-                return Promise.resolve(wallet.signTransaction(param))
+                return Promise.resolve(wallet.signTransaction(param));
             } catch (e) {
                 return Promise.reject(SignTxError);
             }
-        } else if (type === bitcoin.BtcXrcTypes.RUNEMAIN) { // rune
+        } else if (type === bitcoin.BtcXrcTypes.RUNEMAIN) {
+            // rune
             try {
-                let wallet = new RuneMainWallet()
+                let wallet = new RuneMainWallet();
                 if (this.network() === networks.testnet) {
-                    wallet = new RuneMainTestWallet()
+                    wallet = new RuneMainTestWallet();
                 }
-                return Promise.resolve(wallet.signTransaction(param))
+                return Promise.resolve(wallet.signTransaction(param));
             } catch (e) {
                 return Promise.reject(SignTxError);
             }
-        } else if (type === bitcoin.BtcXrcTypes.ARC20) { // arc20
+        } else if (type === bitcoin.BtcXrcTypes.ARC20) {
+            // arc20
             try {
-                let wallet = new AtomicalWallet()
+                let wallet = new AtomicalWallet();
                 if (this.network() === networks.testnet) {
-                    wallet = new AtomicalTestWallet()
+                    wallet = new AtomicalTestWallet();
                 }
-                return Promise.resolve(wallet.signTransaction(param))
+                return Promise.resolve(wallet.signTransaction(param));
             } catch (e) {
                 return Promise.reject(SignTxError);
             }
-        } else if (type === bitcoin.BtcXrcTypes.CAT20) { // cat20
-            let wallet = new CatWallet()
+        } else if (type === bitcoin.BtcXrcTypes.CAT20) {
+            // cat20
+            let wallet = new CatWallet();
             try {
-                return Promise.resolve(wallet.signTransaction(param))
+                return Promise.resolve(wallet.signTransaction(param));
             } catch (e) {
                 return Promise.reject(SignTxError);
             }
-        } else if (type === bitcoin.BtcXrcTypes.PSBT_RUNEMAIN){ // psbt runes main
+        } else if (type === bitcoin.BtcXrcTypes.PSBT_RUNEMAIN) {
+            // psbt runes main
             try {
-                let wallet = new RuneMainWallet()
+                let wallet = new RuneMainWallet();
                 if (this.network() === networks.testnet) {
-                    wallet = new RuneMainTestWallet()
+                    wallet = new RuneMainTestWallet();
                 }
-                return Promise.resolve(wallet.buildPsbt(param))
+                return Promise.resolve(wallet.buildPsbt(param));
             } catch (e) {
                 return Promise.reject(SignTxError);
             }
@@ -295,7 +396,7 @@ export class BtcWallet extends BaseWallet {
         try {
             let network = this.network();
             while (true) {
-                const privateKey = base.randomBytes(32)
+                const privateKey = base.randomBytes(32);
                 if (secp256k1SignTest(privateKey)) {
                     const wif = bitcoin.private2Wif(privateKey, network);
                     return Promise.resolve(wif);
@@ -308,15 +409,20 @@ export class BtcWallet extends BaseWallet {
 
     getDerivedPrivateKey(param: DerivePriKeyParams): Promise<any> {
         let network = this.network();
-        return bip39.mnemonicToSeedV2(param.mnemonic)
-            .then(masterSeed => {
+        return bip39
+            .mnemonicToSeedV2(param.mnemonic)
+            .then((masterSeed) => {
                 let childKey = bip32.fromSeedV2(masterSeed, param.hdPath);
                 if (!childKey.privateKey) {
                     return Promise.reject(GenPrivateKeyError);
                 }
-                const wif = bitcoin.private2Wif(Buffer.from(childKey.privateKey), network);
+                const wif = bitcoin.private2Wif(
+                    Buffer.from(childKey.privateKey),
+                    network
+                );
                 return Promise.resolve(wif);
-            }).catch((e) => {
+            })
+            .catch((e) => {
                 return Promise.reject(GenPrivateKeyError);
             });
     }
@@ -328,33 +434,57 @@ export class BtcWallet extends BaseWallet {
             if (!param.addressType) {
                 const addresses = [];
                 addresses.push({
-                    addressType: "Legacy",
-                    address: bitcoin.payments.p2pkh({pubkey: publicKey, network}).address,
-                });
-                addresses.push({
-                    addressType: "segwit_nested",
-                    address: bitcoin.payments.p2sh({
-                        redeem: bitcoin.payments.p2wpkh({pubkey: publicKey, network}),
+                    addressType: 'Legacy',
+                    address: bitcoin.payments.p2pkh({
+                        pubkey: publicKey,
+                        network,
                     }).address,
                 });
                 addresses.push({
-                    addressType: "segwit_native",
-                    address: bitcoin.payments.p2wpkh({pubkey: publicKey, network}).address,
+                    addressType: 'segwit_nested',
+                    address: bitcoin.payments.p2sh({
+                        redeem: bitcoin.payments.p2wpkh({
+                            pubkey: publicKey,
+                            network,
+                        }),
+                    }).address,
+                });
+                addresses.push({
+                    addressType: 'segwit_native',
+                    address: bitcoin.payments.p2wpkh({
+                        pubkey: publicKey,
+                        network,
+                    }).address,
                 });
                 return Promise.resolve(addresses);
             } else if (param.addressType === 'Legacy') {
-                return Promise.resolve(bitcoin.payments.p2pkh({pubkey: publicKey, network}).address)
+                return Promise.resolve(
+                    bitcoin.payments.p2pkh({ pubkey: publicKey, network })
+                        .address
+                );
             } else if (param.addressType === 'segwit_nested') {
-                return Promise.resolve(bitcoin.payments.p2sh({
-                    redeem: bitcoin.payments.p2wpkh({pubkey: publicKey, network}),
-                }).address)
+                return Promise.resolve(
+                    bitcoin.payments.p2sh({
+                        redeem: bitcoin.payments.p2wpkh({
+                            pubkey: publicKey,
+                            network,
+                        }),
+                    }).address
+                );
             } else if (param.addressType === 'segwit_native') {
-                return Promise.resolve(bitcoin.payments.p2wpkh({pubkey: publicKey, network}).address)
+                return Promise.resolve(
+                    bitcoin.payments.p2wpkh({ pubkey: publicKey, network })
+                        .address
+                );
             } else if (param.addressType === 'segwit_taproot') {
-                return Promise.resolve(bitcoin.payments.p2tr({internalPubkey: publicKey.slice(1), network}).address)
+                return Promise.resolve(
+                    bitcoin.payments.p2tr({
+                        internalPubkey: publicKey.slice(1),
+                        network,
+                    }).address
+                );
             }
-        } catch (e) {
-        }
+        } catch (e) {}
         return Promise.reject(NewAddressError);
     }
 
@@ -362,7 +492,12 @@ export class BtcWallet extends BaseWallet {
         try {
             const utxoTx = convert2UtxoTx(param.data);
             const hash: string[] = [];
-            const unsignedTx = bitcoin.signBtc(utxoTx, "", this.network(), hash);
+            const unsignedTx = bitcoin.signBtc(
+                utxoTx,
+                '',
+                this.network(),
+                hash
+            );
             const data: MpcRawTransactionData = {
                 raw: unsignedTx,
                 hash: hash,
@@ -375,7 +510,11 @@ export class BtcWallet extends BaseWallet {
 
     getMPCTransaction(param: MpcTransactionParam): Promise<any> {
         try {
-            const hex = bitcoin.getMPCTransaction(param.raw, param.sigs as string[], false);
+            const hex = bitcoin.getMPCTransaction(
+                param.raw,
+                param.sigs as string[],
+                false
+            );
             return Promise.resolve(hex);
         } catch (e) {
             return Promise.reject(GetMpcTransactionError);
@@ -384,8 +523,8 @@ export class BtcWallet extends BaseWallet {
 
     async getMPCRawMessage(param: MpcRawTransactionParam): Promise<any> {
         try {
-            const msgHash = await this.signMessage(param as SignTxParams);
-            return Promise.resolve({hash: msgHash});
+            const msgHash = await this.signMessage0(param as SignTxParams);
+            return Promise.resolve({ hash: msgHash });
         } catch (e) {
             return Promise.reject(GetMpcRawTransactionError);
         }
@@ -393,7 +532,13 @@ export class BtcWallet extends BaseWallet {
 
     async getMPCSignedMessage(param: MpcMessageParam): Promise<any> {
         try {
-            return Promise.resolve(bitcoin.message.getMPCSignedMessage(param.hash, param.sigs as string, param.publicKey!));
+            return Promise.resolve(
+                bitcoin.message.getMPCSignedMessage(
+                    param.hash,
+                    param.sigs as string,
+                    param.publicKey!
+                )
+            );
         } catch (e) {
             return Promise.reject(GetMpcTransactionError);
         }
@@ -403,22 +548,36 @@ export class BtcWallet extends BaseWallet {
         try {
             const type = param.data.type || 0;
             const utxoTx = convert2UtxoTx(param.data);
-            if (type === 2) { // psbt
-                const change = bitcoin.signBtc(utxoTx, "", this.network(), undefined, true, true);
+            if (type === 2) {
+                // psbt
+                const change = bitcoin.signBtc(
+                    utxoTx,
+                    '',
+                    this.network(),
+                    undefined,
+                    true,
+                    true
+                );
                 const dustSize = utxoTx.dustSize || 546;
                 if (parseInt(change) >= dustSize) {
                     const changeUtxo = {
                         address: utxoTx.address,
                         amount: parseInt(change),
-                        bip32Derivation: utxoTx.bip32Derivation
-                    } as bitcoin.utxoOutput
-                    utxoTx.outputs.push(changeUtxo as never)
+                        bip32Derivation: utxoTx.bip32Derivation,
+                    } as bitcoin.utxoOutput;
+                    utxoTx.outputs.push(changeUtxo as never);
                 }
                 const hex = bitcoin.buildPsbt(utxoTx, this.network());
                 return Promise.resolve(hex);
             } else {
                 // no need private key for hardware wallet
-                const hex = bitcoin.signBtc(utxoTx, "", this.network(), undefined, true);
+                const hex = bitcoin.signBtc(
+                    utxoTx,
+                    '',
+                    this.network(),
+                    undefined,
+                    true
+                );
                 return Promise.resolve(hex);
             }
         } catch (e) {
@@ -428,20 +587,46 @@ export class BtcWallet extends BaseWallet {
 
     async calcTxHash(param: CalcTxHashParams): Promise<string> {
         try {
-            return Promise.resolve(bitcoin.Transaction.fromHex(param.data as string).getId());
+            return Promise.resolve(
+                bitcoin.Transaction.fromHex(param.data as string).getId()
+            );
         } catch (e) {
             return Promise.reject(CalcTxHashError);
         }
     }
 
-    signMessage(param: SignTxParams): Promise<string> {
+    async signMessage(param: SignTxParams): Promise<string> {
+        if (!param.privateKey) {
+            return Promise.reject(`${InvalidPrivateKeyError}: cannot be empty`);
+        }
+        const { isValid } = await this.validPrivateKey({
+            privateKey: param.privateKey,
+        });
+        if (!isValid) {
+            return Promise.reject(
+                `${InvalidPrivateKeyError}: not valid private key`
+            );
+        }
+        return this.signMessage0(param);
+    }
+
+    signMessage0(param: SignTxParams): Promise<string> {
         try {
             const typedMessage = param.data as TypedMessage;
             let signature;
             if (typedMessage.type === BITCOIN_MESSAGE_ECDSA) {
-                signature = bitcoin.message.sign(param.privateKey, typedMessage.message, this.network());
+                signature = bitcoin.message.sign(
+                    param.privateKey,
+                    typedMessage.message,
+                    this.network()
+                );
             } else {
-                signature = bitcoin.bip0322.signSimple(typedMessage.message, typedMessage.address!, param.privateKey, this.network());
+                signature = bitcoin.bip0322.signSimple(
+                    typedMessage.message,
+                    typedMessage.address!,
+                    param.privateKey,
+                    this.network()
+                );
             }
             return Promise.resolve(signature);
         } catch (e) {
@@ -450,24 +635,45 @@ export class BtcWallet extends BaseWallet {
     }
 
     async signCommonMsg(params: SignCommonMsgParams): Promise<any> {
-        let addr = await this.getNewAddress({privateKey:params.privateKey, addressType:params.addressType});
-        let publicKey = addr.compressedPublicKey? addr.compressedPublicKey : addr.publicKey;
-        if(publicKey.startsWith("0x")) {
+        let addr = await this.getNewAddress({
+            privateKey: params.privateKey,
+            addressType: params.addressType,
+        });
+        let publicKey = addr.compressedPublicKey
+            ? addr.compressedPublicKey
+            : addr.publicKey;
+        if (publicKey.startsWith('0x')) {
             publicKey = publicKey.substring(2);
         }
         let privateKey = privateKeyFromWIF(params.privateKey, this.network());
-        return super.signCommonMsg({privateKey:params.privateKey, privateKeyHex:privateKey,publicKey:publicKey,
-            addressType:params.addressType, message:params.message, signType:SignType.Secp256k1})
+        return super.signCommonMsg({
+            privateKey: params.privateKey,
+            privateKeyHex: privateKey,
+            publicKey: publicKey,
+            addressType: params.addressType,
+            message: params.message,
+            signType: SignType.Secp256k1,
+        });
     }
 
     async verifyMessage(param: VerifyMessageParams): Promise<boolean> {
         try {
             const typedMessage = param.data as TypedMessage;
             if (typedMessage.type === BITCOIN_MESSAGE_ECDSA) {
-                const ret = bitcoin.message.verify(typedMessage.publicKey!, typedMessage.message, param.signature);
+                const ret = bitcoin.message.verify(
+                    typedMessage.publicKey!,
+                    typedMessage.message,
+                    param.signature
+                );
                 return Promise.resolve(ret);
             } else {
-                const ret = bitcoin.bip0322.verifySimple(typedMessage.message, typedMessage.address!, param.signature, typedMessage.publicKey!, this.network());
+                const ret = bitcoin.bip0322.verifySimple(
+                    typedMessage.message,
+                    typedMessage.address!,
+                    param.signature,
+                    typedMessage.publicKey!,
+                    this.network()
+                );
                 return Promise.resolve(ret);
             }
         } catch (e) {
@@ -483,13 +689,19 @@ export class BtcWallet extends BaseWallet {
         }
     }
 
-    async validSignedTransaction(param: ValidSignedTransactionParams): Promise<any> {
+    async validSignedTransaction(
+        param: ValidSignedTransactionParams
+    ): Promise<any> {
         try {
             if (param.data) {
-                param.data.forEach((o: any) => o.value = o.amount)
+                param.data.forEach((o: any) => (o.value = o.amount));
             }
 
-            const tx = bitcoin.ValidSignedTransaction(param.tx, param.data, this.network());
+            const tx = bitcoin.ValidSignedTransaction(
+                param.tx,
+                param.data,
+                this.network()
+            );
             return Promise.resolve(jsonStringifyUniform(tx));
         } catch (e) {
             return Promise.reject(validSignedTransactionError);
@@ -499,44 +711,50 @@ export class BtcWallet extends BaseWallet {
     async estimateFee(param: SignTxParams): Promise<number> {
         try {
             const type = param.data.type || 0;
-            if (type === bitcoin.BtcXrcTypes.INSCRIBE) { // inscribe
+            if (type === bitcoin.BtcXrcTypes.INSCRIBE) {
+                // inscribe
                 return Promise.reject(EstimateFeeError);
-            } else if (type === bitcoin.BtcXrcTypes.PSBT) { // psbt
+            } else if (type === bitcoin.BtcXrcTypes.PSBT) {
+                // psbt
                 return Promise.reject(EstimateFeeError);
-            } else if (type === bitcoin.BtcXrcTypes.RUNE) { // rune
+            } else if (type === bitcoin.BtcXrcTypes.RUNE) {
+                // rune
                 try {
-                    let wallet = new RuneWallet()
+                    let wallet = new RuneWallet();
                     if (this.network() === networks.testnet) {
-                        wallet = new RuneTestWallet()
+                        wallet = new RuneTestWallet();
                     }
-                    return Promise.resolve(wallet.estimateFee(param))
+                    return Promise.resolve(wallet.estimateFee(param));
                 } catch (e) {
                     return Promise.reject(EstimateFeeError);
                 }
-            } else if (type === bitcoin.BtcXrcTypes.RUNEMAIN) { // rune
+            } else if (type === bitcoin.BtcXrcTypes.RUNEMAIN) {
+                // rune
                 try {
-                    let wallet = new RuneMainWallet()
+                    let wallet = new RuneMainWallet();
                     if (this.network() === networks.testnet) {
-                        wallet = new RuneMainTestWallet()
+                        wallet = new RuneMainTestWallet();
                     }
-                    return Promise.resolve(wallet.estimateFee(param))
+                    return Promise.resolve(wallet.estimateFee(param));
                 } catch (e) {
                     return Promise.reject(EstimateFeeError);
                 }
-            } else if (type === bitcoin.BtcXrcTypes.ARC20) { // arc20
+            } else if (type === bitcoin.BtcXrcTypes.ARC20) {
+                // arc20
                 try {
-                    let wallet = new AtomicalWallet()
+                    let wallet = new AtomicalWallet();
                     if (this.network() === networks.testnet) {
-                        wallet = new AtomicalTestWallet()
+                        wallet = new AtomicalTestWallet();
                     }
-                    return Promise.resolve(wallet.estimateFee(param))
+                    return Promise.resolve(wallet.estimateFee(param));
                 } catch (e) {
                     return Promise.reject(EstimateFeeError);
                 }
-            } else if (type === bitcoin.BtcXrcTypes.CAT20) { // cat20
+            } else if (type === bitcoin.BtcXrcTypes.CAT20) {
+                // cat20
                 try {
-                    let wallet = new CatWallet()
-                    return Promise.resolve(wallet.estimateFee(param))
+                    let wallet = new CatWallet();
+                    return Promise.resolve(wallet.estimateFee(param));
                 } catch (e) {
                     return Promise.reject(EstimateFeeError);
                 }
@@ -560,13 +778,14 @@ export class BtcWallet extends BaseWallet {
 
     async buildPsbt(param: SignTxParams): Promise<any> {
         const type = param.data.type || 0;
-        if (type === bitcoin.BtcXrcTypes.RUNEMAIN) { // rune
+        if (type === bitcoin.BtcXrcTypes.RUNEMAIN) {
+            // rune
             try {
-                let wallet = new RuneMainWallet()
+                let wallet = new RuneMainWallet();
                 if (this.network() === networks.testnet) {
-                    wallet = new RuneMainTestWallet()
+                    wallet = new RuneMainTestWallet();
                 }
-                return Promise.resolve(wallet.buildPsbt(param))
+                return Promise.resolve(wallet.buildPsbt(param));
             } catch (e) {
                 return Promise.reject(SignTxError);
             }
@@ -575,7 +794,6 @@ export class BtcWallet extends BaseWallet {
             return Promise.resolve(txHex);
         }
     }
-
 }
 
 export class TBtcWallet extends BtcWallet {
@@ -585,32 +803,32 @@ export class TBtcWallet extends BtcWallet {
 }
 
 export function number2Hex(n: number, length: number): string {
-    let s = n.toString(16)
-    const d = length - s.length
+    let s = n.toString(16);
+    const d = length - s.length;
     if (d > 0) {
         for (let i = 0; i < d; i++) {
-            s = "0" + s
+            s = '0' + s;
         }
     }
-    return s
+    return s;
 }
 
 export function convert2UtxoTx(utxoTx: any): bitcoin.utxoTx {
-    const tx = cloneObject(utxoTx)
+    const tx = cloneObject(utxoTx);
     tx.inputs.forEach((it: any) => {
-        it.amount = convert2Number(it.amount)
-    })
+        it.amount = convert2Number(it.amount);
+    });
 
     tx.outputs.forEach((it: any) => {
-        it.amount = convert2Number(it.amount)
-    })
+        it.amount = convert2Number(it.amount);
+    });
 
     if (tx.omni) {
-        tx.omni.amount = convert2Number(tx.omni.amount)
+        tx.omni.amount = convert2Number(tx.omni.amount);
     }
 
     if (utxoTx.dustSize) {
-        tx.dustSize = convert2Number(utxoTx.dustSize)
+        tx.dustSize = convert2Number(utxoTx.dustSize);
     }
-    return tx
+    return tx;
 }

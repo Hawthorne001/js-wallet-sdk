@@ -137,7 +137,7 @@ let userAccount = new Account(addr.address,"2085700543447040");
 let sourceAccount = new Account(sourceAddress.address,"2077119198789637");
 const asset = new Asset('USD', sourceAddress.address);
 
-//创建trustline
+// Create trustline
 let op = Operation.changeTrust({
     asset: asset,
     limit: "1000",

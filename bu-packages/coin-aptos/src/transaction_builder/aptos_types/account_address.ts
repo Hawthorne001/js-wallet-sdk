@@ -34,6 +34,11 @@ export class AccountAddress {
   static fromHex(addr: MaybeHexString): AccountAddress {
     let address = HexString.ensure(addr);
 
+    if (address.noPrefix().length === 0) {
+      throw new Error(
+          "Hex string is too short, must be 1 to 64 chars long, excluding the leading 0x."
+      );
+    }
     // If an address hex has odd number of digits, padd the hex string with 0
     // e.g. '1aa' would become '01aa'.
     if (address.noPrefix().length % 2 !== 0) {

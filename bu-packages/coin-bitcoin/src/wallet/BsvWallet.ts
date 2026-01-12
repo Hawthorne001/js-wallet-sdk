@@ -7,14 +7,20 @@ import {
     MpcRawTransactionData,
     MpcTransactionParam,
     SignTxError,
-    SignTxParams
-} from "@okxweb3/coin-base";
-import {BtcWallet, convert2UtxoTx} from "./BtcWallet";
+    SignTxParams,
+} from '@okxweb3/coin-base';
+import { BtcWallet, convert2UtxoTx } from './BtcWallet';
 
-import * as bitcoin from "../index"
-
+import * as bitcoin from '../index';
 
 export class BsvWallet extends BtcWallet {
+    network(): bitcoin.Network {
+        return {
+            ...super.network(),
+            bech32: '', // BSV does not support segwit addresses
+        };
+    }
+
     async getDerivedPath(param: GetDerivedPathParam): Promise<any> {
         return `m/44'/236'/0'/0/${param.index}`;
     }
@@ -44,11 +50,11 @@ export class BsvWallet extends BtcWallet {
     getMPCRawTransaction(param: SignTxParams): Promise<any> {
         try {
             const utxoTx = convert2UtxoTx(param.data);
-            const hash: string[] = []
-            const hex = bitcoin.signBch(utxoTx, "", this.network(), hash);
+            const hash: string[] = [];
+            const hex = bitcoin.signBch(utxoTx, '', this.network(), hash);
             const data: MpcRawTransactionData = {
                 raw: hex,
-                hash: hash
+                hash: hash,
             };
             return Promise.resolve(data);
         } catch (e) {
@@ -58,7 +64,11 @@ export class BsvWallet extends BtcWallet {
 
     getMPCTransaction(param: MpcTransactionParam): Promise<any> {
         try {
-            const hex = bitcoin.getMPCTransaction(param.raw, param.sigs as string[], true);
+            const hex = bitcoin.getMPCTransaction(
+                param.raw,
+                param.sigs as string[],
+                true
+            );
             return Promise.resolve(hex);
         } catch (e) {
             return Promise.reject(GetMpcTransactionError);
@@ -68,11 +78,16 @@ export class BsvWallet extends BtcWallet {
     getHardWareRawTransaction(param: SignTxParams): Promise<any> {
         try {
             const utxoTx = convert2UtxoTx(param.data);
-            const hex = bitcoin.signBch(utxoTx, "", this.network(), undefined, true);
+            const hex = bitcoin.signBch(
+                utxoTx,
+                '',
+                this.network(),
+                undefined,
+                true
+            );
             return Promise.resolve(hex);
         } catch (e) {
             return Promise.reject(GetHardwareRawTransactionError);
         }
     }
 }
-

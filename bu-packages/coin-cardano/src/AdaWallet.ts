@@ -4,8 +4,8 @@ import {
     jsonStringifyUniform,
     SignCommonMsgParams,
     ValidPrivateKeyData,
-    ValidPrivateKeyParams
-} from "@okxweb3/coin-base";
+    ValidPrivateKeyParams,
+} from '@okxweb3/coin-base';
 import {
     CalcTxHashParams,
     DerivePriKeyParams,
@@ -16,21 +16,23 @@ import {
     ValidAddressData,
     ValidAddressParams,
     base,
-} from "@okxweb3/coin-base";
+} from '@okxweb3/coin-base';
 import {
     CalcTxHashError,
     GenPrivateKeyError,
     NewAddressError,
     SignTxError,
-} from "@okxweb3/coin-base";
-import {signUtil} from "@okxweb3/crypto-lib";
+    ValidAddressError,
+    InvalidPrivateKeyError,
+} from '@okxweb3/coin-base';
+import { signUtil } from '@okxweb3/crypto-lib';
 import {
     getNewAddress,
     pubKeyFromPrivateKey,
     getDerivedPrivateKey,
     checkPrivateKey,
-    bech32AddressToHexAddress
-} from "./account";
+    bech32AddressToHexAddress,
+} from './account';
 import {
     calcTxHash,
     transfer,
@@ -43,18 +45,20 @@ import {
     getFilteredUtxos,
     getBalance,
     getTxFee,
-    getNetworkId
-} from "./transaction";
-import {signData} from "./message";
+    getNetworkId,
+} from './transaction';
+import { signData } from './message';
 
 export class AdaWallet extends BaseWallet {
     async getDerivedPath(param: GetDerivedPathParam): Promise<any> {
-        return `m/1852'/1815'/0'/0/${param.index}`;
+        return `m/1852'/1815'/${param.index}'/0/0`;
     }
 
     async getRandomPrivateKey(): Promise<any> {
         try {
-            return Promise.resolve(signUtil.ed25519.ed25519_getRandomPrivateKey(false, "hex"))
+            return Promise.resolve(
+                signUtil.ed25519.ed25519_getRandomPrivateKey(false, 'hex')
+            );
         } catch (e) {
             return Promise.reject(GenPrivateKeyError);
         }
@@ -62,7 +66,10 @@ export class AdaWallet extends BaseWallet {
 
     async getDerivedPrivateKey(param: DerivePriKeyParams): Promise<any> {
         try {
-            const key = await getDerivedPrivateKey(param.mnemonic, param.hdPath);
+            const key = await getDerivedPrivateKey(
+                param.mnemonic,
+                param.hdPath
+            );
             return Promise.resolve(key);
         } catch (e) {
             return Promise.reject(GenPrivateKeyError);
@@ -71,37 +78,36 @@ export class AdaWallet extends BaseWallet {
 
     async getNewAddress(param: NewAddressParams): Promise<any> {
         try {
-            const address = await getNewAddress(param.privateKey)
+            const address = await getNewAddress(param.privateKey);
             let data: NewAddressData = {
                 address: address,
-                publicKey: await pubKeyFromPrivateKey(param.privateKey)
+                publicKey: await pubKeyFromPrivateKey(param.privateKey),
             };
             return Promise.resolve(data);
         } catch (e) {
-            return Promise.reject(NewAddressError)
+            return Promise.reject(NewAddressError);
         }
     }
 
     async validPrivateKey(param: ValidPrivateKeyParams): Promise<any> {
-        let isValid: boolean
+        let isValid: boolean;
         try {
             isValid = await checkPrivateKey(param.privateKey);
-        } catch (e){
-            isValid = false
+        } catch (e) {
+            isValid = false;
         }
         const data: ValidPrivateKeyData = {
             isValid: isValid,
-            privateKey: param.privateKey
+            privateKey: param.privateKey,
         };
         return Promise.resolve(data);
     }
-
 
     async validAddress(param: ValidAddressParams): Promise<any> {
         let isValid: boolean;
         try {
             const [hrp, data] = base.fromBech32(param.address, false);
-            isValid = hrp === "addr" && data.length > 0;
+            isValid = hrp === 'addr' && data.length > 0;
         } catch (e) {
             isValid = false;
         }
@@ -115,13 +121,46 @@ export class AdaWallet extends BaseWallet {
 
     async signTransaction(param: SignTxParams): Promise<any> {
         try {
-            const data: TxData = param.data;
-            if (data.type === "rawTx") {
-                return await signTx(data.tx!, data.privateKey || param.privateKey)
+            if (
+                !param.privateKey &&
+                !(param.data && (param.data as any).privateKey)
+            ) {
+                return Promise.reject(InvalidPrivateKeyError);
             }
-            return await transfer(data, param.privateKey);
+
+            const data: TxData = param.data;
+
+            if (data.type === 'rawTx') {
+                return await signTx(
+                    data.tx!,
+                    data.privateKey || param.privateKey
+                );
+            } else {
+                // Validate recipient address
+                if (!data.address) {
+                    return Promise.reject(ValidAddressError);
+                }
+                const recipientValidation = await this.validAddress({
+                    address: data.address,
+                });
+                if (!recipientValidation.isValid) {
+                    return Promise.reject(ValidAddressError);
+                }
+
+                // Validate change address
+                if (!data.changeAddress) {
+                    return Promise.reject(ValidAddressError);
+                }
+                const changeValidation = await this.validAddress({
+                    address: data.changeAddress,
+                });
+                if (!changeValidation.isValid) {
+                    return Promise.reject(ValidAddressError);
+                }
+                return await transfer(data, param.privateKey);
+            }
         } catch (e) {
-            return Promise.reject(e);
+            return Promise.reject(SignTxError);
         }
     }
 
@@ -133,7 +172,10 @@ export class AdaWallet extends BaseWallet {
         }
     }
 
-    static async minAda(address: string, multiAsset?: MultiAssetData): Promise<string> {
+    static async minAda(
+        address: string,
+        multiAsset?: MultiAssetData
+    ): Promise<string> {
         try {
             return await calcMinAda(address, multiAsset);
         } catch (e) {
@@ -151,8 +193,26 @@ export class AdaWallet extends BaseWallet {
     }
 
     async signMessage(param: SignTxParams): Promise<any> {
+        const privateKey =
+            (param.data && param.data.privateKey) || param.privateKey;
+
+        if (!privateKey) {
+            return Promise.reject(`${InvalidPrivateKeyError}: cannot be empty`);
+        }
+
+        const { isValid } = await this.validPrivateKey({ privateKey });
+        if (!isValid) {
+            return Promise.reject(
+                `${InvalidPrivateKeyError}: not valid private key`
+            );
+        }
+
         try {
-            return await signData(param.data.address, param.data.message, param.data.privateKey || param.privateKey);
+            return await signData(
+                param.data.address,
+                param.data.message,
+                privateKey
+            );
         } catch (e) {
             return Promise.reject(e);
         }
@@ -161,36 +221,49 @@ export class AdaWallet extends BaseWallet {
     async signCommonMsg(param: SignCommonMsgParams): Promise<any> {
         try {
             let data;
-            const addr = await this.getNewAddress({privateKey:param.privateKey});
-            if(param.message.text){
+            const addr = await this.getNewAddress({
+                privateKey: param.privateKey,
+            });
+            if (param.message.text) {
                 data = param.message.text;
             } else {
-               data = buildCommonSignMsg(addr.publicKey, param.message.walletId);
+                data = buildCommonSignMsg(
+                    addr.publicKey,
+                    param.message.walletId
+                );
             }
             let hash = base.magicHash(data);
-            return Promise.resolve(jsonStringifyUniform(await signData(addr.address, base.toHex(hash), param.privateKey)));
+            return Promise.resolve(
+                jsonStringifyUniform(
+                    await signData(
+                        addr.address,
+                        base.toHex(hash),
+                        param.privateKey
+                    )
+                )
+            );
         } catch (e) {
             return Promise.reject(SignTxError);
         }
     }
 
     getFilteredUtxos = (txInputs: TxInput[], filterCbor?: string) => {
-        return getFilteredUtxos(txInputs, filterCbor)
-    }
+        return getFilteredUtxos(txInputs, filterCbor);
+    };
 
     getBalance = (txInputs: TxInput[], filterCbor?: string) => {
-        return getBalance(txInputs)
-    }
+        return getBalance(txInputs);
+    };
 
-    getNetworkId = (txCbor: string) =>  {
-        return getNetworkId(txCbor)
-    }
+    getNetworkId = (txCbor: string) => {
+        return getNetworkId(txCbor);
+    };
 
-    getTxFee = (txCbor: string) =>  {
-        return getTxFee(txCbor)
-    }
+    getTxFee = (txCbor: string) => {
+        return getTxFee(txCbor);
+    };
 
     bech32AddressToHexAddress(address: string) {
-        return bech32AddressToHexAddress(address)
+        return bech32AddressToHexAddress(address);
     }
 }

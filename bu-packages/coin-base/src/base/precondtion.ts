@@ -12,7 +12,7 @@ const check = (statement: any, orError?: ErrorType) => {
 const checkIsDefined = <T>(something?: T, orError?: ErrorType): T => {
     check(
         typeof something !== 'undefined',
-        orError || 'Expect defined but actually undefined',
+        orError || 'Expect defined but actually undefined'
     );
     return something as T;
 };
@@ -20,8 +20,8 @@ const checkIsDefined = <T>(something?: T, orError?: ErrorType): T => {
 const checkIsUndefined = (something: any, orError?: ErrorType) => {
     check(
         typeof something === 'undefined',
-        orError || `Expect undefined but actually ${something}`,
+        orError || `Expect undefined but actually ${something}`
     );
 };
 
-export {check, checkIsDefined, checkIsUndefined};
+export { check, checkIsDefined, checkIsUndefined };

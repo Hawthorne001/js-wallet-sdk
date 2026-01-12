@@ -1,34 +1,33 @@
 /* eslint-disable no-useless-escape */
-const utils = require("./util")
-const base = require("../base")
+const utils = require('./util');
+const base = require('../base');
 var BN = require('bn.js/lib/bn');
 const { isHexString, stripHexPrefix, padToEven } = require('./internal');
-const { intToBuffer,addHexPrefix, bufferToHex } = require('./bytes');
+const { intToBuffer, addHexPrefix, bufferToHex } = require('./bytes');
 
-var ABI = function () {
-}
+var ABI = function () {};
 
 // Convert from short to canonical names
 // FIXME: optimise or make this nicer?
-function elementaryName (name) {
+function elementaryName(name) {
     if (name.startsWith('int[')) {
-        return 'int256' + name.slice(3)
+        return 'int256' + name.slice(3);
     } else if (name === 'int') {
-        return 'int256'
+        return 'int256';
     } else if (name.startsWith('uint[')) {
-        return 'uint256' + name.slice(4)
+        return 'uint256' + name.slice(4);
     } else if (name === 'uint') {
-        return 'uint256'
+        return 'uint256';
     } else if (name.startsWith('fixed[')) {
-        return 'fixed128x128' + name.slice(5)
+        return 'fixed128x128' + name.slice(5);
     } else if (name === 'fixed') {
-        return 'fixed128x128'
+        return 'fixed128x128';
     } else if (name.startsWith('ufixed[')) {
-        return 'ufixed128x128' + name.slice(6)
+        return 'ufixed128x128' + name.slice(6);
     } else if (name === 'ufixed') {
-        return 'ufixed128x128'
+        return 'ufixed128x128';
     }
-    return name
+    return name;
 }
 
 /**
@@ -37,51 +36,53 @@ function elementaryName (name) {
  * with a `toArray()` or `toBuffer()` method.
  * @param v the value
  */
-function toBuffer (v) {
+function toBuffer(v) {
     if (v === null || v === undefined) {
-        return Buffer.allocUnsafe(0)
+        return Buffer.allocUnsafe(0);
     }
 
     if (Buffer.isBuffer(v)) {
-        return Buffer.from(v)
+        return Buffer.from(v);
     }
 
     if (Array.isArray(v) || v instanceof Uint8Array) {
-        return Buffer.from(v)
+        return Buffer.from(v);
     }
 
     if (typeof v === 'string') {
         if (!isHexString(v)) {
             throw new Error(
-              `Cannot convert string to buffer. toBuffer only supports 0x-prefixed hex strings and this string was given: ${v}`
-            )
+                `Cannot convert string to buffer. toBuffer only supports 0x-prefixed hex strings and this string was given: ${v}`
+            );
         }
-        return Buffer.from(padToEven(stripHexPrefix(v)), 'hex')
+        return Buffer.from(padToEven(stripHexPrefix(v)), 'hex');
     }
 
     if (typeof v === 'number') {
-        return intToBuffer(v)
+        return intToBuffer(v);
     }
 
     if (typeof v === 'bigint') {
         if (v < BigInt(0)) {
-            throw new Error(`Cannot convert negative bigint to buffer. Given: ${v}`)
+            throw new Error(
+                `Cannot convert negative bigint to buffer. Given: ${v}`
+            );
         }
-        let n = v.toString(16)
-        if (n.length % 2) n = '0' + n
-        return Buffer.from(n, 'hex')
+        let n = v.toString(16);
+        if (n.length % 2) n = '0' + n;
+        return Buffer.from(n, 'hex');
     }
 
     if (v.toArray) {
         // converts a BN to a Buffer
-        return Buffer.from(v.toArray())
+        return Buffer.from(v.toArray());
     }
 
     if (v.toBuffer) {
-        return Buffer.from(v.toBuffer())
+        return Buffer.from(v.toBuffer());
     }
 
-    throw new Error('invalid type')
+    throw new Error('invalid type');
 }
 
 /**
@@ -104,7 +105,8 @@ function normalize(input) {
     }
 
     if (typeof input !== 'string') {
-        let msg = 'eth-sig-util.normalize() requires hex string or integer input.';
+        let msg =
+            'eth-sig-util.normalize() requires hex string or integer input.';
         msg += ` received ${typeof input}: ${input}`;
         throw new Error(msg);
     }
@@ -114,525 +116,581 @@ function normalize(input) {
 
 ABI.eventID = function (name, types) {
     // FIXME: use node.js util.format?
-    var sig = name + '(' + types.map(elementaryName).join(',') + ')'
-    return base.keccak256(Buffer.from(sig))
-}
+    var sig = name + '(' + types.map(elementaryName).join(',') + ')';
+    return base.keccak256(Buffer.from(sig));
+};
 
 ABI.methodID = function (name, types) {
-    return ABI.eventID(name, types).slice(0, 4)
-}
+    return ABI.eventID(name, types).slice(0, 4);
+};
 
 // Parse N from type<N>
-function parseTypeN (type) {
-    return parseInt(/^\D+(\d+)$/.exec(type)[1], 10)
+function parseTypeN(type) {
+    return parseInt(/^\D+(\d+)$/.exec(type)[1], 10);
 }
 
 // Parse N,M from type<N>x<M>
-function parseTypeNxM (type) {
-    var tmp = /^\D+(\d+)x(\d+)$/.exec(type)
-    return [ parseInt(tmp[1], 10), parseInt(tmp[2], 10) ]
+function parseTypeNxM(type) {
+    var tmp = /^\D+(\d+)x(\d+)$/.exec(type);
+    return [parseInt(tmp[1], 10), parseInt(tmp[2], 10)];
 }
 
 // Parse N in type[<N>] where "type" can itself be an array type.
-function parseTypeArray (type) {
-    var tmp = type.match(/(.*)\[(.*?)\]$/)
+function parseTypeArray(type) {
+    var tmp = type.match(/(.*)\[(.*?)\]$/);
     if (tmp) {
-        return tmp[2] === '' ? 'dynamic' : parseInt(tmp[2], 10)
+        return tmp[2] === '' ? 'dynamic' : parseInt(tmp[2], 10);
     }
-    return null
+    return null;
 }
 
-function parseNumber (arg) {
-    var type = typeof arg
+function parseNumber(arg) {
+    var type = typeof arg;
     if (type === 'string') {
         if (base.isHexPrefixed(arg)) {
-            return new BN(base.stripHexPrefix(arg), 16)
+            return new BN(base.stripHexPrefix(arg), 16);
         } else {
-            if (arg.startsWith('0b') || arg.startsWith('0B')){
-                return new BN(arg.slice(2), 2)
-            } else if(arg.startsWith('0o') || arg.startsWith('0O')){
-                return new BN(arg.slice(2), 8)
+            if (arg.startsWith('0b') || arg.startsWith('0B')) {
+                return new BN(arg.slice(2), 2);
+            } else if (arg.startsWith('0o') || arg.startsWith('0O')) {
+                return new BN(arg.slice(2), 8);
             }
-            return new BN(arg, 10)
+            return new BN(arg, 10);
         }
     } else if (type === 'number') {
-        return new BN(arg)
+        return new BN(arg);
     } else if (arg.toArray) {
         // assume this is a BN for the moment, replace with BN.isBN soon
-        return arg
+        return arg;
     } else {
-        throw new Error('Argument is not a number')
+        throw new Error('Argument is not a number');
     }
 }
 
 // someMethod(bytes,uint)
 // someMethod(bytes,uint):(boolean)
-function parseSignature (sig) {
-    var tmp = /^(\w+)\((.*)\)$/.exec(sig)
+function parseSignature(sig) {
+    var tmp = /^(\w+)\((.*)\)$/.exec(sig);
 
     if (tmp.length !== 3) {
-        throw new Error('Invalid method signature')
+        throw new Error('Invalid method signature');
     }
 
-    var args = /^(.+)\):\((.+)$/.exec(tmp[2])
+    var args = /^(.+)\):\((.+)$/.exec(tmp[2]);
 
     if (args !== null && args.length === 3) {
         return {
             method: tmp[1],
             args: args[1].split(','),
-            retargs: args[2].split(',')
-        }
+            retargs: args[2].split(','),
+        };
     } else {
-        var params = tmp[2].split(',')
+        var params = tmp[2].split(',');
         if (params.length === 1 && params[0] === '') {
             // Special-case (possibly naive) fixup for functions that take no arguments.
             // TODO: special cases are always bad, but this makes the function return
             // match what the calling functions expect
-            params = []
+            params = [];
         }
         return {
             method: tmp[1],
-            args: params
-        }
+            args: params,
+        };
     }
 }
 
 // Encodes a single item (can be dynamic array)
 // @returns: Buffer
-function encodeSingle (type, arg) {
-    var size, num, ret, i
+function encodeSingle(type, arg) {
+    var size, num, ret, i;
 
     if (type === 'address') {
-        return encodeSingle('uint160', parseNumber(arg))
+        return encodeSingle('uint160', parseNumber(arg));
     } else if (type === 'bool') {
-        return encodeSingle('uint8', arg ? 1 : 0)
+        return encodeSingle('uint8', arg ? 1 : 0);
     } else if (type === 'string') {
-        return encodeSingle('bytes', Buffer.from(arg, 'utf8'))
+        return encodeSingle('bytes', Buffer.from(arg, 'utf8'));
     } else if (isArray(type)) {
         // this part handles fixed-length ([2]) and variable length ([]) arrays
         // NOTE: we catch here all calls to arrays, that simplifies the rest
         if (typeof arg.length === 'undefined') {
-            throw new Error('Not an array?')
+            throw new Error('Not an array?');
         }
-        size = parseTypeArray(type)
+        size = parseTypeArray(type);
         if (size !== 'dynamic' && size !== 0 && arg.length > size) {
-            throw new Error('Elements exceed array size: ' + size)
+            throw new Error('Elements exceed array size: ' + size);
         }
-        ret = []
-        type = type.slice(0, type.lastIndexOf('['))
+        ret = [];
+        type = type.slice(0, type.lastIndexOf('['));
         if (typeof arg === 'string') {
-            arg = JSON.parse(arg)
+            arg = JSON.parse(arg);
         }
         for (i in arg) {
-            ret.push(encodeSingle(type, arg[i]))
+            ret.push(encodeSingle(type, arg[i]));
         }
         if (size === 'dynamic') {
-            var length = encodeSingle('uint256', arg.length)
-            ret.unshift(length)
+            var length = encodeSingle('uint256', arg.length);
+            ret.unshift(length);
         }
-        return Buffer.concat(ret)
+        return Buffer.concat(ret);
     } else if (type === 'bytes') {
-        arg = Buffer.from(arg)
+        arg = Buffer.from(arg);
 
-        ret = Buffer.concat([ encodeSingle('uint256', arg.length), arg ])
+        ret = Buffer.concat([encodeSingle('uint256', arg.length), arg]);
 
-        if ((arg.length % 32) !== 0) {
-            ret = Buffer.concat([ ret, utils.zeros(32 - (arg.length % 32)) ])
+        if (arg.length % 32 !== 0) {
+            ret = Buffer.concat([ret, utils.zeros(32 - (arg.length % 32))]);
         }
 
-        return ret
+        return ret;
     } else if (type.startsWith('bytes')) {
-        size = parseTypeN(type)
+        size = parseTypeN(type);
         if (size < 1 || size > 32) {
-            throw new Error('Invalid bytes<N> width: ' + size)
+            throw new Error('Invalid bytes<N> width: ' + size);
         }
 
-        return utils.setLengthRight(arg, 32)
+        return utils.setLengthRight(arg, 32);
     } else if (type.startsWith('uint')) {
-        size = parseTypeN(type)
-        if ((size % 8) || (size < 8) || (size > 256)) {
-            throw new Error('Invalid uint<N> width: ' + size)
+        size = parseTypeN(type);
+        if (size % 8 || size < 8 || size > 256) {
+            throw new Error('Invalid uint<N> width: ' + size);
         }
 
-        num = parseNumber(arg)
+        num = parseNumber(arg);
         if (num.bitLength() > size) {
-            throw new Error('Supplied uint exceeds width: ' + size + ' vs ' + num.bitLength())
+            throw new Error(
+                'Supplied uint exceeds width: ' +
+                    size +
+                    ' vs ' +
+                    num.bitLength()
+            );
         }
 
         if (num < 0) {
-            throw new Error('Supplied uint is negative')
+            throw new Error('Supplied uint is negative');
         }
 
-        return num.toArrayLike(Buffer, 'be', 32)
+        return num.toArrayLike(Buffer, 'be', 32);
     } else if (type.startsWith('int')) {
-        size = parseTypeN(type)
-        if ((size % 8) || (size < 8) || (size > 256)) {
-            throw new Error('Invalid int<N> width: ' + size)
+        size = parseTypeN(type);
+        if (size % 8 || size < 8 || size > 256) {
+            throw new Error('Invalid int<N> width: ' + size);
         }
 
-        num = parseNumber(arg)
+        num = parseNumber(arg);
         if (num.bitLength() > size) {
-            throw new Error('Supplied int exceeds width: ' + size + ' vs ' + num.bitLength())
+            throw new Error(
+                'Supplied int exceeds width: ' + size + ' vs ' + num.bitLength()
+            );
         }
 
-        return num.toTwos(256).toArrayLike(Buffer, 'be', 32)
+        return num.toTwos(256).toArrayLike(Buffer, 'be', 32);
     } else if (type.startsWith('ufixed')) {
-        size = parseTypeNxM(type)
+        size = parseTypeNxM(type);
 
-        num = parseNumber(arg)
+        num = parseNumber(arg);
 
         if (num < 0) {
-            throw new Error('Supplied ufixed is negative')
+            throw new Error('Supplied ufixed is negative');
         }
 
-        return encodeSingle('uint256', num.mul(new BN(2).pow(new BN(size[1]))))
+        return encodeSingle('uint256', num.mul(new BN(2).pow(new BN(size[1]))));
     } else if (type.startsWith('fixed')) {
-        size = parseTypeNxM(type)
+        size = parseTypeNxM(type);
 
-        return encodeSingle('int256', parseNumber(arg).mul(new BN(2).pow(new BN(size[1]))))
+        return encodeSingle(
+            'int256',
+            parseNumber(arg).mul(new BN(2).pow(new BN(size[1])))
+        );
     }
 
-    throw new Error('Unsupported or invalid type: ' + type)
+    throw new Error('Unsupported or invalid type: ' + type);
 }
 
 // Decodes a single item (can be dynamic array)
 // @returns: array
 // FIXME: this method will need a lot of attention at checking limits and validation
-function decodeSingle (parsedType, data, offset) {
+function decodeSingle(parsedType, data, offset) {
     if (typeof parsedType === 'string') {
-        parsedType = parseType(parsedType)
+        parsedType = parseType(parsedType);
     }
-    var size, num, ret, i
+    var size, num, ret, i;
 
     if (parsedType.name === 'address') {
-        return decodeSingle(parsedType.rawType, data, offset).toArrayLike(Buffer, 'be', 20).toString('hex')
+        return decodeSingle(parsedType.rawType, data, offset)
+            .toArrayLike(Buffer, 'be', 20)
+            .toString('hex');
     } else if (parsedType.name === 'bool') {
-        return decodeSingle(parsedType.rawType, data, offset).toString() === new BN(1).toString()
+        return (
+            decodeSingle(parsedType.rawType, data, offset).toString() ===
+            new BN(1).toString()
+        );
     } else if (parsedType.name === 'string') {
-        var bytes = decodeSingle(parsedType.rawType, data, offset)
-        return Buffer.from(bytes, 'utf8').toString()
+        var bytes = decodeSingle(parsedType.rawType, data, offset);
+        return Buffer.from(bytes, 'utf8').toString();
     } else if (parsedType.isArray) {
         // this part handles fixed-length arrays ([2]) and variable length ([]) arrays
         // NOTE: we catch here all calls to arrays, that simplifies the rest
-        ret = []
-        size = parsedType.size
+        ret = [];
+        size = parsedType.size;
 
         if (parsedType.size === 'dynamic') {
-            offset = decodeSingle('uint256', data, offset).toNumber()
-            size = decodeSingle('uint256', data, offset).toNumber()
-            offset = offset + 32
+            offset = decodeSingle('uint256', data, offset).toNumber();
+            size = decodeSingle('uint256', data, offset).toNumber();
+            offset = offset + 32;
         }
         for (i = 0; i < size; i++) {
-            var decoded = decodeSingle(parsedType.subArray, data, offset)
-            ret.push(decoded)
-            offset += parsedType.subArray.memoryUsage
+            var decoded = decodeSingle(parsedType.subArray, data, offset);
+            ret.push(decoded);
+            offset += parsedType.subArray.memoryUsage;
         }
-        return ret
+        return ret;
     } else if (parsedType.name === 'bytes') {
-        offset = decodeSingle('uint256', data, offset).toNumber()
-        size = decodeSingle('uint256', data, offset).toNumber()
-        return data.slice(offset + 32, offset + 32 + size)
+        offset = decodeSingle('uint256', data, offset).toNumber();
+        size = decodeSingle('uint256', data, offset).toNumber();
+        return data.slice(offset + 32, offset + 32 + size);
     } else if (parsedType.name.startsWith('bytes')) {
-        return data.slice(offset, offset + parsedType.size)
+        return data.slice(offset, offset + parsedType.size);
     } else if (parsedType.name.startsWith('uint')) {
-        num = new BN(data.slice(offset, offset + 32), 16, 'be')
+        num = new BN(data.slice(offset, offset + 32), 16, 'be');
         if (num.bitLength() > parsedType.size) {
-            throw new Error('Decoded int exceeds width: ' + parsedType.size + ' vs ' + num.bitLength())
+            throw new Error(
+                'Decoded int exceeds width: ' +
+                    parsedType.size +
+                    ' vs ' +
+                    num.bitLength()
+            );
         }
-        return num
+        return num;
     } else if (parsedType.name.startsWith('int')) {
-        num = new BN(data.slice(offset, offset + 32), 16, 'be').fromTwos(256)
+        num = new BN(data.slice(offset, offset + 32), 16, 'be').fromTwos(256);
         if (num.bitLength() > parsedType.size) {
-            throw new Error('Decoded uint exceeds width: ' + parsedType.size + ' vs ' + num.bitLength())
+            throw new Error(
+                'Decoded uint exceeds width: ' +
+                    parsedType.size +
+                    ' vs ' +
+                    num.bitLength()
+            );
         }
 
-        return num
+        return num;
     } else if (parsedType.name.startsWith('ufixed')) {
-        size = new BN(2).pow(new BN(parsedType.size[1]))
-        num = decodeSingle('uint256', data, offset)
+        size = new BN(2).pow(new BN(parsedType.size[1]));
+        num = decodeSingle('uint256', data, offset);
         if (!num.mod(size).isZero()) {
-            throw new Error('Decimals not supported yet')
+            throw new Error('Decimals not supported yet');
         }
-        return num.div(size)
+        return num.div(size);
     } else if (parsedType.name.startsWith('fixed')) {
-        size = new BN(2).pow(new BN(parsedType.size[1]))
-        num = decodeSingle('int256', data, offset)
+        size = new BN(2).pow(new BN(parsedType.size[1]));
+        num = decodeSingle('int256', data, offset);
         if (!num.mod(size).isZero()) {
-            throw new Error('Decimals not supported yet')
+            throw new Error('Decimals not supported yet');
         }
-        return num.div(size)
+        return num.div(size);
     }
-    throw new Error('Unsupported or invalid type: ' + parsedType.name)
+    throw new Error('Unsupported or invalid type: ' + parsedType.name);
 }
 
 // Parse the given type
 // @returns: {} containing the type itself, memory usage and (including size and subArray if applicable)
-function parseType (type) {
-    var size
-    var ret
+function parseType(type) {
+    var size;
+    var ret;
     if (isArray(type)) {
-        size = parseTypeArray(type)
-        var subArray = type.slice(0, type.lastIndexOf('['))
-        subArray = parseType(subArray)
+        size = parseTypeArray(type);
+        var subArray = type.slice(0, type.lastIndexOf('['));
+        subArray = parseType(subArray);
         ret = {
             isArray: true,
             name: type,
             size: size,
             memoryUsage: size === 'dynamic' ? 32 : subArray.memoryUsage * size,
-            subArray: subArray
-        }
-        return ret
+            subArray: subArray,
+        };
+        return ret;
     } else {
-        var rawType
+        var rawType;
         switch (type) {
             case 'address':
-                rawType = 'uint160'
-                break
+                rawType = 'uint160';
+                break;
             case 'bool':
-                rawType = 'uint8'
-                break
+                rawType = 'uint8';
+                break;
             case 'string':
-                rawType = 'bytes'
-                break
+                rawType = 'bytes';
+                break;
         }
         ret = {
             rawType: rawType,
             name: type,
-            memoryUsage: 32
-        }
+            memoryUsage: 32,
+        };
 
-        if ((type.startsWith('bytes') && type !== 'bytes') || type.startsWith('uint') || type.startsWith('int')) {
-            ret.size = parseTypeN(type)
+        if (
+            (type.startsWith('bytes') && type !== 'bytes') ||
+            type.startsWith('uint') ||
+            type.startsWith('int')
+        ) {
+            ret.size = parseTypeN(type);
         } else if (type.startsWith('ufixed') || type.startsWith('fixed')) {
-            ret.size = parseTypeNxM(type)
+            ret.size = parseTypeNxM(type);
         }
 
-        if (type.startsWith('bytes') && type !== 'bytes' && (ret.size < 1 || ret.size > 32)) {
-            throw new Error('Invalid bytes<N> width: ' + ret.size)
+        if (
+            type.startsWith('bytes') &&
+            type !== 'bytes' &&
+            (ret.size < 1 || ret.size > 32)
+        ) {
+            throw new Error('Invalid bytes<N> width: ' + ret.size);
         }
-        if ((type.startsWith('uint') || type.startsWith('int')) && (ret.size % 8 || ret.size < 8 || ret.size > 256)) {
-            throw new Error('Invalid int/uint<N> width: ' + ret.size)
+        if (
+            (type.startsWith('uint') || type.startsWith('int')) &&
+            (ret.size % 8 || ret.size < 8 || ret.size > 256)
+        ) {
+            throw new Error('Invalid int/uint<N> width: ' + ret.size);
         }
-        return ret
+        return ret;
     }
 }
 
 // Is a type dynamic?
-function isDynamic (type) {
+function isDynamic(type) {
     // FIXME: handle all types? I don't think anything is missing now
-    return (type === 'string') || (type === 'bytes') || (parseTypeArray(type) === 'dynamic')
+    return (
+        type === 'string' ||
+        type === 'bytes' ||
+        parseTypeArray(type) === 'dynamic'
+    );
 }
 
 // Is a type an array?
-function isArray (type) {
-    return type.lastIndexOf(']') === type.length - 1
+function isArray(type) {
+    return type.lastIndexOf(']') === type.length - 1;
 }
 
 // Encode a method/event with arguments
 // @types an array of string type names
 // @args  an array of the appropriate values
 ABI.rawEncode = function (types, values) {
-    var output = []
-    var data = []
+    var output = [];
+    var data = [];
 
-    var headLength = 0
+    var headLength = 0;
 
     types.forEach(function (type) {
         if (isArray(type)) {
-            var size = parseTypeArray(type)
+            var size = parseTypeArray(type);
 
             if (size !== 'dynamic') {
-                headLength += 32 * size
+                headLength += 32 * size;
             } else {
-                headLength += 32
+                headLength += 32;
             }
         } else {
-            headLength += 32
+            headLength += 32;
         }
-    })
+    });
 
     for (var i = 0; i < types.length; i++) {
-        var type = elementaryName(types[i])
-        var value = values[i]
-        var cur = encodeSingle(type, value)
+        var type = elementaryName(types[i]);
+        var value = values[i];
+        var cur = encodeSingle(type, value);
 
         // Use the head/tail method for storing dynamic data
         if (isDynamic(type)) {
-            output.push(encodeSingle('uint256', headLength))
-            data.push(cur)
-            headLength += cur.length
+            output.push(encodeSingle('uint256', headLength));
+            data.push(cur);
+            headLength += cur.length;
         } else {
-            output.push(cur)
+            output.push(cur);
         }
     }
 
-    return Buffer.concat(output.concat(data))
-}
+    return Buffer.concat(output.concat(data));
+};
 
 ABI.rawDecode = function (types, data) {
-    var ret = []
-    data = Buffer.from(data)
-    var offset = 0
+    var ret = [];
+    data = Buffer.from(data);
+    var offset = 0;
     for (var i = 0; i < types.length; i++) {
-        var type = elementaryName(types[i])
-        var parsed = parseType(type)
-        var decoded = decodeSingle(parsed, data, offset)
-        offset += parsed.memoryUsage
-        ret.push(decoded)
+        var type = elementaryName(types[i]);
+        var parsed = parseType(type);
+        var decoded = decodeSingle(parsed, data, offset);
+        offset += parsed.memoryUsage;
+        ret.push(decoded);
     }
-    return ret
-}
+    return ret;
+};
 
 ABI.simpleEncode = function (method) {
-    var args = Array.prototype.slice.call(arguments).slice(1)
-    var sig = parseSignature(method)
+    var args = Array.prototype.slice.call(arguments).slice(1);
+    var sig = parseSignature(method);
 
     // FIXME: validate/convert arguments
     if (args.length !== sig.args.length) {
-        throw new Error('Argument count mismatch')
+        throw new Error('Argument count mismatch');
     }
 
-    return Buffer.concat([ ABI.methodID(sig.method, sig.args), ABI.rawEncode(sig.args, args) ])
-}
+    return Buffer.concat([
+        ABI.methodID(sig.method, sig.args),
+        ABI.rawEncode(sig.args, args),
+    ]);
+};
 
 ABI.simpleDecode = function (method, data) {
-    var sig = parseSignature(method)
+    var sig = parseSignature(method);
 
     // FIXME: validate/convert arguments
     if (!sig.retargs) {
-        throw new Error('No return values in method')
+        throw new Error('No return values in method');
     }
 
-    return ABI.rawDecode(sig.retargs, data)
-}
+    return ABI.rawDecode(sig.retargs, data);
+};
 
-function stringify (type, value) {
+function stringify(type, value) {
     if (type.startsWith('address') || type.startsWith('bytes')) {
-        return '0x' + value.toString('hex')
+        return '0x' + value.toString('hex');
     } else {
-        return value.toString()
+        return value.toString();
     }
 }
 
 ABI.stringify = function (types, values) {
-    var ret = []
+    var ret = [];
 
     for (var i in types) {
-        var type = types[i]
-        var value = values[i]
+        var type = types[i];
+        var value = values[i];
 
         // if it is an array type, concat the items
         if (/^[^\[]+\[.*\]$/.test(type)) {
-            value = value.map(function (item) {
-                return stringify(type, item)
-            }).join(', ')
+            value = value
+                .map(function (item) {
+                    return stringify(type, item);
+                })
+                .join(', ');
         } else {
-            value = stringify(type, value)
+            value = stringify(type, value);
         }
 
-        ret.push(value)
+        ret.push(value);
     }
 
-    return ret
-}
+    return ret;
+};
 
 ABI.solidityHexValue = function (type, value, bitsize) {
     // pass in bitsize = null if use default bitsize
-    var size, num
+    var size, num;
     if (isArray(type)) {
-        var subType = type.replace(/\[.*?\]/, '')
+        var subType = type.replace(/\[.*?\]/, '');
         if (!isArray(subType)) {
-            var arraySize = parseTypeArray(type)
-            if (arraySize !== 'dynamic' && arraySize !== 0 && value.length > arraySize) {
-                throw new Error('Elements exceed array size: ' + arraySize)
+            var arraySize = parseTypeArray(type);
+            if (
+                arraySize !== 'dynamic' &&
+                arraySize !== 0 &&
+                value.length > arraySize
+            ) {
+                throw new Error('Elements exceed array size: ' + arraySize);
             }
         }
         var arrayValues = value.map(function (v) {
-            return ABI.solidityHexValue(subType, v, 256)
-        })
-        return Buffer.concat(arrayValues)
+            return ABI.solidityHexValue(subType, v, 256);
+        });
+        return Buffer.concat(arrayValues);
     } else if (type === 'bytes') {
-        return value
+        return value;
     } else if (type === 'string') {
-        return Buffer.from(value, 'utf8')
+        return Buffer.from(value, 'utf8');
     } else if (type === 'bool') {
-        bitsize = bitsize || 8
-        var padding = Array((bitsize) / 4).join('0')
-        return Buffer.from(value ? padding + '1' : padding + '0', 'hex')
+        bitsize = bitsize || 8;
+        var padding = Array(bitsize / 4).join('0');
+        return Buffer.from(value ? padding + '1' : padding + '0', 'hex');
     } else if (type === 'address') {
-        var bytesize = 20
+        var bytesize = 20;
         if (bitsize) {
-            bytesize = bitsize / 8
+            bytesize = bitsize / 8;
         }
-        return utils.setLengthLeft(toBuffer(value), bytesize)
+        return utils.setLengthLeft(toBuffer(value), bytesize);
     } else if (type.startsWith('bytes')) {
-        size = parseTypeN(type)
+        size = parseTypeN(type);
         if (size < 1 || size > 32) {
-            throw new Error('Invalid bytes<N> width: ' + size)
+            throw new Error('Invalid bytes<N> width: ' + size);
         }
         if (typeof value === 'number') {
             value = normalize(value);
         }
-        return utils.setLengthRight(toBuffer(value), size)
+        return utils.setLengthRight(toBuffer(value), size);
     } else if (type.startsWith('uint')) {
-        size = parseTypeN(type)
-        if ((size % 8) || (size < 8) || (size > 256)) {
-            throw new Error('Invalid uint<N> width: ' + size)
+        size = parseTypeN(type);
+        if (size % 8 || size < 8 || size > 256) {
+            throw new Error('Invalid uint<N> width: ' + size);
         }
 
-        num = parseNumber(value)
+        num = parseNumber(value);
         if (num.bitLength() > size) {
-            throw new Error('Supplied uint exceeds width: ' + size + ' vs ' + num.bitLength())
+            throw new Error(
+                'Supplied uint exceeds width: ' +
+                    size +
+                    ' vs ' +
+                    num.bitLength()
+            );
         }
 
-        bitsize = bitsize || size
-        return num.toArrayLike(Buffer, 'be', bitsize / 8)
+        bitsize = bitsize || size;
+        return num.toArrayLike(Buffer, 'be', bitsize / 8);
     } else if (type.startsWith('int')) {
-        size = parseTypeN(type)
-        if ((size % 8) || (size < 8) || (size > 256)) {
-            throw new Error('Invalid int<N> width: ' + size)
+        size = parseTypeN(type);
+        if (size % 8 || size < 8 || size > 256) {
+            throw new Error('Invalid int<N> width: ' + size);
         }
 
-        num = parseNumber(value)
+        num = parseNumber(value);
         if (num.bitLength() > size) {
-            throw new Error('Supplied int exceeds width: ' + size + ' vs ' + num.bitLength())
+            throw new Error(
+                'Supplied int exceeds width: ' + size + ' vs ' + num.bitLength()
+            );
         }
 
-        bitsize = bitsize || size
-        return num.toTwos(size).toArrayLike(Buffer, 'be', bitsize / 8)
+        bitsize = bitsize || size;
+        return num.toTwos(size).toArrayLike(Buffer, 'be', bitsize / 8);
     } else {
         // FIXME: support all other types
-        throw new Error('Unsupported or invalid type: ' + type)
+        throw new Error('Unsupported or invalid type: ' + type);
     }
-}
+};
 
 ABI.solidityPack = function (types, values) {
     if (types.length !== values.length) {
-        throw new Error('Number of types are not matching the values')
+        throw new Error('Number of types are not matching the values');
     }
 
-    var ret = []
+    var ret = [];
 
     for (var i = 0; i < types.length; i++) {
-        var type = elementaryName(types[i])
-        var value = values[i]
-        ret.push(ABI.solidityHexValue(type, value, null))
+        var type = elementaryName(types[i]);
+        var value = values[i];
+        ret.push(ABI.solidityHexValue(type, value, null));
     }
 
-    return Buffer.concat(ret)
-}
+    return Buffer.concat(ret);
+};
 
 ABI.soliditySHA3 = function (types, values) {
-    return base.keccak256(ABI.solidityPack(types, values))
-}
+    return base.keccak256(ABI.solidityPack(types, values));
+};
 
 ABI.soliditySHA256 = function (types, values) {
-    return base.sha256(ABI.solidityPack(types, values))
-}
+    return base.sha256(ABI.solidityPack(types, values));
+};
 
 ABI.solidityRIPEMD160 = function (types, values) {
-    return base.ripemd160(ABI.solidityPack(types, values), true)
-}
+    return base.ripemd160(ABI.solidityPack(types, values), true);
+};
 
 // Serpent's users are familiar with this encoding
 // - s: string
@@ -641,55 +699,55 @@ ABI.solidityRIPEMD160 = function (types, values) {
 // - i: int256
 // - a: int256[]
 
-function isNumeric (c) {
+function isNumeric(c) {
     // FIXME: is this correct? Seems to work
-    return (c >= '0') && (c <= '9')
+    return c >= '0' && c <= '9';
 }
 
 // For a "documentation" refer to https://github.com/ethereum/serpent/blob/develop/preprocess.cpp
 ABI.fromSerpent = function (sig) {
-    var ret = []
+    var ret = [];
     for (var i = 0; i < sig.length; i++) {
-        var type = sig[i]
+        var type = sig[i];
         if (type === 's') {
-            ret.push('bytes')
+            ret.push('bytes');
         } else if (type === 'b') {
-            var tmp = 'bytes'
-            var j = i + 1
-            while ((j < sig.length) && isNumeric(sig[j])) {
-                tmp += sig[j] - '0'
-                j++
+            var tmp = 'bytes';
+            var j = i + 1;
+            while (j < sig.length && isNumeric(sig[j])) {
+                tmp += sig[j] - '0';
+                j++;
             }
-            i = j - 1
-            ret.push(tmp)
+            i = j - 1;
+            ret.push(tmp);
         } else if (type === 'i') {
-            ret.push('int256')
+            ret.push('int256');
         } else if (type === 'a') {
-            ret.push('int256[]')
+            ret.push('int256[]');
         } else {
-            throw new Error('Unsupported or invalid type: ' + type)
+            throw new Error('Unsupported or invalid type: ' + type);
         }
     }
-    return ret
-}
+    return ret;
+};
 
 ABI.toSerpent = function (types) {
-    var ret = []
+    var ret = [];
     for (var i = 0; i < types.length; i++) {
-        var type = types[i]
+        var type = types[i];
         if (type === 'bytes') {
-            ret.push('s')
+            ret.push('s');
         } else if (type.startsWith('bytes')) {
-            ret.push('b' + parseTypeN(type))
+            ret.push('b' + parseTypeN(type));
         } else if (type === 'int256') {
-            ret.push('i')
+            ret.push('i');
         } else if (type === 'int256[]') {
-            ret.push('a')
+            ret.push('a');
         } else {
-            throw new Error('Unsupported or invalid type: ' + type)
+            throw new Error('Unsupported or invalid type: ' + type);
         }
     }
-    return ret.join('')
-}
+    return ret.join('');
+};
 
-module.exports = ABI
+module.exports = ABI;

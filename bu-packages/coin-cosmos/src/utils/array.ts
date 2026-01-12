@@ -12,14 +12,14 @@
  * As a consequence, this returns different results than Jasmine's `toEqual`, which ensures elements have the same type.
  */
 export function arrayContentEquals<T extends string | number | boolean>(
-  a: ArrayLike<T>,
-  b: ArrayLike<T>,
+    a: ArrayLike<T>,
+    b: ArrayLike<T>
 ): boolean {
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; ++i) {
-    if (a[i] !== b[i]) return false;
-  }
-  return true;
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; ++i) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
 }
 
 /**
@@ -31,12 +31,12 @@ export function arrayContentEquals<T extends string | number | boolean>(
  * As a consequence, this returns different results than Jasmine's `toEqual`, which ensures elements have the same type.
  */
 export function arrayContentStartsWith<T extends string | number | boolean>(
-  a: ArrayLike<T>,
-  b: ArrayLike<T>,
+    a: ArrayLike<T>,
+    b: ArrayLike<T>
 ): boolean {
-  if (a.length < b.length) return false;
-  for (let i = 0; i < b.length; ++i) {
-    if (a[i] !== b[i]) return false;
-  }
-  return true;
+    if (a.length < b.length) return false;
+    for (let i = 0; i < b.length; ++i) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
 }

@@ -1,81 +1,86 @@
-import {utxoInput, utxoOutput, utxoTx} from "./type";
-import {Transaction} from "./bitcoinjs-lib";
-import {reverseBuffer} from "./bitcoinjs-lib/bufferutils";
-import {base} from "@okxweb3/coin-base";
-import {convert2UtxoTx, number2Hex} from "./wallet";
-import {getAddressType, signBtc} from "./txBuild";
-import {bitcoin, Network} from "./bitcoinjs-lib/networks";
+import { utxoInput, utxoOutput, utxoTx } from './type';
+import { Transaction } from './bitcoinjs-lib';
+import { reverseBuffer } from './bitcoinjs-lib/bufferutils';
+import { base } from '@okxweb3/coin-base';
+import { convert2UtxoTx, number2Hex } from './wallet';
+import { getAddressType, signBtc } from './txBuild';
+import { bitcoin, Network } from './bitcoinjs-lib/networks';
 
 type Input = {
-    address_n: number[]
-    prev_index: number
-    prev_hash: string
-    amount: string
-    script_type: string
-}
+    address_n: number[];
+    prev_index: number;
+    prev_hash: string;
+    amount: string;
+    script_type: string;
+};
 
 type Output = {
-    address_n?: number[]
-    address?: string
-    amount: string
-    script_type: string
-    op_return_data?: string
-}
+    address_n?: number[];
+    address?: string;
+    amount: string;
+    script_type: string;
+    op_return_data?: string;
+};
 
 type RefInput = {
-    prev_hash: string
-    prev_index: number
-    script_sig: string
-    sequence: number
-}
+    prev_hash: string;
+    prev_index: number;
+    script_sig: string;
+    sequence: number;
+};
 
 type RefOutput = {
-    amount: number
-    script_pubkey: string
-}
+    amount: number;
+    script_pubkey: string;
+};
 
 type RefTx = {
-    hash: string
-    inputs: RefInput[]
-    bin_outputs: RefOutput[]
-    lock_time: number
-    version: number
-}
+    hash: string;
+    inputs: RefInput[];
+    bin_outputs: RefOutput[];
+    lock_time: number;
+    version: number;
+};
 
 export type OneKeyBtcTx = {
-    inputs: Input[]
-    outputs: Output[]
-    refTxs: RefTx[]
-    coin: string
-}
+    inputs: Input[];
+    outputs: Output[];
+    refTxs: RefTx[];
+    coin: string;
+};
 
 const addressTypeToOneKeyInputScriptType = {
-    "legacy": "SPENDADDRESS",
-    "segwit_native": "SPENDWITNESS",
-    "segwit_nested": "SPENDP2SHWITNESS",
-    "segwit_taproot": "SPENDTAPROOT",
+    legacy: 'SPENDADDRESS',
+    segwit_native: 'SPENDWITNESS',
+    segwit_nested: 'SPENDP2SHWITNESS',
+    segwit_taproot: 'SPENDTAPROOT',
 };
 
 const addressTypeToOneKeyOutputScriptType = {
-    "legacy": "PAYTOADDRESS",
-    "segwit_native": "PAYTOWITNESS",
-    "segwit_nested": "PAYTOP2SHWITNESS",
-    "segwit_taproot": "PAYTOTAPROOT",
+    legacy: 'PAYTOADDRESS',
+    segwit_native: 'PAYTOWITNESS',
+    segwit_nested: 'PAYTOP2SHWITNESS',
+    segwit_taproot: 'PAYTOTAPROOT',
 };
 
-export function oneKeyBuildBtcTx(txData: utxoTx, network: Network = bitcoin): OneKeyBtcTx {
+export function oneKeyBuildBtcTx(
+    txData: utxoTx,
+    network: Network = bitcoin
+): OneKeyBtcTx {
     const tx = convert2UtxoTx(txData);
     if (tx.omni) {
         const coinType = number2Hex(tx.omni.coinType || 31, 8);
         const amount = number2Hex(tx.omni.amount, 16);
-        const omniScript = "6f6d6e69" + "0000" + "0000" + coinType + amount;
+        const omniScript = '6f6d6e69' + '0000' + '0000' + coinType + amount;
         tx.outputs.push({
-            address: "",
+            address: '',
             amount: 0,
             omniScript,
         } as never);
     }
-    const changeAmount = parseInt(signBtc(tx, "", network, undefined, true, true));
+    const changeAmount = parseInt(
+        signBtc(tx, '', network, undefined, true, true)
+    );
     const dustSize = txData.dustSize || 546;
     if (changeAmount >= dustSize) {
         tx.outputs.push({
@@ -95,7 +100,10 @@ export function oneKeyBuildBtcTx(txData: utxoTx, network: Network = bitcoin): On
             prev_hash: input.txId,
             prev_index: input.vOut,
             amount: input.amount.toString(),
-            script_type: addressTypeToOneKeyInputScriptType[getAddressType(input.address!, network)],
+            script_type:
+                addressTypeToOneKeyInputScriptType[
+                    getAddressType(input.address!, network)
+                ],
         });
 
         refTxs.push(parseRefTx(input.nonWitnessUtxo!, input.txId));
@@ -107,19 +115,22 @@ export function oneKeyBuildBtcTx(txData: utxoTx, network: Network = bitcoin): On
             outputs.push({
                 address_n: parseDerivationPath(output.derivationPath!),
                 amount: output.amount.toString(),
-                script_type: addressTypeToOneKeyOutputScriptType[getAddressType(output.address, network)],
+                script_type:
+                    addressTypeToOneKeyOutputScriptType[
+                        getAddressType(output.address, network)
+                    ],
             });
         } else if (output.omniScript) {
             outputs.push({
-                amount: "0",
+                amount: '0',
                 op_return_data: output.omniScript,
-                script_type: "PAYTOOPRETURN",
+                script_type: 'PAYTOOPRETURN',
             });
         } else {
             outputs.push({
                 address: output.address,
                 amount: output.amount.toString(),
-                script_type: "PAYTOADDRESS",
+                script_type: 'PAYTOADDRESS',
             });
         }
     });
@@ -128,7 +139,7 @@ export function oneKeyBuildBtcTx(txData: utxoTx, network: Network = bitcoin): On
         inputs: inputs,
         outputs: outputs,
         refTxs: refTxs,
-        coin: "btc",
+        coin: 'btc',
     };
 }
 
@@ -136,7 +147,7 @@ function parseRefTx(rawTx: string, txId: string): RefTx {
     const transaction = Transaction.fromHex(rawTx);
 
     const refInputs: RefInput[] = [];
-    transaction.ins.forEach(input => {
+    transaction.ins.forEach((input) => {
         refInputs.push({
             prev_hash: base.toHex(reverseBuffer(input.hash)),
             prev_index: input.index,
@@ -146,7 +157,7 @@ function parseRefTx(rawTx: string, txId: string): RefTx {
     });
 
     const refOutputs: RefOutput[] = [];
-    transaction.outs.forEach(output => {
+    transaction.outs.forEach((output) => {
         refOutputs.push({
             amount: output.value,
             script_pubkey: base.toHex(output.script),
@@ -168,7 +179,7 @@ function parseDerivationPath(path: string): number[] {
         splitPath = splitPath.slice(1);
     }
     const address_n: number[] = [];
-    splitPath.forEach(indexStr => {
+    splitPath.forEach((indexStr) => {
         let index;
         if (indexStr.slice(-1) === `'`) {
             index = harden(parseInt(indexStr.slice(0, -1), 10));

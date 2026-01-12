@@ -1,17 +1,21 @@
-import {REVERSE_OPS} from "./bitcoinjs-lib/ops";
-import {Transaction} from "./bitcoinjs-lib";
-import {getAddressType} from "./txBuild";
-import {base} from "@okxweb3/coin-base";
-import * as bitcoin from "./bitcoinjs-lib";
+import { REVERSE_OPS } from './bitcoinjs-lib/ops';
+import { Transaction } from './bitcoinjs-lib';
+import { getAddressType } from './txBuild';
+import { base } from '@okxweb3/coin-base';
+import * as bitcoin from './bitcoinjs-lib';
 
-export function countScriptSigops(script: string, isRawScript: boolean = false, witness: boolean = false): number {
+export function countScriptSigops(
+    script: string,
+    isRawScript: boolean = false,
+    witness: boolean = false
+): number {
     if (!script?.length) {
         return 0;
     }
 
     let sigops = 0;
     // count OP_CHECKSIG and OP_CHECKSIGVERIFY
-    sigops += (script.match(/OP_CHECKSIG/g)?.length || 0);
+    sigops += script.match(/OP_CHECKSIG/g)?.length || 0;
 
     // count OP_CHECKMULTISIG and OP_CHECKMULTISIGVERIFY
     if (isRawScript) {
@@ -19,7 +23,9 @@ export function countScriptSigops(script: string, isRawScript: boolean = false, 
         sigops += 20 * (script.match(/OP_CHECKMULTISIG/g)?.length || 0);
     } else {
         // in redeem scripts and witnesses, worth N if preceded by OP_N, 20 otherwise
-        const matches = script.matchAll(/(?:OP_(?:PUSHNUM_)?(\d+))? OP_CHECKMULTISIG/g);
+        const matches = script.matchAll(
+            /(?:OP_(?:PUSHNUM_)?(\d+))? OP_CHECKMULTISIG/g
+        );
         for (const match of matches) {
             const n = parseInt(match[1]);
             if (Number.isInteger(n)) {
@@ -30,12 +36,12 @@ export function countScriptSigops(script: string, isRawScript: boolean = false, 
         }
     }
 
-    return witness ? sigops : (sigops * 4);
+    return witness ? sigops : sigops * 4;
 }
 
 export function convertScriptSigAsm(buf: Buffer): string {
     if (buf?.length == 0) {
-        return ""
+        return '';
     }
     const b: string[] = [];
 
@@ -98,53 +104,85 @@ export function convertScriptSigAsm(buf: Buffer): string {
     return b.join(' ');
 }
 
-export function countAdjustedVsize(transaction: Transaction, addresses: string[], net: bitcoin.Network): number {
+export function countAdjustedVsize(
+    transaction: Transaction,
+    addresses: string[],
+    net: bitcoin.Network
+): number {
     if (transaction == undefined || null) {
-        return 0
+        return 0;
     }
     if (net == undefined || null) {
-        net = bitcoin.networks.bitcoin
+        net = bitcoin.networks.bitcoin;
     }
     let sigops = 0;
-    if ((addresses != undefined || null) && (addresses.length == transaction.ins.length)) {
+    if (
+        (addresses != undefined || null) &&
+        addresses.length == transaction.ins.length
+    ) {
         transaction.ins.forEach((input, index) => {
             if (input.script != undefined || null) {
-                sigops += countScriptSigops(convertScriptSigAsm(input.script), true);
+                sigops += countScriptSigops(
+                    convertScriptSigAsm(input.script),
+                    true
+                );
             }
-            if (addresses.length <= index || (addresses[index] == undefined || null) || addresses[index] == '') {
-                return
+            if (
+                addresses.length <= index ||
+                addresses[index] == undefined ||
+                null ||
+                addresses[index] == ''
+            ) {
+                return;
             }
-            const addressType = getAddressType(addresses[index], net)
+            const addressType = getAddressType(addresses[index], net);
             switch (true) {
-                case addressType === 'segwit_nested' && input.witness?.length === 2 && input.script && base.toHex(input.script).startsWith('160014'):
+                case addressType === 'segwit_nested' &&
+                    input.witness?.length === 2 &&
+                    input.script &&
+                    base.toHex(input.script).startsWith('160014'):
                 case addressType === 'segwit_native':
                     sigops += 1;
                     break;
 
-                case addressType === 'segwit_nested' && input.witness?.length && input.script && base.toHex(input.script).startsWith('220020'):
+                case addressType === 'segwit_nested' &&
+                    input.witness?.length &&
+                    input.script &&
+                    base.toHex(input.script).startsWith('220020'):
                 case addressType === 'segwit_native':
                     if (input.witness?.length) {
-                        sigops += countScriptSigops(convertScriptSigAsm(input.witness[input.witness.length - 1]), false, true);
+                        sigops += countScriptSigops(
+                            convertScriptSigAsm(
+                                input.witness[input.witness.length - 1]
+                            ),
+                            false,
+                            true
+                        );
                     }
                     break;
 
                 case addressType === 'segwit_nested':
                     if (input.script) {
-                        sigops += countScriptSigops(convertScriptSigAsm(input.script));
+                        sigops += countScriptSigops(
+                            convertScriptSigAsm(input.script)
+                        );
                     }
                     break;
             }
-        })
+        });
     }
 
     for (const output of transaction.outs) {
         if (output) {
-            sigops += countScriptSigops(convertScriptSigAsm(output.script), true);
+            sigops += countScriptSigops(
+                convertScriptSigAsm(output.script),
+                true
+            );
         }
     }
-    const vsize = transaction.virtualSize()
+    const vsize = transaction.virtualSize();
     if (vsize > sigops * 5) {
-        return vsize
+        return vsize;
     }
     return sigops * 5;
 }

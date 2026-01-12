@@ -59,30 +59,30 @@ let valid = await wallet.validAddress(addrParam);
 
 ### Transaction
 
-`signTransaction` 参数定义如下
-* `type`  trsanction type, support "transfer" | "tokenTransfer" | "mplTransfer"
-    * `transfer` 表示转账SOL token
-    * `tokenTransfer` 表示转账 spl token类似于 ERC20协议的token
-    * `mplTransfer` 表示nft token的转账
-* `payer` address, 表示交易手续费的支付地址
-* `blockHash`, 长度为32的字节数组，表示最近的区块hash
-* `from` address, 表示SOL token的转出地址
-* `to` address,表示SOL token的转入地址
-* `amount` number, 表示要转账的SOL token的数量，SOL token精度是8
-* `mint` address, 表示token地址
-* `createAssociatedAddress` boolean, 表示是否需要创建ata地址，
-* `version` number， 交易version
-* `tokenStandard` TokenStandard,表示交易的标准，有以下五种取值
+`signTransaction` parameter definitions are as follows
+* `type`  transaction type, support "transfer" | "tokenTransfer" | "mplTransfer"
+    * `transfer`  represents SOL token transfer
+    * `tokenTransfer`  represents SPL token transfer, similar to ERC20 protocol tokens
+    * `mplTransfer`  represents NFT token transfer
+* `payer` address, represents the address that pays transaction fees
+* `blockHash`, 32-byte array representing the recent block hash
+* `from` address, represents the SOL token sender address
+* `to` address, represents the SOL token recipient address
+* `amount` number, represents the amount of SOL tokens to transfer, SOL token precision is 8
+* `mint` address, represents the token address
+* `createAssociatedAddress` boolean, indicates whether to create ATA address
+* `version` number, transaction version
+* `tokenStandard` TokenStandard, represents the transaction standard, with the following five values
     * NonFungible, 
     * FungibleAsset, 
     * Fungible, 
     * NonFungibleEdition, 
     * ProgrammableNonFungible,
-* `token2022` boolean, true表示 token2022标准的spl token, false表示spl token标准的token
-* `decimal` number, 表示token2022标准的spl token的精度，当转账该标准的token的时候需要该字段。
-* `computeUnitLimit` 表示交易中每个指令可以消耗的计算单位的数量
-* `computeUnitPrice` 表示每个计算单元的价格
-* `needPriorityFee` boolean，和`computeUnitLimit`，`computeUnitPrice`一起使用，手动设置交易的手续费参数。
+* `token2022` boolean, true represents token2022 standard SPL tokens, false represents SPL token standard tokens
+* `decimal` number, represents the precision of token2022 standard SPL tokens, this field is required when transferring tokens of this standard.
+* `computeUnitLimit` represents the number of compute units each instruction can consume in the transaction
+* `computeUnitPrice` represents the price per compute unit
+* `needPriorityFee` boolean, used together with `computeUnitLimit` and `computeUnitPrice` to manually set transaction fee parameters.
 
 
 transfer

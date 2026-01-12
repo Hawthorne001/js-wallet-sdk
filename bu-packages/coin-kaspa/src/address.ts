@@ -1,13 +1,17 @@
-import {base} from "@okxweb3/coin-base";
-import {signUtil} from "@okxweb3/crypto-lib";
-import {encodePubKeyAddress, payToAddrScript} from "./lib/address";
+import { base } from '@okxweb3/coin-base';
+import { signUtil } from '@okxweb3/crypto-lib';
+import { encodePubKeyAddress, payToAddrScript } from './lib/address';
 
 export function pubKeyFromPrvKey(prvKey: string) {
-    if(!checkPrvKey(prvKey)){
-        throw new Error("invalid key");
+    if (!checkPrvKey(prvKey)) {
+        throw new Error('invalid key');
     }
     // todo check this rule
-    return base.toHex(signUtil.secp256k1.publicKeyCreate(base.fromHex(prvKey.toLowerCase()), true).slice(1));
+    return base.toHex(
+        signUtil.secp256k1
+            .publicKeyCreate(base.fromHex(prvKey.toLowerCase()), true)
+            .slice(1)
+    );
 }
 
 export function checkPrvKey(prvKey: string) {
@@ -15,11 +19,11 @@ export function checkPrvKey(prvKey: string) {
         return false;
     }
     const buf = base.fromHex(prvKey.toLowerCase());
-    return buf.length == 32 && !buf.every(byte=>byte===0)
+    return buf.length == 32 && !buf.every((byte) => byte === 0);
 }
 
 export function addressFromPubKey(pubKey: string) {
-    return encodePubKeyAddress(pubKey, "kaspa");
+    return encodePubKeyAddress(pubKey, 'kaspa');
 }
 
 export function addressFromPrvKey(prvKey: string) {

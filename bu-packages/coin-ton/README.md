@@ -83,7 +83,6 @@ const wallet = new TonWallet();
 const param = {
     privateKey: "4789815d45fcf0a79083b0adaec3b5f0d02e948056c1cfde174327c3ee93ed35",
     data: {
-        type: "transfer",
         to: "EQA3_JIJKDC0qauDUEQe2KjQj1iLwQRtrEREzmfDxbCKw9Kr",
         amount: "10000000",
         seqno: 2,

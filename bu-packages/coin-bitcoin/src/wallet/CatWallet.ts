@@ -1,25 +1,24 @@
-import { SignTxParams} from "@okxweb3/coin-base";
-import { BtcWallet } from "./BtcWallet";
-import { transfer } from "../cat20"
+import { SignTxParams, SignTxError, EstimateFeeError } from '@okxweb3/coin-base';
+import { BtcWallet } from './BtcWallet';
+import { transfer } from '../cat20';
 
 export class CatWallet extends BtcWallet {
-
     async signTransaction(param: SignTxParams): Promise<any> {
         try {
-            const tx = await transfer(param)
+            const tx = await transfer(param);
             return Promise.resolve(tx);
         } catch (e) {
-            return Promise.reject(e);
+            return Promise.reject(SignTxError);
         }
     }
 
     async estimateFee(param: SignTxParams): Promise<any> {
         try {
-            param.data.estimateFee = true
-            const fees = await transfer(param)
+            param.data.estimateFee = true;
+            const fees = await transfer(param);
             return Promise.resolve(fees);
         } catch (e) {
-            return Promise.reject(e);
+            return Promise.reject(EstimateFeeError);
         }
     }
 }

@@ -1,4 +1,4 @@
-import {bip32, bip39} from '@okxweb3/crypto-lib'
+import { bip32, bip39 } from '@okxweb3/crypto-lib';
 import {
     DerivePriKeyParams,
     GetDerivedPathParam,
@@ -17,8 +17,15 @@ import {
     GetPayLoadError,
     NewAddressError,
     SignMsgError,
-    SignTxError, ValidPrivateKeyParams, ValidPrivateKeyData, SignCommonMsgParams, buildCommonSignMsg, SignType
-} from "@okxweb3/coin-base";
+    SignTxError,
+    ValidPrivateKeyParams,
+    ValidPrivateKeyData,
+    SignCommonMsgParams,
+    buildCommonSignMsg,
+    SignType,
+    InvalidPrivateKeyError,
+    ValidAddressError,
+} from '@okxweb3/coin-base';
 import {
     createStacksPrivateKey,
     getPublicKey,
@@ -47,25 +54,32 @@ import {
     signStructuredData,
     GenerateUnsignedContractDeployTxArgs,
     ContractDeployTx,
-    getDeployPayload
-} from './index'
-
+    getDeployPayload,
+} from './index';
 
 export type StxTransactionType =
-    "transfer"
-    | "stack"
-    | "tokenTransfer"
-    | "allowContractCaller"
-    | "delegateStx"
-    | "revokeDelegateStx"
-    | "contractCall"
-    | "deployContract"
+    | 'transfer'
+    | 'stack'
+    | 'tokenTransfer'
+    | 'allowContractCaller'
+    | 'delegateStx'
+    | 'revokeDelegateStx'
+    | 'contractCall'
+    | 'deployContract';
 
 export type StxSignData = {
-    type: StxTransactionType
-    data: TokenTransfer | StxTransfer | AllowContractCaller | DelegateStx | RevokeDelegateStx
-        | GenerateUnsignedContractCallTxArgs | contractCallPayload | GenerateUnsignedContractDeployTxArgs | deployPayload
-}
+    type: StxTransactionType;
+    data:
+        | TokenTransfer
+        | StxTransfer
+        | AllowContractCaller
+        | DelegateStx
+        | RevokeDelegateStx
+        | GenerateUnsignedContractCallTxArgs
+        | contractCallPayload
+        | GenerateUnsignedContractDeployTxArgs
+        | deployPayload;
+};
 
 export interface DelegateStx {
     contract: string;
@@ -125,10 +139,10 @@ export interface TokenTransfer {
 
 export interface AllowContractCaller {
     contract: string;
-    contractName: string,
-    functionName: string,
-    caller: string,
-    untilBurnBlockHeight: number,
+    contractName: string;
+    functionName: string;
+    caller: string;
+    untilBurnBlockHeight: number;
     nonce: number;
     fee: number;
 }
@@ -136,7 +150,7 @@ export interface AllowContractCaller {
 export type signTransactionResult = {
     txId: string;
     txSerializedHexString: string;
-}
+};
 
 export class StxWallet extends BaseWallet {
     async getDerivedPath(param: GetDerivedPathParam): Promise<any> {
@@ -144,14 +158,16 @@ export class StxWallet extends BaseWallet {
     }
 
     getDerivedPrivateKey(param: DerivePriKeyParams): Promise<any> {
-        return bip39.mnemonicToSeedV2(param.mnemonic)
-            .then(masterSeed => {
+        return bip39
+            .mnemonicToSeedV2(param.mnemonic)
+            .then((masterSeed) => {
                 let childKey = bip32.fromSeedV2(masterSeed, param.hdPath);
                 if (!childKey.privateKey) {
                     return Promise.reject(GenPrivateKeyError);
                 }
-                return Promise.resolve(base.toHex(childKey.privateKey) + "01");
-            }).catch((e) => {
+                return Promise.resolve(base.toHex(childKey.privateKey) + '01');
+            })
+            .catch((e) => {
                 return Promise.reject(GenPrivateKeyError);
             });
     }
@@ -159,25 +175,28 @@ export class StxWallet extends BaseWallet {
     getRandomPrivateKey(): Promise<any> {
         try {
             while (true) {
-                const privateKey = base.randomBytes(32)
+                const privateKey = base.randomBytes(32);
                 if (secp256k1SignTest(privateKey)) {
-                    return Promise.resolve(base.toHex(privateKey, true) + "01");
+                    return Promise.resolve(base.toHex(privateKey, true) + '01');
                 }
             }
-
-        } catch (e) {
-        }
+        } catch (e) {}
         return Promise.reject(GenPrivateKeyError);
     }
 
     getNewAddress(param: NewAddressParams): Promise<any> {
         try {
-            let key = param.privateKey.toLowerCase().startsWith("0x")? param.privateKey.substring(2):param.privateKey
+            let key = param.privateKey.toLowerCase().startsWith('0x')
+                ? param.privateKey.substring(2)
+                : param.privateKey;
             const privateKey = createStacksPrivateKey(key.toLowerCase());
             const publicKey = base.toHex(getPublicKey(privateKey).data);
             let address;
             if (param.version && param.version === 'Testnet') {
-                address = getAddressFromPublicKey(publicKey, TransactionVersion.Testnet);
+                address = getAddressFromPublicKey(
+                    publicKey,
+                    TransactionVersion.Testnet
+                );
             } else {
                 address = getAddressFromPublicKey(publicKey);
             }
@@ -192,11 +211,11 @@ export class StxWallet extends BaseWallet {
     }
 
     checkPrivateKey(privateKeyHex: string) {
-        if (privateKeyHex.toLowerCase().startsWith("0x")) {
+        if (privateKeyHex.toLowerCase().startsWith('0x')) {
             privateKeyHex = privateKeyHex.substring(2);
         }
         createStacksPrivateKey(privateKeyHex);
-        return true
+        return true;
     }
 
     async validPrivateKey(param: ValidPrivateKeyParams): Promise<any> {
@@ -208,111 +227,223 @@ export class StxWallet extends BaseWallet {
         }
         const data: ValidPrivateKeyData = {
             isValid: isValid,
-            privateKey: param.privateKey
+            privateKey: param.privateKey,
         };
         return Promise.resolve(data);
     }
 
     async signTransaction(param: SignTxParams): Promise<any> {
         try {
-            if (param.privateKey.startsWith("0x")) {
+            if (!param.privateKey) {
+                return Promise.reject(InvalidPrivateKeyError);
+            }
+            if (param.privateKey.startsWith('0x')) {
                 param.privateKey = param.privateKey.substring(2);
             }
-            const data: StxSignData = param.data
+            const data: StxSignData = param.data;
             if (data.type == 'transfer') {
                 const transferParam = data.data as StxTransfer;
-                if (transferParam.to == null || transferParam.amount == null || transferParam.nonce == null || transferParam.fee == null) {
+                const toValidation = await this.validAddress({
+                    address: transferParam.to,
+                });
+                if (!toValidation.isValid) {
+                    return Promise.reject(ValidAddressError);
+                }
+                if (
+                    transferParam.amount == null ||
+                    transferParam.nonce == null ||
+                    transferParam.fee == null
+                ) {
                     return Promise.reject(SignTxError);
                 }
-                const tx: signTransactionResult = transfer(param.privateKey, transferParam.to, transferParam.amount,
-                    transferParam.memo, transferParam.nonce, transferParam.fee, transferParam.anchorMode)
+
+                const tx: signTransactionResult = transfer(
+                    param.privateKey,
+                    transferParam.to,
+                    transferParam.amount,
+                    transferParam.memo,
+                    transferParam.nonce,
+                    transferParam.fee,
+                    transferParam.anchorMode
+                );
                 return Promise.resolve(tx);
             } else if (data.type == 'tokenTransfer') {
                 const contractCallParam = data.data as TokenTransfer;
-                if (contractCallParam.from == null || contractCallParam.to == null || contractCallParam.amount == null || contractCallParam.contract == null
-                    || contractCallParam.contractName == null || contractCallParam.functionName == null) {
+                const toValidation = await this.validAddress({
+                    address: contractCallParam.to,
+                });
+                if (!toValidation.isValid) {
+                    return Promise.reject(ValidAddressError);
+                }
+                if (
+                    contractCallParam.from == null ||
+                    contractCallParam.amount == null ||
+                    contractCallParam.contract == null ||
+                    contractCallParam.contractName == null ||
+                    contractCallParam.functionName == null
+                ) {
                     return Promise.reject(SignTxError);
                 }
-                const tx: signTransactionResult = await tokenTransfer(param.privateKey, contractCallParam.from,
-                    contractCallParam.to, contractCallParam.memo, contractCallParam.amount, contractCallParam.contract,
-                    contractCallParam.contractName, contractCallParam.tokenName, contractCallParam.functionName,
-                    contractCallParam.nonce, contractCallParam.fee)
+
+                const tx: signTransactionResult = await tokenTransfer(
+                    param.privateKey,
+                    contractCallParam.from,
+                    contractCallParam.to,
+                    contractCallParam.memo,
+                    contractCallParam.amount,
+                    contractCallParam.contract,
+                    contractCallParam.contractName,
+                    contractCallParam.tokenName,
+                    contractCallParam.functionName,
+                    contractCallParam.nonce,
+                    contractCallParam.fee
+                );
                 return Promise.resolve(tx);
             } else if (data.type == 'allowContractCaller') {
                 const contractCallParam = data.data as AllowContractCaller;
-                if (contractCallParam.caller == null || contractCallParam.contract == null || contractCallParam.contractName == null
-                    || contractCallParam.functionName == null) {
+                if (
+                    contractCallParam.caller == null ||
+                    contractCallParam.contract == null ||
+                    contractCallParam.contractName == null ||
+                    contractCallParam.functionName == null
+                ) {
                     return Promise.reject(SignTxError);
                 }
-                const tx: signTransactionResult = await allowContractCaller(param.privateKey, contractCallParam.caller,
-                    contractCallParam.contract, contractCallParam.contractName, contractCallParam.functionName,
-                    contractCallParam.untilBurnBlockHeight, contractCallParam.nonce, contractCallParam.fee)
+
+                const tx: signTransactionResult = await allowContractCaller(
+                    param.privateKey,
+                    contractCallParam.caller,
+                    contractCallParam.contract,
+                    contractCallParam.contractName,
+                    contractCallParam.functionName,
+                    contractCallParam.untilBurnBlockHeight,
+                    contractCallParam.nonce,
+                    contractCallParam.fee
+                );
                 return Promise.resolve(tx);
             } else if (data.type == 'delegateStx') {
                 const delegateStxParam = data.data as DelegateStx;
-                if (delegateStxParam.contract == null || delegateStxParam.contractName == null || delegateStxParam.functionName == null
-                    || delegateStxParam.amountMicroStx == null || delegateStxParam.delegateTo == null) {
+                if (
+                    delegateStxParam.contract == null ||
+                    delegateStxParam.contractName == null ||
+                    delegateStxParam.functionName == null ||
+                    delegateStxParam.amountMicroStx == null ||
+                    delegateStxParam.delegateTo == null
+                ) {
                     return Promise.reject(SignTxError);
                 }
-                const tx: signTransactionResult = await delegateStx(param.privateKey, delegateStxParam.contract,
-                    delegateStxParam.contractName, delegateStxParam.functionName, delegateStxParam.delegateTo,
-                    delegateStxParam.poxAddress, delegateStxParam.amountMicroStx, delegateStxParam.untilBurnBlockHeight,
-                    delegateStxParam.nonce, delegateStxParam.fee)
+                const tx: signTransactionResult = await delegateStx(
+                    param.privateKey,
+                    delegateStxParam.contract,
+                    delegateStxParam.contractName,
+                    delegateStxParam.functionName,
+                    delegateStxParam.delegateTo,
+                    delegateStxParam.poxAddress,
+                    delegateStxParam.amountMicroStx,
+                    delegateStxParam.untilBurnBlockHeight,
+                    delegateStxParam.nonce,
+                    delegateStxParam.fee
+                );
                 return Promise.resolve(tx);
             } else if (data.type == 'revokeDelegateStx') {
                 const revokeDelegateStxParam = data.data as RevokeDelegateStx;
-                if (revokeDelegateStxParam.contract == null || revokeDelegateStxParam.contractName == null || revokeDelegateStxParam.functionName == null) {
+                if (
+                    revokeDelegateStxParam.contract == null ||
+                    revokeDelegateStxParam.contractName == null ||
+                    revokeDelegateStxParam.functionName == null
+                ) {
                     return Promise.reject(SignTxError);
                 }
-                const tx: signTransactionResult = await revokeDelegateStx(param.privateKey, revokeDelegateStxParam.contract,
-                    revokeDelegateStxParam.contractName, revokeDelegateStxParam.functionName, revokeDelegateStxParam.nonce, revokeDelegateStxParam.fee)
+                const tx: signTransactionResult = await revokeDelegateStx(
+                    param.privateKey,
+                    revokeDelegateStxParam.contract,
+                    revokeDelegateStxParam.contractName,
+                    revokeDelegateStxParam.functionName,
+                    revokeDelegateStxParam.nonce,
+                    revokeDelegateStxParam.fee
+                );
                 return Promise.resolve(tx);
             } else if (data.type == 'contractCall') {
-                const contractCallParam = data.data as GenerateUnsignedContractCallTxArgs;
-                const tx = await makeContractCallTx(contractCallParam, param.privateKey);
-                return Promise.resolve(tx)
+                const contractCallParam =
+                    data.data as GenerateUnsignedContractCallTxArgs;
+                const tx = await makeContractCallTx(
+                    contractCallParam,
+                    param.privateKey
+                );
+                return Promise.resolve(tx);
             } else if (data.type == 'deployContract') {
-                const contractCallParam = data.data as GenerateUnsignedContractDeployTxArgs;
-                const tx = await ContractDeployTx(contractCallParam, param.privateKey);
-                return Promise.resolve(tx)
+                const contractCallParam =
+                    data.data as GenerateUnsignedContractDeployTxArgs;
+                const tx = await ContractDeployTx(
+                    contractCallParam,
+                    param.privateKey
+                );
+                return Promise.resolve(tx);
             }
             return Promise.reject(SignTxError);
         } catch (e) {
-            return Promise.reject(e);
+            return Promise.reject(SignTxError);
         }
     }
 
-
     async signCommonMsg(params: SignCommonMsgParams): Promise<any> {
-        let key = params.privateKey.toLowerCase().startsWith("0x")? params.privateKey.substring(2):params.privateKey
+        let key = params.privateKey.toLowerCase().startsWith('0x')
+            ? params.privateKey.substring(2)
+            : params.privateKey;
         const privateKey = createStacksPrivateKey(key.toLowerCase());
-        const priKey = privateKey.compressed? base.toHex(privateKey.data.slice(0,32)):base.toHex(privateKey.data);
-        return super.signCommonMsg({privateKey:params.privateKey,privateKeyHex:priKey, message:params.message, signType:SignType.Secp256k1,version:params.version})
+        const priKey = privateKey.compressed
+            ? base.toHex(privateKey.data.slice(0, 32))
+            : base.toHex(privateKey.data);
+        return super.signCommonMsg({
+            privateKey: params.privateKey,
+            privateKeyHex: priKey,
+            message: params.message,
+            signType: SignType.Secp256k1,
+            version: params.version,
+        });
     }
 
     async signMessage(param: SignTxParams): Promise<any> {
+        if (!param.privateKey) {
+            return Promise.reject(`${InvalidPrivateKeyError}: cannot be empty`);
+        }
+        const { isValid } = await this.validPrivateKey({
+            privateKey: param.privateKey,
+        });
+        if (!isValid) {
+            return Promise.reject(
+                `${InvalidPrivateKeyError}: not valid private key`
+            );
+        }
         try {
-            if (param.privateKey.startsWith("0x")) {
-                param.privateKey = param.privateKey.substring(2);
+            let privateKeyHex = param.privateKey;
+            if (privateKeyHex.startsWith('0x')) {
+                privateKeyHex = privateKeyHex.substring(2);
             }
-            const privateKey = createStacksPrivateKey(param.privateKey);
-            if (param.data.type == "signMessage") {
+            const privateKey = createStacksPrivateKey(privateKeyHex);
+            if (param.data.type == 'signMessage') {
                 const messageHash = hashMessage(param.data.message);
                 const signature = signMessageHashRsv({
-                    messageHash:bytesToHex(messageHash),
-                    privateKey:privateKey
+                    messageHash: bytesToHex(messageHash),
+                    privateKey: privateKey,
                 });
-                return Promise.resolve({signature: signature.data, publicKey: publicKeyToString(getPublicKey(privateKey))});
-            } else if (param.data.type == "signStructuredData") {
+                return Promise.resolve({
+                    signature: signature.data,
+                    publicKey: publicKeyToString(getPublicKey(privateKey)),
+                });
+            } else if (param.data.type == 'signStructuredData') {
                 const message = param.data.message as ClarityValue;
                 const domain = param.data.domain as ClarityValue;
-                const signature = signStructuredData({message,domain,privateKey}).data;
+                const signature = signStructuredData({
+                    message,
+                    domain,
+                    privateKey,
+                }).data;
                 return Promise.resolve({
                     signature: signature,
-                    publicKey: publicKeyToString(getPublicKey(privateKey))
-                })
+                    publicKey: publicKeyToString(getPublicKey(privateKey)),
+                });
             }
-
         } catch (e) {
             return Promise.reject(SignMsgError);
         }
@@ -327,22 +458,23 @@ export class StxWallet extends BaseWallet {
             const signature = param.signature;
             const message = hashMessage(param.data.message);
             const publicKey = d.publicKey;
-            return Promise.resolve(verifyMessageSignatureRsv({signature,message,publicKey}));
-        }catch (e) {
+            return Promise.resolve(
+                verifyMessageSignatureRsv({ signature, message, publicKey })
+            );
+        } catch (e) {
             return Promise.reject(e);
         }
     }
 
     validAddress(param: ValidAddressParams): Promise<any> {
-        let isValid: boolean;
-        try {
-            isValid = validateStacksAddress(param.address)
-        } catch (e) {
-            isValid = false;
-        }
+        // Only accept mainnet addresses (SP and SM prefixes)
+        const isMainnetAddress =
+            param.address.startsWith('SP') || param.address.startsWith('SM');
+        const isValid =
+            validateStacksAddress(param.address) && isMainnetAddress;
 
         let data: ValidAddressData = {
-            isValid: isValid,
+            isValid,
             address: param.address,
         };
         return Promise.resolve(data);
@@ -350,58 +482,109 @@ export class StxWallet extends BaseWallet {
 
     getRawTransaction(param: GetRawTransactionParams): Promise<string> {
         try {
-            const data: StxSignData = param.data
+            const data: StxSignData = param.data;
             if (data.type == 'transfer') {
                 const transferParam = data.data as StxTransfer;
                 if (transferParam.to == null || transferParam.amount == null) {
                     return Promise.reject(GetPayLoadError);
                 }
-                const serializePayload = getTransferPayload(transferParam.to, transferParam.amount, transferParam.memo)
+                const serializePayload = getTransferPayload(
+                    transferParam.to,
+                    transferParam.amount,
+                    transferParam.memo
+                );
                 return Promise.resolve(serializePayload);
             } else if (data.type == 'tokenTransfer') {
                 const contractCallParam = data.data as TokenTransfer;
-                if (contractCallParam.from == null || contractCallParam.to == null || contractCallParam.amount == null || contractCallParam.contract == null
-                    || contractCallParam.contractName == null || contractCallParam.functionName == null) {
+                if (
+                    contractCallParam.from == null ||
+                    contractCallParam.to == null ||
+                    contractCallParam.amount == null ||
+                    contractCallParam.contract == null ||
+                    contractCallParam.contractName == null ||
+                    contractCallParam.functionName == null
+                ) {
                     return Promise.reject(GetPayLoadError);
                 }
-                const serializePayload = getTokenTransferPayload(contractCallParam.from,
-                    contractCallParam.to, contractCallParam.memo, contractCallParam.amount, contractCallParam.contract,
-                    contractCallParam.contractName, contractCallParam.functionName)
+                const serializePayload = getTokenTransferPayload(
+                    contractCallParam.from,
+                    contractCallParam.to,
+                    contractCallParam.memo,
+                    contractCallParam.amount,
+                    contractCallParam.contract,
+                    contractCallParam.contractName,
+                    contractCallParam.functionName
+                );
                 return Promise.resolve(serializePayload);
             } else if (data.type == 'allowContractCaller') {
                 const contractCallParam = data.data as AllowContractCaller;
-                if (contractCallParam.caller == null || contractCallParam.contract == null || contractCallParam.contractName == null
-                    || contractCallParam.functionName == null) {
+                if (
+                    contractCallParam.caller == null ||
+                    contractCallParam.contract == null ||
+                    contractCallParam.contractName == null ||
+                    contractCallParam.functionName == null
+                ) {
                     return Promise.reject(GetPayLoadError);
                 }
-                const serializePayload = getAllowContractCallerPayload(contractCallParam.caller,
-                    contractCallParam.contract, contractCallParam.contractName, contractCallParam.functionName, contractCallParam.untilBurnBlockHeight)
+                const serializePayload = getAllowContractCallerPayload(
+                    contractCallParam.caller,
+                    contractCallParam.contract,
+                    contractCallParam.contractName,
+                    contractCallParam.functionName,
+                    contractCallParam.untilBurnBlockHeight
+                );
                 return Promise.resolve(serializePayload);
             } else if (data.type == 'delegateStx') {
                 const delegateStxParam = data.data as DelegateStx;
-                if (delegateStxParam.contract == null || delegateStxParam.contractName == null || delegateStxParam.functionName == null
-                || delegateStxParam.amountMicroStx == null || delegateStxParam.delegateTo == null) {
+                if (
+                    delegateStxParam.contract == null ||
+                    delegateStxParam.contractName == null ||
+                    delegateStxParam.functionName == null ||
+                    delegateStxParam.amountMicroStx == null ||
+                    delegateStxParam.delegateTo == null
+                ) {
                     return Promise.reject(GetPayLoadError);
                 }
-                const serializePayload = getDelegateStxPayload(delegateStxParam.contract,
-                    delegateStxParam.contractName, delegateStxParam.functionName, delegateStxParam.delegateTo,
-                    delegateStxParam.poxAddress, delegateStxParam.amountMicroStx, delegateStxParam.untilBurnBlockHeight)
+                const serializePayload = getDelegateStxPayload(
+                    delegateStxParam.contract,
+                    delegateStxParam.contractName,
+                    delegateStxParam.functionName,
+                    delegateStxParam.delegateTo,
+                    delegateStxParam.poxAddress,
+                    delegateStxParam.amountMicroStx,
+                    delegateStxParam.untilBurnBlockHeight
+                );
                 return Promise.resolve(serializePayload);
             } else if (data.type == 'revokeDelegateStx') {
                 const delegateStxParam = data.data as RevokeDelegateStx;
-                if (delegateStxParam.contract == null || delegateStxParam.contractName == null || delegateStxParam.functionName == null) {
+                if (
+                    delegateStxParam.contract == null ||
+                    delegateStxParam.contractName == null ||
+                    delegateStxParam.functionName == null
+                ) {
                     return Promise.reject(GetPayLoadError);
                 }
-                const serializePayload = getRevokeDelegateStxPayload(delegateStxParam.contract,
-                    delegateStxParam.contractName, delegateStxParam.functionName)
+                const serializePayload = getRevokeDelegateStxPayload(
+                    delegateStxParam.contract,
+                    delegateStxParam.contractName,
+                    delegateStxParam.functionName
+                );
                 return Promise.resolve(serializePayload);
             } else if (data.type == 'contractCall') {
                 const contractCallParam = data.data as contractCallPayload;
-                const serializePayload = getContractCallPayload(contractCallParam.contract,contractCallParam.contractName,contractCallParam.functionName,contractCallParam.functionArgs)
+                const serializePayload = getContractCallPayload(
+                    contractCallParam.contract,
+                    contractCallParam.contractName,
+                    contractCallParam.functionName,
+                    contractCallParam.functionArgs
+                );
                 return Promise.resolve(serializePayload);
             } else if (data.type == 'deployContract') {
                 const deployPayload = data.data as deployPayload;
-                const serializePayload = getDeployPayload(deployPayload.contractName,deployPayload.codeBody)
+                const serializePayload = getDeployPayload(
+                    deployPayload.contractName,
+                    deployPayload.codeBody
+                );
                 return Promise.resolve(serializePayload);
             }
             return Promise.reject(GetPayLoadError);

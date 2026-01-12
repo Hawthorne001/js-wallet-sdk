@@ -10,21 +10,32 @@ import {
     GenPrivateKeyError,
     DerivePriKeyParams,
     base,
-    ValidPrivateKeyParams, ValidPrivateKeyData, SignCommonMsgParams, buildCommonSignMsg, SignType,
-} from "@okxweb3/coin-base";
+    ValidPrivateKeyParams,
+    ValidPrivateKeyData,
+    SignCommonMsgParams,
+    buildCommonSignMsg,
+    SignType,
+    SignTxError,
+    InvalidPrivateKeyError,
+} from '@okxweb3/coin-base';
+import { bip32, bip39 } from '@okxweb3/crypto-lib';
 import {
-     bip32, bip39
-} from "@okxweb3/crypto-lib";
-import {encrypt, decrypt, npubEncode, nsecFromPrvKey, decodeBytes, nsec, nostrHdp} from "./nostrassets";
-import * as crypto from "crypto";
-import {Event, getEventHash, getSignature} from "./event";
-import {getPublicKey} from "./keys";
+    encrypt,
+    decrypt,
+    npubEncode,
+    nsecFromPrvKey,
+    decodeBytes,
+    nsec,
+    nostrHdp,
+} from './nostrassets';
+import * as crypto from 'crypto';
+import { Event, getEventHash, getSignature } from './event';
+import { getPublicKey } from './keys';
 
 export enum nipOpType {
     NIP04_Encrypt = 1,
     NIP04_Decrypt = 2,
 }
-
 
 export class CryptTextParams {
     /**
@@ -36,10 +47,9 @@ export class CryptTextParams {
     public constructor(
         public readonly type: nipOpType,
         public readonly pubkey: string,
-        public readonly text: string,
-    ) {
-    }
-};
+        public readonly text: string
+    ) {}
+}
 
 export interface CryptTextParamsSES {
     type: nipOpType;
@@ -51,9 +61,9 @@ export interface CryptTextParamsSES {
 // @ts-ignore
 if (typeof crypto !== 'undefined' && !crypto.subtle && crypto.webcrypto) {
     // @ts-ignore
-    crypto.subtle = crypto.webcrypto.subtle
+    crypto.subtle = crypto.webcrypto.subtle;
 }
-export const NewAddressError = "generate address error"
+export const NewAddressError = 'generate address error';
 export type NewAddressData = {
     address: string;
     publicKey?: string;
@@ -61,19 +71,23 @@ export type NewAddressData = {
 
 export class NostrAssetsWallet extends BaseWallet {
     async getDerivedPath(param: GetDerivedPathParam): Promise<any> {
-        return `m/44'/1237'/${param.index}'/0/0`
+        return `m/44'/1237'/${param.index}'/0/0`;
     }
 
     getDerivedPrivateKey(param: DerivePriKeyParams): Promise<any> {
-        return bip39.mnemonicToSeedV2(param.mnemonic)
+        return bip39
+            .mnemonicToSeedV2(param.mnemonic)
             .then((masterSeed: Buffer) => {
                 let childKey = bip32.fromSeedV2(masterSeed, param.hdPath);
                 if (childKey.privateKey) {
-                    return Promise.resolve(nsecFromPrvKey(base.toHex(childKey.privateKey, false)));
+                    return Promise.resolve(
+                        nsecFromPrvKey(base.toHex(childKey.privateKey, false))
+                    );
                 } else {
                     return Promise.reject(GenPrivateKeyError);
                 }
-            }).catch((e) => {
+            })
+            .catch((e) => {
                 return Promise.reject(GenPrivateKeyError);
             });
     }
@@ -81,29 +95,30 @@ export class NostrAssetsWallet extends BaseWallet {
     getRandomPrivateKey(): Promise<any> {
         try {
             while (true) {
-                const privateKey = base.randomBytes(32)
+                const privateKey = base.randomBytes(32);
                 if (secp256k1SignTest(privateKey)) {
-                    return Promise.resolve(nsecFromPrvKey(base.toHex(privateKey, false)));
+                    return Promise.resolve(
+                        nsecFromPrvKey(base.toHex(privateKey, false))
+                    );
                 }
             }
-        } catch (e) {
-        }
+        } catch (e) {}
         return Promise.reject(GenPrivateKeyError);
     }
 
     async getNewAddress(param: NewAddressParams): Promise<any> {
         try {
             const [c, d] = base.fromBech32(param.privateKey);
-            let valid = nsec == c
+            let valid = nsec == c;
             if (!valid) {
                 return Promise.reject('invalid privateKey');
             }
-            let pub = getPublicKey(base.toHex(d, false))
+            let pub = getPublicKey(base.toHex(d, false));
             const data: NewAddressData = {
                 address: npubEncode(pub),
-                publicKey: pub
+                publicKey: pub,
             };
-            return Promise.resolve(data)
+            return Promise.resolve(data);
         } catch (e) {
             return Promise.reject(e);
         }
@@ -111,60 +126,88 @@ export class NostrAssetsWallet extends BaseWallet {
 
     async validPrivateKey(param: ValidPrivateKeyParams): Promise<any> {
         const [c] = base.fromBech32(param.privateKey);
-        let isValid = nsec == c
+        let isValid = nsec == c;
         const data: ValidPrivateKeyData = {
             isValid: isValid,
-            privateKey: param.privateKey
+            privateKey: param.privateKey,
         };
         return Promise.resolve(data);
     }
 
     async validAddress(param: ValidAddressParams): Promise<any> {
-        var valid = false
+        var valid = false;
         try {
             const [c] = base.fromBech32(param.address);
-            valid = nostrHdp == c
+            valid = nostrHdp == c;
         } catch (e) {
-            console.log(e)
+            console.log(e);
         }
         const data: ValidAddressData = {
             isValid: valid,
-            address: param.address
+            address: param.address,
         };
         return Promise.resolve(data);
     }
 
     async signCommonMsg(params: SignCommonMsgParams): Promise<any> {
         const [, d] = base.fromBech32(params.privateKey);
-        return super.signCommonMsg({privateKey:params.privateKey,privateKeyHex:base.toHex(d, false), message:params.message, signType:SignType.Secp256k1})
+        return super.signCommonMsg({
+            privateKey: params.privateKey,
+            privateKeyHex: base.toHex(d, false),
+            message: params.message,
+            signType: SignType.Secp256k1,
+        });
     }
 
     async signTransaction(param: SignTxParams): Promise<any> {
-        if (Object.prototype.toString.call(param.data) === '[object Object]' && param.data.isCryptText) {
-            const textParams = param.data as CryptTextParamsSES;
-            switch (textParams.type) {
-                case nipOpType.NIP04_Decrypt:
-                    return decrypt(param.privateKey, textParams.pubkey, textParams.text)
-                case nipOpType.NIP04_Encrypt:
-                    return encrypt(param.privateKey, textParams.pubkey, textParams.text)
-                default:
-                    return Promise.reject(NotImplementedError)
+        try {
+            if (!param.privateKey) {
+                return Promise.reject(InvalidPrivateKeyError);
             }
-        } else {
-            try {
-                let prv = decodeBytes(nsec, param.privateKey)
-                let event = param.data as Event
-                if (!event.pubkey) {
-                    event.pubkey = getPublicKey(prv)
+            // Handle NIP-04 encryption/decryption operations
+            if (
+                Object.prototype.toString.call(param.data) ===
+                    '[object Object]' &&
+                param.data.isCryptText
+            ) {
+                const textParams = param.data as CryptTextParamsSES;
+                switch (textParams.type) {
+                    case nipOpType.NIP04_Decrypt:
+                        return Promise.resolve(
+                            await decrypt(
+                                param.privateKey,
+                                textParams.pubkey,
+                                textParams.text
+                            )
+                        );
+                    case nipOpType.NIP04_Encrypt:
+                        return Promise.resolve(
+                            await encrypt(
+                                param.privateKey,
+                                textParams.pubkey,
+                                textParams.text
+                            )
+                        );
+                    default:
+                        return Promise.reject(NotImplementedError);
                 }
-                if (!event.id) {
-                    event.id = getEventHash(event)
-                }
-                event.sig = getSignature(event, prv)
-                return Promise.resolve(event)
-            } catch (ex) {
-                return Promise.reject(ex)
             }
+
+            // Handle event signing
+            const prv = decodeBytes(nsec, param.privateKey);
+            const event = param.data as Event;
+
+            if (!event.pubkey) {
+                event.pubkey = getPublicKey(prv);
+            }
+            if (!event.id) {
+                event.id = getEventHash(event);
+            }
+
+            event.sig = getSignature(event, prv);
+            return Promise.resolve(event);
+        } catch (error) {
+            return Promise.reject(SignTxError);
         }
     }
 }

@@ -6,13 +6,13 @@
  *
  * */
 
-const ABI = require("./abi.js")
+const ABI = require('./abi.js');
 function RawEncode(types: string[], values: any[]): Buffer {
-    return ABI.rawEncode(types, values)
+    return ABI.rawEncode(types, values);
 }
 
 function SoliditySHA3(types: string[], values: any[]): Buffer {
-    return ABI.soliditySHA3(types, values)
+    return ABI.soliditySHA3(types, values);
 }
 
-export {ABI, RawEncode, SoliditySHA3}
+export { ABI, RawEncode, SoliditySHA3 };

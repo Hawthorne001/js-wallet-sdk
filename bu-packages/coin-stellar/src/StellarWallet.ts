@@ -1,48 +1,56 @@
 import {
-    BaseWallet, CalcTxHashParams,
+    BaseWallet,
+    CalcTxHashParams,
     DerivePriKeyParams,
     GenPrivateKeyError,
     GetDerivedPathParam,
     NewAddressParams,
     NotImplementedError,
     SignCommonMsgParams,
+    SignTxError,
     SignTxParams,
     SignType,
     base,
-    ValidAddressParams, ValidPrivateKeyData, ValidPrivateKeyParams
-} from "@okxweb3/coin-base";
+    ValidAddressParams,
+    ValidPrivateKeyData,
+    ValidPrivateKeyParams,
+    NewAddressError,
+    ValidAddressError,
+} from '@okxweb3/coin-base';
 import {
     Account,
-    Asset, decodeAddressToMuxedAccount,
+    Asset,
+    decodeAddressToMuxedAccount,
     encodeMuxedAccount,
     encodeMuxedAccountToAddress,
     Keypair,
-    Memo, Operation,
+    Memo,
+    Operation,
     StrKey,
-    TransactionBuilder
-} from "./lib";
-import {signUtil} from "@okxweb3/crypto-lib";
-import {convertWithDecimals} from "./utils";
+    TransactionBuilder,
+} from './lib';
+import { signUtil } from '@okxweb3/crypto-lib';
+import { convertWithDecimals } from './utils';
 
 export type StellarTxParam = {
-    type: "transfer" | "changeTrust",
-    source: string,
-    sequence: string,
-    operations?: [],
+    type: 'transfer' | 'changeTrust';
+    source: string;
+    sequence: string;
+    operations?: [];
     fee: string;
     memo?: string;
     asset?: {
-        assetName: string,
-        issuer: string,
-        amount: string,
-    }
-    toAddress?: string,
-    amount?: string,
-    decimals: number,
+        assetName: string;
+        issuer: string;
+        amount: string;
+    };
+    toAddress?: string;
+    amount?: string;
+    decimals: number;
     createAccount?: {
-        accountAddress: string,
-        startingBalance: string,
-    }
+        accountAddress: string;
+        startingBalance: string;
+    };
     networkPassphrase?: string;
     // preconditions:
     timebounds?: {
@@ -57,12 +65,12 @@ export type StellarTxParam = {
     minAccountSequenceAge?: number;
     minAccountSequenceLedgerGap?: number;
     extraSigners?: string[];
-}
+};
 
 export type MuxedAddressParam = {
-    address: string,
-    id: string,
-}
+    address: string;
+    id: string;
+};
 
 export class StellarWallet extends BaseWallet {
     //https://github.com/Lobstrco/stellar-protocol/blob/8cfe955ad6ecf4ce8763ee702eddd5fec882bc92/ecosystem/sep-0005.md?plain=1#L53
@@ -72,8 +80,13 @@ export class StellarWallet extends BaseWallet {
 
     async getRandomPrivateKey(): Promise<any> {
         try {
-            let pri = signUtil.ed25519.ed25519_getRandomPrivateKey(false, "hex");
-            return Promise.resolve(StrKey.encodeEd25519SecretSeed(base.fromHex(pri)))
+            let pri = signUtil.ed25519.ed25519_getRandomPrivateKey(
+                false,
+                'hex'
+            );
+            return Promise.resolve(
+                StrKey.encodeEd25519SecretSeed(base.fromHex(pri))
+            );
         } catch (e) {
             return Promise.reject(GenPrivateKeyError);
         }
@@ -81,8 +94,15 @@ export class StellarWallet extends BaseWallet {
 
     async getDerivedPrivateKey(param: DerivePriKeyParams): Promise<any> {
         try {
-            const key = await signUtil.ed25519.ed25519_getDerivedPrivateKey(param.mnemonic, param.hdPath, false, "hex")
-            return Promise.resolve(StrKey.encodeEd25519SecretSeed(base.fromHex(key)));
+            const key = await signUtil.ed25519.ed25519_getDerivedPrivateKey(
+                param.mnemonic,
+                param.hdPath,
+                false,
+                'hex'
+            );
+            return Promise.resolve(
+                StrKey.encodeEd25519SecretSeed(base.fromHex(key))
+            );
         } catch (e) {
             return Promise.reject(GenPrivateKeyError);
         }
@@ -93,39 +113,47 @@ export class StellarWallet extends BaseWallet {
         try {
             let k = Keypair.fromSecret(param.privateKey);
             let rawKey = k.rawSecretKey();
-            if (rawKey.every(byte => byte === 0)) {
-                isValid = false
+            if (rawKey.every((byte) => byte === 0)) {
+                isValid = false;
             } else {
-                isValid = true
+                isValid = true;
             }
         } catch (e) {
-            isValid = false
+            isValid = false;
         }
         const data: ValidPrivateKeyData = {
             isValid: isValid,
-            privateKey: param.privateKey
+            privateKey: param.privateKey,
         };
         return Promise.resolve(data);
     }
 
     getNewAddress(param: NewAddressParams): Promise<any> {
-        let k = Keypair.fromSecret(param.privateKey);
-        let rawKey = k.rawSecretKey();
-        if (rawKey.every(byte => byte === 0)) {
-            throw new Error("invalid key")
+        try {
+            let k = Keypair.fromSecret(param.privateKey);
+            let rawKey = k.rawSecretKey();
+            if (rawKey.every((byte) => byte === 0)) {
+                throw new Error('invalid key');
+            }
+            return Promise.resolve({
+                address: k.publicKey(),
+                publicKey: base.toHex(k.rawPublicKey()),
+            });
+        } catch (error) {
+            return Promise.reject(NewAddressError);
         }
-        return Promise.resolve({
-            address: k.publicKey(),
-            publicKey: base.toHex(k.rawPublicKey()),
-        });
     }
 
     getMuxedAddress(param: MuxedAddressParam): Promise<any> {
-        if (!param.address) {
-            throw new Error('Missing address');
+        try {
+            if (!param.address) {
+                throw new Error('Missing address');
+            }
+            let muxedAcc = encodeMuxedAccount(param.address, param.id);
+            return Promise.resolve(encodeMuxedAccountToAddress(muxedAcc));
+        } catch (error) {
+            return Promise.reject(NewAddressError);
         }
-        let muxedAcc = encodeMuxedAccount(param.address, param.id);
-        return Promise.resolve(encodeMuxedAccountToAddress(muxedAcc));
     }
 
     //https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0043.md
@@ -134,71 +162,105 @@ export class StellarWallet extends BaseWallet {
     }
 
     calcTxHash(param: CalcTxHashParams): Promise<string> {
-        const tx = TransactionBuilder.fromXDR(param.data.tx, param.data.networkPassphrase)
+        const tx = TransactionBuilder.fromXDR(
+            param.data.tx,
+            param.data.networkPassphrase
+        );
         return Promise.resolve(base.toHex(tx.hash()));
     }
 
-    signTransaction(param: SignTxParams): Promise<any> {
-        const txParam = param.data as StellarTxParam
-        let timebounds = txParam.timebounds ? txParam.timebounds : {minTime: 0, maxTime: 0};
+    async signTransaction(param: SignTxParams): Promise<any> {
+        try {
+            const txParam = param.data as StellarTxParam;
+            let timebounds = txParam.timebounds
+                ? txParam.timebounds
+                : { minTime: 0, maxTime: 0 };
 
-        const transactionBuilder = new TransactionBuilder(new Account(txParam.source, txParam.sequence), {
-            fee: txParam.fee,
-            timebounds: timebounds,
-            ledgerbounds: txParam.ledgerbounds,
-            minAccountSequence: txParam.minAccountSequence,
-            minAccountSequenceAge: txParam.minAccountSequenceAge,
-            minAccountSequenceLedgerGap: txParam.minAccountSequenceLedgerGap,
-            extraSigners: txParam.extraSigners,
-            memo: txParam.memo ? Memo.text(txParam.memo) : Memo.none(),
-            networkPassphrase: txParam.networkPassphrase,
-        })
-        if (!txParam.decimals) {
-            throw new Error("missing decimals");
-        }
-        if (txParam.type === "transfer") {
-            if (!txParam.toAddress) {
-                throw new Error("missing toAddress");
-            }
-            let op;
-            if (txParam.asset) {
-                const asset = new Asset(txParam.asset.assetName, txParam.asset.issuer);
-                op = Operation.payment({
-                    destination: txParam.toAddress,
-                    asset: asset,
-                    amount: convertWithDecimals(txParam.asset.amount, txParam.decimals),
-                });
-            } else {
-                if (!txParam.amount) {
-                    throw new Error("missing amount");
+            const transactionBuilder = new TransactionBuilder(
+                new Account(txParam.source, txParam.sequence),
+                {
+                    fee: txParam.fee,
+                    timebounds: timebounds,
+                    ledgerbounds: txParam.ledgerbounds,
+                    minAccountSequence: txParam.minAccountSequence,
+                    minAccountSequenceAge: txParam.minAccountSequenceAge,
+                    minAccountSequenceLedgerGap:
+                        txParam.minAccountSequenceLedgerGap,
+                    extraSigners: txParam.extraSigners,
+                    memo: txParam.memo ? Memo.text(txParam.memo) : Memo.none(),
+                    networkPassphrase: txParam.networkPassphrase,
                 }
-                op = Operation.payment({
-                    destination: txParam.toAddress,
-                    asset: Asset.native(),
-                    amount: convertWithDecimals(txParam.amount, txParam.decimals),
+            );
+            if (!txParam.decimals) {
+                return Promise.reject('missing decimals');
+            }
+            if (txParam.type === 'transfer') {
+                if (!txParam.toAddress) {
+                    return Promise.reject(ValidAddressError);
+                }
+                const validation = await this.validAddress({
+                    address: txParam.toAddress,
                 });
+                if (!validation.isValid) {
+                    return Promise.reject(ValidAddressError);
+                }
+                let op;
+                if (txParam.asset) {
+                    const asset = new Asset(
+                        txParam.asset.assetName,
+                        txParam.asset.issuer
+                    );
+                    op = Operation.payment({
+                        destination: txParam.toAddress,
+                        asset: asset,
+                        amount: convertWithDecimals(
+                            txParam.asset.amount,
+                            txParam.decimals
+                        ),
+                    });
+                } else {
+                    if (!txParam.amount) {
+                        return Promise.reject('missing amount');
+                    }
+                    op = Operation.payment({
+                        destination: txParam.toAddress,
+                        asset: Asset.native(),
+                        amount: convertWithDecimals(
+                            txParam.amount,
+                            txParam.decimals
+                        ),
+                    });
+                }
+                transactionBuilder.addOperation(op);
+            } else if (txParam.type === 'changeTrust') {
+                if (!txParam.asset) {
+                    return Promise.reject('missing asset');
+                }
+                const asset = new Asset(
+                    txParam.asset.assetName,
+                    txParam.asset.issuer
+                );
+                // Create trustline
+                let op = Operation.changeTrust({
+                    asset: asset,
+                    limit: convertWithDecimals(
+                        txParam.asset.amount,
+                        txParam.decimals
+                    ),
+                });
+                transactionBuilder.addOperation(op);
+            } else {
+                return Promise.reject('invalid tx type');
             }
-            transactionBuilder.addOperation(op)
-        } else if (txParam.type === "changeTrust") {
-            if (!txParam.asset) {
-                throw new Error("missing asset");
+            let transaction = transactionBuilder.build();
+            if (param.privateKey) {
+                let kp = Keypair.fromSecret(param.privateKey);
+                transaction.sign(kp);
             }
-            const asset = new Asset(txParam.asset.assetName, txParam.asset.issuer);
-            // Create trustline
-            let op = Operation.changeTrust({
-                asset: asset,
-                limit: convertWithDecimals(txParam.asset.amount, txParam.decimals),
-            });
-            transactionBuilder.addOperation(op)
-        } else {
-            throw new Error("invalid tx type")
+            return Promise.resolve(transaction.toXDR());
+        } catch (e) {
+            return Promise.reject(SignTxError);
         }
-        let transaction = transactionBuilder.build();
-        if (param.privateKey) {
-            let kp = Keypair.fromSecret(param.privateKey);
-            transaction.sign(kp);
-        }
-        return Promise.resolve(transaction.toXDR());
     }
 
     async signCommonMsg(params: SignCommonMsgParams): Promise<any> {
@@ -207,23 +269,26 @@ export class StellarWallet extends BaseWallet {
             privateKey: params.privateKey,
             privateKeyHex: base.toHex(k.rawSecretKey()),
             message: params.message,
-            signType: SignType.ED25519
-        })
+            signType: SignType.ED25519,
+        });
     }
 
     validAddress(param: ValidAddressParams): Promise<any> {
-        let isValid;
+        let isValid: boolean;
         try {
+            // Try to decode as Ed25519 public key (regular Stellar address)
             StrKey.decodeEd25519PublicKey(param.address);
             isValid = true;
         } catch (e) {
             try {
+                // Try to decode as muxed account address
                 decodeAddressToMuxedAccount(param.address);
                 isValid = true;
             } catch (e) {
                 isValid = false;
             }
         }
+
         return Promise.resolve({
             isValid: isValid,
             address: param.address,

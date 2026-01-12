@@ -8,40 +8,68 @@ import {
     createSingleSigSpendingCondition,
     createStacksPrivateKey,
     createStandardAuth,
-    createStandardPrincipal, deserializeCV,
+    createStandardPrincipal,
+    deserializeCV,
     FungibleConditionCode,
-    getPublicKey, hexToBuff,
-    makeContractCall, makeContractDeploy,
-    makeStandardFungiblePostCondition, noneCV, postConditionFromString,
-    PostConditionMode, principalCV, serializeCV, serializePayload, SignedContractCallOptions,
+    getPublicKey,
+    hexToBuff,
+    makeContractCall,
+    makeContractDeploy,
+    makeStandardFungiblePostCondition,
+    noneCV,
+    postConditionFromString,
+    PostConditionMode,
+    principalCV,
+    serializeCV,
+    serializePayload,
+    SignedContractCallOptions,
     someCV,
     StacksTransaction,
     standardPrincipalCV,
     TransactionSigner,
     TransactionVersion,
     uintCV,
-    addHex
+    addHex,
 } from './transactions';
 import {
     createContractCallPayload,
     createSmartContractPayload,
-    createTokenTransferPayload
+    createTokenTransferPayload,
 } from './transactions/payload';
-import {bytesToHex} from './common';
-import {StacksMainnet} from './network';
-import {stack, getDelegateOptions, poxAddressToTuple} from "./stacking";
-import {deserialize} from "./transactions/cl";
+import { bytesToHex } from './common';
+import { StacksMainnet } from './network';
+import { stack, getDelegateOptions, poxAddressToTuple } from './stacking';
+import { deserialize } from './transactions/cl';
+import { validateStacksAddress } from './transactions/utils';
 
-export function transfer(secretKey: string, to: string, amount: number, memo: string, nonce: number, fee: number, anchorMode?: number) {
+export function transfer(
+    secretKey: string,
+    to: string,
+    amount: number,
+    memo: string,
+    nonce: number,
+    fee: number,
+    anchorMode?: number
+) {
+    // Validate that toAddress is a valid Stacks address
+    if (!validateStacksAddress(to)) {
+        throw new Error('Invalid recipient address');
+    }
+
     const transactionVersion = TransactionVersion.Mainnet;
     const address = to;
     const recipient = createStandardPrincipal(address);
     const recipientCV = standardPrincipalCV(address);
     const payload = createTokenTransferPayload(recipientCV, amount, memo);
     const addressHashMode = AddressHashMode.SerializeP2PKH;
-    const privateKey = createStacksPrivateKey(secretKey)
+    const privateKey = createStacksPrivateKey(secretKey);
     const pubKey = bytesToHex(getPublicKey(privateKey).data);
-    const spendingCondition = createSingleSigSpendingCondition(addressHashMode, pubKey, nonce, fee);
+    const spendingCondition = createSingleSigSpendingCondition(
+        addressHashMode,
+        pubKey,
+        nonce,
+        fee
+    );
     const authorization = createStandardAuth(spendingCondition);
     // const postCondition = createSTXPostCondition(recipient, FungibleConditionCode.GreaterEqual, 0);
     const postConditions = createLPList([]);
@@ -59,12 +87,21 @@ export function transfer(secretKey: string, to: string, amount: number, memo: st
     const txId = addHex(transaction.txid());
     const serialized = transaction.serialize();
     const txSerializedHexString = bytesToHex(serialized);
-    return {txId, txSerializedHexString}
+    return { txId, txSerializedHexString };
 }
 
 //stack
-export async function stacks(privateKey: string, address: string, poxAddress: string, amountMicroStx: bigint, cycles: number,
-                             burnBlockHeight: number, contract: string, fee: number, nonce: number) {
+export async function stacks(
+    privateKey: string,
+    address: string,
+    poxAddress: string,
+    amountMicroStx: bigint,
+    cycles: number,
+    burnBlockHeight: number,
+    contract: string,
+    fee: number,
+    nonce: number
+) {
     const network = new StacksMainnet();
 
     const stackingResults = await stack({
@@ -75,37 +112,80 @@ export async function stacks(privateKey: string, address: string, poxAddress: st
         privateKey,
         burnBlockHeight,
         fee,
-        nonce
+        nonce,
     });
-    return stackingResults
+    return stackingResults;
 }
 
-export async function tokenTransfer(secretKey: string, from: string, to: string, memo: string, amount: number, contract: string, contractName: string, tokenName: string, functionName: string, nonce: number, fee: number) {
+export async function tokenTransfer(
+    secretKey: string,
+    from: string,
+    to: string,
+    memo: string,
+    amount: number,
+    contract: string,
+    contractName: string,
+    tokenName: string,
+    functionName: string,
+    nonce: number,
+    fee: number
+) {
+    // Validate that toAddress is a valid Stacks address
+    if (!validateStacksAddress(to)) {
+        throw new Error('Invalid recipient address');
+    }
+
     const stacksTransaction = await makeContractCall({
         anchorMode: AnchorMode.Any,
         contractAddress: contract,
         contractName: contractName,
         fee: fee,
-        functionArgs: [uintCV(amount), standardPrincipalCV(from), standardPrincipalCV(to), someCV(bufferCVFromString(memo))],
+        functionArgs: [
+            uintCV(amount),
+            standardPrincipalCV(from),
+            standardPrincipalCV(to),
+            someCV(bufferCVFromString(memo)),
+        ],
         functionName: functionName,
         nonce: nonce,
         postConditionMode: PostConditionMode.Deny,
-        postConditions: [makeStandardFungiblePostCondition(from, FungibleConditionCode.Equal, amount, createAssetInfo(contract, contractName, tokenName))],
+        postConditions: [
+            makeStandardFungiblePostCondition(
+                from,
+                FungibleConditionCode.Equal,
+                amount,
+                createAssetInfo(contract, contractName, tokenName)
+            ),
+        ],
         senderKey: secretKey,
         network: new StacksMainnet(),
     });
     const txId = addHex(stacksTransaction.txid());
     const txSerializedHexString = bytesToHex(stacksTransaction.serialize());
-    return {txId, txSerializedHexString};
+    return { txId, txSerializedHexString };
 }
 
-export async function allowContractCaller(secretKey: string, caller: string, contract: string, contractName: string, functionName: string, untilBurnBlockHeight: number, nonce: number, fee: number) {
+export async function allowContractCaller(
+    secretKey: string,
+    caller: string,
+    contract: string,
+    contractName: string,
+    functionName: string,
+    untilBurnBlockHeight: number,
+    nonce: number,
+    fee: number
+) {
     const stacksTransaction = await makeContractCall({
         anchorMode: AnchorMode.Any,
         contractAddress: contract,
         contractName: contractName,
         fee: fee,
-        functionArgs: [principalCV(caller), untilBurnBlockHeight ? someCV(uintCV(untilBurnBlockHeight)) : noneCV()],
+        functionArgs: [
+            principalCV(caller),
+            untilBurnBlockHeight
+                ? someCV(uintCV(untilBurnBlockHeight))
+                : noneCV(),
+        ],
         functionName: functionName,
         nonce: nonce,
         senderKey: secretKey,
@@ -114,7 +194,7 @@ export async function allowContractCaller(secretKey: string, caller: string, con
 
     const txId = addHex(stacksTransaction.txid());
     const txSerializedHexString = bytesToHex(stacksTransaction.serialize());
-    return {txId, txSerializedHexString};
+    return { txId, txSerializedHexString };
 }
 
 interface GenerateUnsignedTxArgs<TxPayload> {
@@ -147,9 +227,10 @@ export interface ContractDeployPayload extends TxBase {
     sponsored?: boolean;
 }
 
-export type GenerateUnsignedContractCallTxArgs = GenerateUnsignedTxArgs<ContractCallPayload>;
-export type GenerateUnsignedContractDeployTxArgs = GenerateUnsignedTxArgs<ContractDeployPayload>;
-
+export type GenerateUnsignedContractCallTxArgs =
+    GenerateUnsignedTxArgs<ContractCallPayload>;
+export type GenerateUnsignedContractDeployTxArgs =
+    GenerateUnsignedTxArgs<ContractDeployPayload>;
 
 export enum TransactionTypes {
     ContractCall = 'contract_call',
@@ -157,8 +238,11 @@ export enum TransactionTypes {
     STXTransfer = 'token_transfer',
 }
 
-export async function makeContractCallTx(args: GenerateUnsignedContractCallTxArgs, senderKey: string) {
-    const {txData, nonce, fee} = args;
+export async function makeContractCallTx(
+    args: GenerateUnsignedContractCallTxArgs,
+    senderKey: string
+) {
+    const { txData, nonce, fee } = args;
     const {
         contractName,
         contractAddress,
@@ -169,7 +253,7 @@ export async function makeContractCallTx(args: GenerateUnsignedContractCallTxArg
         postConditions,
         anchorMode,
     } = txData;
-    const fnArgs = functionArgs.map(arg => deserializeCV(hexToBuff(arg)));
+    const fnArgs = functionArgs.map((arg) => deserializeCV(hexToBuff(arg)));
     const options: SignedContractCallOptions = {
         senderKey: senderKey,
         contractName,
@@ -181,17 +265,26 @@ export async function makeContractCallTx(args: GenerateUnsignedContractCallTxArg
         fee: fee,
         postConditionMode: postConditionMode,
         postConditions: postConditions?.map(postConditionFromString),
-        sponsored
+        sponsored,
     };
     const tx = await makeContractCall(options);
     const txId = addHex(tx.txid());
     const txSerializedHexString = bytesToHex(tx.serialize());
-    return {txId, txSerializedHexString};
+    return { txId, txSerializedHexString };
 }
 
-export async function ContractDeployTx(args: GenerateUnsignedContractDeployTxArgs, senderKey: string) {
-    const {txData, nonce, fee} = args;
-    const {contractName, codeBody, postConditions, postConditionMode, anchorMode} = txData;
+export async function ContractDeployTx(
+    args: GenerateUnsignedContractDeployTxArgs,
+    senderKey: string
+) {
+    const { txData, nonce, fee } = args;
+    const {
+        contractName,
+        codeBody,
+        postConditions,
+        postConditionMode,
+        anchorMode,
+    } = txData;
     const options = {
         senderKey: senderKey,
         contractName,
@@ -206,18 +299,49 @@ export async function ContractDeployTx(args: GenerateUnsignedContractDeployTxArg
     const tx = await makeContractDeploy(options);
     const txId = addHex(tx.txid());
     const txSerializedHexString = bytesToHex(tx.serialize());
-    return {txId, txSerializedHexString};
+    return { txId, txSerializedHexString };
 }
 
-export async function delegateStx(secretKey: string, contract: string, contractName: string, functionName: string, delegateTo: string, poxAddress: string, amountMicroStx: number, untilBurnBlockHeight: number, nonce: number, fee: number) {
-    const txOptions = getDelegateOptions(contract, contractName, functionName, amountMicroStx, delegateTo, untilBurnBlockHeight, poxAddress);
-    const stacksTransaction = await makeContractCall({...txOptions, senderKey: secretKey, nonce, fee});
+export async function delegateStx(
+    secretKey: string,
+    contract: string,
+    contractName: string,
+    functionName: string,
+    delegateTo: string,
+    poxAddress: string,
+    amountMicroStx: number,
+    untilBurnBlockHeight: number,
+    nonce: number,
+    fee: number
+) {
+    const txOptions = getDelegateOptions(
+        contract,
+        contractName,
+        functionName,
+        amountMicroStx,
+        delegateTo,
+        untilBurnBlockHeight,
+        poxAddress
+    );
+    const stacksTransaction = await makeContractCall({
+        ...txOptions,
+        senderKey: secretKey,
+        nonce,
+        fee,
+    });
     const txId = addHex(stacksTransaction.txid());
     const txSerializedHexString = bytesToHex(stacksTransaction.serialize());
-    return {txId, txSerializedHexString};
+    return { txId, txSerializedHexString };
 }
 
-export async function revokeDelegateStx(secretKey: string, contract: string, contractName: string, functionName: string, nonce: number, fee: number) {
+export async function revokeDelegateStx(
+    secretKey: string,
+    contract: string,
+    contractName: string,
+    functionName: string,
+    nonce: number,
+    fee: number
+) {
     const stacksTransaction = await makeContractCall({
         anchorMode: AnchorMode.Any,
         contractAddress: contract,
@@ -231,9 +355,8 @@ export async function revokeDelegateStx(secretKey: string, contract: string, con
     });
     const txId = addHex(stacksTransaction.txid());
     const txSerializedHexString = bytesToHex(stacksTransaction.serialize());
-    return {txId, txSerializedHexString};
+    return { txId, txSerializedHexString };
 }
-
 
 export function getTransferPayload(to: string, amount: number, memo: string) {
     const address = to;
@@ -244,67 +367,110 @@ export function getTransferPayload(to: string, amount: number, memo: string) {
     return bytesToHex(s);
 }
 
-export function getTokenTransferPayload(from: string, to: string, memo: string, amount: number, contract: string, contractName: string, functionName: string) {
+export function getTokenTransferPayload(
+    from: string,
+    to: string,
+    memo: string,
+    amount: number,
+    contract: string,
+    contractName: string,
+    functionName: string
+) {
     const payload = createContractCallPayload(
         contract,
         contractName,
         functionName,
-        [uintCV(amount), standardPrincipalCV(from), standardPrincipalCV(to), someCV(bufferCVFromString(memo))]
+        [
+            uintCV(amount),
+            standardPrincipalCV(from),
+            standardPrincipalCV(to),
+            someCV(bufferCVFromString(memo)),
+        ]
     );
     const s = serializePayload(payload);
     return bytesToHex(s);
 }
 
-export function getAllowContractCallerPayload(caller: string, contract: string, contractName: string, functionName: string, untilBurnBlockHeight: number) {
+export function getAllowContractCallerPayload(
+    caller: string,
+    contract: string,
+    contractName: string,
+    functionName: string,
+    untilBurnBlockHeight: number
+) {
     const payload = createContractCallPayload(
         contract,
         contractName,
         functionName,
-        [principalCV(caller), untilBurnBlockHeight ? someCV(uintCV(untilBurnBlockHeight)) : noneCV()],
+        [
+            principalCV(caller),
+            untilBurnBlockHeight
+                ? someCV(uintCV(untilBurnBlockHeight))
+                : noneCV(),
+        ]
     );
     const s = serializePayload(payload);
     return bytesToHex(s);
 }
 
-export function getDelegateStxPayload(contract: string, contractName: string, functionName: string, delegateTo: string, poxAddress: string, amountMicroStx: number, untilBurnBlockHeight: number) {
-    const address = poxAddress ? someCV(poxAddressToTuple(poxAddress)) : noneCV();
+export function getDelegateStxPayload(
+    contract: string,
+    contractName: string,
+    functionName: string,
+    delegateTo: string,
+    poxAddress: string,
+    amountMicroStx: number,
+    untilBurnBlockHeight: number
+) {
+    const address = poxAddress
+        ? someCV(poxAddressToTuple(poxAddress))
+        : noneCV();
 
     const functionArgs = [
         uintCV(amountMicroStx),
         principalCV(delegateTo),
         untilBurnBlockHeight ? someCV(uintCV(untilBurnBlockHeight)) : noneCV(),
-        address
-    ]
+        address,
+    ];
 
     const payload = createContractCallPayload(
         contract,
         contractName,
         functionName,
         functionArgs
-    )
+    );
     const s = serializePayload(payload);
     return bytesToHex(s);
 }
 
-export function getRevokeDelegateStxPayload(contract: string, contractName: string, functionName: string) {
+export function getRevokeDelegateStxPayload(
+    contract: string,
+    contractName: string,
+    functionName: string
+) {
     const payload = createContractCallPayload(
         contract,
         contractName,
         functionName,
         []
-    )
+    );
     const s = serializePayload(payload);
     return bytesToHex(s);
 }
 
-export function getContractCallPayload(contract: string, contractName: string, functionName: string, functionArgs: string[]) {
-    const fnArgs = functionArgs.map(arg => deserializeCV(hexToBuff(arg)));
+export function getContractCallPayload(
+    contract: string,
+    contractName: string,
+    functionName: string,
+    functionArgs: string[]
+) {
+    const fnArgs = functionArgs.map((arg) => deserializeCV(hexToBuff(arg)));
     const payload = createContractCallPayload(
         contract,
         contractName,
         functionName,
         fnArgs
-    )
+    );
     const s = serializePayload(payload);
     return bytesToHex(s);
 }
@@ -313,8 +479,8 @@ export function getDeployPayload(contractName: string, codeBody: string) {
     const payload = createSmartContractPayload(
         contractName,
         codeBody,
-        ClarityVersion.Clarity2,
-);
+        ClarityVersion.Clarity2
+    );
     const s = serializePayload(payload);
     return bytesToHex(s);
 }

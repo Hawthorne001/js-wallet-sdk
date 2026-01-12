@@ -1,5 +1,5 @@
-import {Cell} from "../lib/ton-core";
-import {WalletContractV4, WalletContractV5R1} from "../ton";
+import { Cell } from "../lib/ton-core";
+import { WalletContractV4, WalletContractV5R1 } from "../ton";
 
 export type AnyPayload = string | Cell | Uint8Array;
 
@@ -115,6 +115,7 @@ export interface TransactionPayloadMessage {
     payload?: string;
     stateInit?: string;
     isBase64Payload?: boolean;
+    extraFlags?: string;
 }
 
 export interface TransactionPayload {
@@ -171,6 +172,7 @@ export interface TonTransferParams {
     payload?: AnyPayload;
     stateInit?: Cell;
     isBase64Payload?: boolean;
+    extraFlags?: string;
 }
 
 export type ExtensionParam = {

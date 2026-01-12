@@ -3,6 +3,11 @@
 
 All notable changes to this project will be documented in this file.
 
+
+# [1.1.2](https://github.com/okx/js-wallet-sdk)(2025-06-12)
+### Fix
+- **coin-ethereum:** fix eip712 hash ([](https://github.com/okx/js-wallet-sdk))
+
 # [1.1.1](https://github.com/okx/js-wallet-sdk)(2025-03-24)
 
 ### New Features

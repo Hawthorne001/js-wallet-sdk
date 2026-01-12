@@ -1,6 +1,6 @@
-import {VenomWalletV3, WalletContractV4, WalletContractV5R1} from "../ton";
-import {signUtil} from "@okxweb3/crypto-lib";
-import {base} from "@okxweb3/coin-base";
+import { VenomWalletV3, WalletContractV4, WalletContractV5R1 } from "../ton";
+import { signUtil } from "@okxweb3/crypto-lib";
+import { base } from "@okxweb3/coin-base";
 import {
     Contract,
     external,
@@ -11,7 +11,8 @@ import {
     storeStateInit,
     Address,
     beginCell,
-    Cell, storeMessageRelaxed,
+    Cell,
+    loadMessage
 } from "../lib/ton-core";
 import {
     AuthType,
@@ -19,13 +20,12 @@ import {
     JettonMultiTxData,
     JettonTxData,
     TonTransferParams,
-    TransactionPayloadMessage,
     TxData,
     WalletContract
 } from "./types";
-import {getWalletContract, parseAddress} from "./address";
-import {generateQueryId} from "./index";
-import {TRANSFER_TIMEOUT_SEC} from "./constant";
+import { getWalletContract, parseAddress } from "./address";
+import { generateQueryId } from "./index";
+import { TRANSFER_TIMEOUT_SEC } from "./constant";
 
 
 function toExternalMessage(
@@ -126,7 +126,6 @@ export function transfer(txData: TxData, seed: string) {
     const messages = [internal({
         to: txData.to,
         value: BigInt(txData.amount),
-        // bounce: txData.toIsInit,
         bounce: false, // depend on the design of PM
         body: txData.memo
     })];
@@ -215,7 +214,6 @@ export function jettonTransfer(txData: JettonTxData, seed: string) {
         to: fromJettonWallet,
         value: BigInt(txData.messageAttachedTons || "50000000"), // message fee, amount of TON
         body: transferPayload,
-        // bounce: txData.toIsInit,
         bounce: false, // depend on the design of PM
     })];
 
@@ -278,10 +276,8 @@ export function jettonMultiTransfer(txData: JettonMultiTxData, seed: string) {
 
         return internal({
             to: fromJettonWallet,
-            // value: toNano(m.messageAttachedTons || "0.05"),
             value: BigInt(m.messageAttachedTons || "50000000"), // message fee, amount of TON
             body: transferPayload,
-            // bounce: m.toIsInit,
             bounce: false, // depend on the design of PM
         });
     })
@@ -316,7 +312,7 @@ export async function signMultiTransaction(
 
     const preparedMessages = messages.map((message) => {
         const {
-            amount, toAddress, stateInit, isBase64Payload,
+            amount, toAddress, stateInit, isBase64Payload, extraFlags,
         } = message;
         let {payload} = message;
 
@@ -341,6 +337,7 @@ export async function signMultiTransaction(
             body: payload as Cell | string | undefined, // TODO Fix Uint8Array type
             bounce: parseAddress(toAddress).isBounceable,
             init,
+            extraFlags,
         });
     });
     const {secretK, publicK, isForSimulate} = getKeyParams(privateKey, publicKey)
@@ -483,4 +480,27 @@ export function setSignatureAuth(extParam: ExtensionParam)  {
         stateInit: getStateInit(wallet, extParam.seqno, authType),
         address: wallet.address.toString(),
     };
+}
+
+export function calcExternalMessageNormalizedHash(bocString: string): string {
+    const cell = Cell.fromBase64(bocString);
+    const message = loadMessage(cell.beginParse());
+    
+    if (message.info.type !== 'external-in') {
+        throw new Error('BOC does not contain an external-in message');
+    }
+
+    const body = message.body || Cell.EMPTY;
+
+    const normalizedCell = beginCell()
+        .storeUint(0b10, 2)               // external-in message indicator
+        .storeAddress(null)               // no source address
+        .storeAddress(message.info.dest)  // destination address
+        .storeCoins(0)                    // import fee = 0
+        .storeBit(false)                  // no state init
+        .storeBit(true)                   // body in ref
+        .storeRef(body)                   // body as reference
+        .endCell();
+
+    return normalizedCell.hash().toString('hex');
 }
