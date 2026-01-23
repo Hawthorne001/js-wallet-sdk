@@ -1459,6 +1459,9 @@ describe('address', () => {
         });
         expect(result.isValid).toBe(false);
         expect(result.address).toBe('invalid_address');
+        expect(result.msg).toBe(
+            'Solana address should match ^[1-9A-HJ-NP-Za-km-z]+$ (base58) and decode to 32 bytes'
+        );
     });
 
     test('validAddress with valid address', async () => {
@@ -1470,6 +1473,7 @@ describe('address', () => {
         expect(result.address).toBe(
             'J44uzihE3Ty2YBdMsLwCE3hV5uf2q2hRJQMnW2NGqPfo'
         );
+        expect(result.msg).toBe('');
     });
 
     test('checkPrivateKey with all zeros', async () => {
