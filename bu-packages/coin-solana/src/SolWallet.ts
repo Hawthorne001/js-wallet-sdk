@@ -31,6 +31,8 @@ import { api, web3 } from './index';
 import { ComputeBudgetProgram } from './lib/web3/programs/compute-budget';
 import { TokenStandard } from './lib/metaplex';
 
+type ValidAddressDataWithMsg = ValidAddressData & { msg: string };
+
 export type TransactionType = 'transfer' | 'tokenTransfer' | 'mplTransfer';
 export type SolSignParam = {
     type: TransactionType;
@@ -138,9 +140,16 @@ export class SolWallet extends BaseWallet {
             isValid = false;
         }
 
-        let data: ValidAddressData = {
+        let msg = '';
+        if (!isValid) {
+            msg =
+                'Solana address should match ^[1-9A-HJ-NP-Za-km-z]+$ (base58) and decode to 32 bytes';
+        }
+
+        let data: ValidAddressDataWithMsg = {
             isValid: isValid,
             address: param.address,
+            msg,
         };
         return Promise.resolve(data);
     }

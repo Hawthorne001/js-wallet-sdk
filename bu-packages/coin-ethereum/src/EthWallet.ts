@@ -109,6 +109,7 @@ export class EthWallet extends BaseWallet {
         } catch (e) {
             return Promise.resolve({
                 isValid: false,
+                msg: 'Eth address should match ^0x[0-9a-fA-F]{40}$',
             });
         }
     }

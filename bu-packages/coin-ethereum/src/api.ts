@@ -52,9 +52,14 @@ export function validAddress(address: string) {
     const isValid = isValidAddress(address);
     checksumAddress = toChecksumAddress(address);
 
+    let msg = '';
+    if (!isValid) {
+        msg = 'Eth address should match ^0x[0-9a-fA-F]{40}$';
+    }
     return {
         isValid: isValid,
         address: checksumAddress,
+        msg,
     };
 }
 
